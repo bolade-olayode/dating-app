@@ -9,12 +9,22 @@ import { StatusBar } from 'react-native';
 import WelcomeScreen from '@screens/WelcomeScreen';
 import SignupScreen from '@screens/Onboarding/SignupScreen';
 import LoginScreen from '@screens/Onboarding/LoginScreen';
+import OTPVerificationScreen from '@screens/Onboarding/OTPVerificationScreen';
+import NameInputScreen from '@screens/Onboarding/NameInputScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
   Welcome: undefined;
   Signup: undefined;
   Login: undefined;
+  Verification: {
+    phoneNumber?: string;
+    email?: string;
+  } | undefined;
+  NameInput: undefined;
+  DateOfBirthInput: {
+    name: string;
+  };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -38,6 +48,8 @@ const AppNavigator = () => {
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Verification" component={OTPVerificationScreen} />
+        <Stack.Screen name="NameInput" component={NameInputScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

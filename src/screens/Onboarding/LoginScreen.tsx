@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Button from '../../components/common/Button/Button';
 import MarqueeColumn from '../../components/common/AnimatedBackground/MarqueeColumn';
 
+// Validation
+import { isValidEmail, isValidPassword, ValidationErrors } from '../../utils/validation';
+
 // Placeholder Images
 const placeholderImages = [
   require('../../assets/images/opuehbckgdimg.jpg'),
@@ -34,7 +37,84 @@ const LoginScreen: React.FC<any> = ({ navigation }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Validation states
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [touched, setTouched] = useState({ email: false, password: false });
+
+  // Validate email
+  const validateEmail = useCallback((value: string): boolean => {
+    if (!value.trim()) {
+      setEmailError(ValidationErrors.EMAIL_REQUIRED);
+      return false;
+    }
+    if (!isValidEmail(value)) {
+      setEmailError(ValidationErrors.EMAIL_INVALID);
+      return false;
+    }
+    setEmailError('');
+    return true;
+  }, []);
+
+  // Validate password
+  const validatePassword = useCallback((value: string): boolean => {
+    if (!value) {
+      setPasswordError(ValidationErrors.PASSWORD_REQUIRED);
+      return false;
+    }
+    if (!isValidPassword(value)) {
+      setPasswordError(ValidationErrors.PASSWORD_TOO_SHORT);
+      return false;
+    }
+    setPasswordError('');
+    return true;
+  }, []);
+
+  // Handle input changes
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (touched.email) {
+      validateEmail(value);
+    }
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (touched.password) {
+      validatePassword(value);
+    }
+  };
+
+  // Handle blur events
+  const handleEmailBlur = () => {
+    setTouched(prev => ({ ...prev, email: true }));
+    validateEmail(email);
+  };
+
+  const handlePasswordBlur = () => {
+    setTouched(prev => ({ ...prev, password: true }));
+    validatePassword(password);
+  };
+
+  // Check if form is valid
+  const isFormValid =
+    email.trim() &&
+    password &&
+    !emailError &&
+    !passwordError &&
+    isValidEmail(email) &&
+    isValidPassword(password);
+
   const handleLogin = () => {
+    // Final validation before submit
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+
+    if (!isEmailValid || !isPasswordValid) {
+      setTouched({ email: true, password: true });
+      return;
+    }
+
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -93,7 +173,10 @@ const LoginScreen: React.FC<any> = ({ navigation }) => {
             <View style={styles.formContainer}>
               {/* Email Input */}
               <Text style={styles.inputLabel}>Email Address</Text>
-              <View style={styles.inputWrapper}>
+              <View style={[
+                styles.inputWrapper,
+                touched.email && emailError ? styles.inputError : null,
+              ]}>
                 <View style={styles.iconWrapper}>
                   <Icon name="mail-outline" size={20} color={COLORS.gray600} />
                 </View>
@@ -102,15 +185,22 @@ const LoginScreen: React.FC<any> = ({ navigation }) => {
                   placeholder="bigboladde@yahoo.com"
                   placeholderTextColor={COLORS.gray500}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={handleEmailChange}
+                  onBlur={handleEmailBlur}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
               </View>
+              {touched.email && emailError ? (
+                <Text style={styles.errorText}>{emailError}</Text>
+              ) : null}
 
               {/* Password Input */}
               <Text style={styles.inputLabel}>Password</Text>
-              <View style={styles.inputWrapper}>
+              <View style={[
+                styles.inputWrapper,
+                touched.password && passwordError ? styles.inputError : null,
+              ]}>
                 <View style={styles.iconWrapper}>
                   <Icon name="lock-closed-outline" size={20} color={COLORS.gray600} />
                 </View>
@@ -119,7 +209,8 @@ const LoginScreen: React.FC<any> = ({ navigation }) => {
                   placeholder="Enter your password"
                   placeholderTextColor={COLORS.gray500}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={handlePasswordChange}
+                  onBlur={handlePasswordBlur}
                   secureTextEntry={!isPasswordVisible}
                 />
                 <TouchableOpacity
@@ -134,6 +225,9 @@ const LoginScreen: React.FC<any> = ({ navigation }) => {
                   />
                 </TouchableOpacity>
               </View>
+              {touched.password && passwordError ? (
+                <Text style={styles.errorText}>{passwordError}</Text>
+              ) : null}
 
               {/* Forgot Password Link */}
               <TouchableOpacity
@@ -147,6 +241,7 @@ const LoginScreen: React.FC<any> = ({ navigation }) => {
               <Button
                 onPress={handleLogin}
                 loading={loading}
+                disabled={!isFormValid}
                 style={styles.loginButton}
               >
                 Log In
@@ -264,7 +359,19 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     height: 52,
     paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.xs,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  inputError: {
+    borderColor: COLORS.error,
+  },
+  errorText: {
+    fontFamily: TYPOGRAPHY.fontFamily.medium,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    color: COLORS.error,
     marginBottom: SPACING.sm,
+    marginLeft: SPACING.xs,
   },
   iconWrapper: {
     paddingRight: SPACING.sm,

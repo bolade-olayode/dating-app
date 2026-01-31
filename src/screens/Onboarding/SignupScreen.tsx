@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Dimensions,
   TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -20,6 +21,13 @@ import Button from '../../components/common/Button/Button';
 import MarqueeColumn from '../../components/common/AnimatedBackground/MarqueeColumn';
 import CountryPickerModal from '../../components/common/CountryPicker/CountryPickerModal';
 import { Country, COUNTRY_CODES } from '../../data/CountryCodes';
+
+// Validation
+import { isValidEmail, isValidPhone, ValidationErrors, formatPhoneNumber } from '../../utils/validation';
+
+// Services
+import { authService } from '../../services/api/authService';
+import { devLog } from '@config/environment';
 
 // Placeholder Images
 const placeholderImages = [
@@ -38,12 +46,105 @@ const SignupScreen: React.FC<any> = ({ navigation }) => {
   const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRY_CODES[0]); // Default: Nigeria
   const [isCountryPickerVisible, setIsCountryPickerVisible] = useState(false);
 
-  const handleContinue = () => {
+  // Validation states
+  const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [touched, setTouched] = useState({ phone: false, email: false });
+
+  // Validate phone number
+  const validatePhone = useCallback((value: string): boolean => {
+    if (!value.trim()) {
+      setPhoneError(ValidationErrors.PHONE_REQUIRED);
+      return false;
+    }
+    if (!isValidPhone(value, selectedCountry.dial_code)) {
+      setPhoneError(ValidationErrors.PHONE_INVALID);
+      return false;
+    }
+    setPhoneError('');
+    return true;
+  }, [selectedCountry.dial_code]);
+
+  // Validate email
+  const validateEmail = useCallback((value: string): boolean => {
+    if (!value.trim()) {
+      setEmailError(ValidationErrors.EMAIL_REQUIRED);
+      return false;
+    }
+    if (!isValidEmail(value)) {
+      setEmailError(ValidationErrors.EMAIL_INVALID);
+      return false;
+    }
+    setEmailError('');
+    return true;
+  }, []);
+
+  // Handle phone input change
+  const handlePhoneChange = (value: string) => {
+    const formatted = formatPhoneNumber(value);
+    setPhone(formatted);
+    if (touched.phone) {
+      validatePhone(value);
+    }
+  };
+
+  // Handle email input change
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (touched.email) {
+      validateEmail(value);
+    }
+  };
+
+  // Handle blur events
+  const handlePhoneBlur = () => {
+    setTouched(prev => ({ ...prev, phone: true }));
+    validatePhone(phone);
+  };
+
+  const handleEmailBlur = () => {
+    setTouched(prev => ({ ...prev, email: true }));
+    validateEmail(email);
+  };
+
+  // Check if form is valid
+  const isFormValid = isPhoneMode
+    ? phone.trim() && !phoneError && isValidPhone(phone, selectedCountry.dial_code)
+    : email.trim() && !emailError && isValidEmail(email);
+
+  const handleContinue = async () => {
+    // Final validation before submit
+    const isValid = isPhoneMode ? validatePhone(phone) : validateEmail(email);
+
+    if (!isValid) {
+      setTouched({ phone: true, email: true });
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
+
+    const contact = isPhoneMode
+      ? `${selectedCountry.dial_code} ${phone}`
+      : email;
+
+    try {
+      devLog('Sending OTP to:', contact);
+      const result = await authService.sendOTP(contact);
+
+      if (result.success) {
+        devLog('OTP sent successfully!');
+        navigation.navigate('Verification', {
+          phoneNumber: isPhoneMode ? contact : undefined,
+          email: !isPhoneMode ? email : undefined,
+        });
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+    } finally {
       setLoading(false);
-      navigation.navigate('Verification');
-    }, 1500);
+    }
   };
 
   // The Country Selector Component
@@ -145,7 +246,11 @@ const SignupScreen: React.FC<any> = ({ navigation }) => {
               </View>
 
               {/* Input Field */}
-              <View style={styles.inputWrapper}>
+              <View style={[
+                styles.inputWrapper,
+                isPhoneMode && touched.phone && phoneError ? styles.inputError : null,
+                !isPhoneMode && touched.email && emailError ? styles.inputError : null,
+              ]}>
                 {isPhoneMode ? (
                   <>
                     <CountrySelector />
@@ -154,7 +259,8 @@ const SignupScreen: React.FC<any> = ({ navigation }) => {
                       placeholder="812 345 6789"
                       placeholderTextColor={COLORS.gray500}
                       value={phone}
-                      onChangeText={setPhone}
+                      onChangeText={handlePhoneChange}
+                      onBlur={handlePhoneBlur}
                       keyboardType="number-pad"
                     />
                   </>
@@ -168,7 +274,8 @@ const SignupScreen: React.FC<any> = ({ navigation }) => {
                       placeholder="bigboladde@yahoo.com"
                       placeholderTextColor={COLORS.gray500}
                       value={email}
-                      onChangeText={setEmail}
+                      onChangeText={handleEmailChange}
+                      onBlur={handleEmailBlur}
                       keyboardType="email-address"
                       autoCapitalize="none"
                     />
@@ -176,7 +283,20 @@ const SignupScreen: React.FC<any> = ({ navigation }) => {
                 )}
               </View>
 
-              <Button onPress={handleContinue} loading={loading} style={styles.continueButton}>
+              {/* Error Message */}
+              {isPhoneMode && touched.phone && phoneError ? (
+                <Text style={styles.errorText}>{phoneError}</Text>
+              ) : null}
+              {!isPhoneMode && touched.email && emailError ? (
+                <Text style={styles.errorText}>{emailError}</Text>
+              ) : null}
+
+              <Button
+                onPress={handleContinue}
+                loading={loading}
+                disabled={!isFormValid}
+                style={styles.continueButton}
+              >
                 Continue
               </Button>
             </View>
@@ -316,6 +436,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     height: 56,
     paddingHorizontal: SPACING.md,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  inputError: {
+    borderColor: COLORS.error,
+  },
+  errorText: {
+    fontFamily: TYPOGRAPHY.fontFamily.medium,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    color: COLORS.error,
+    marginTop: SPACING.xs,
+    marginLeft: SPACING.xs,
   },
   textInput: {
     flex: 1,
