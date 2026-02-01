@@ -141,25 +141,29 @@ Welcome Screen
     ↓
 Signup (Phone/Email)
     ↓
-OTP Verification (6-digit code)
+OTP Verification (6-digit code) → Step 1 (11%)
     ↓
-Name Input
+Name Input → Step 2 (22%)
     ↓
-Date of Birth
+Date of Birth → Step 3 (33%)
     ↓
-Gender Selection
+Gender Selection → Step 4 (44%)
     ↓
-Interests (min 5)
+Looking For → Step 5 (55%)
     ↓
-Photo Upload (min 3)
+Relationship Goals → Step 6 (66%)
     ↓
-Bio & Prompts
+Interests (min 5, max 10) → Step 7 (77%)
+    ↓
+Photo Upload (min 3, max 6) → Step 8 (88%)
+    ↓
+Bio & Prompts → Step 9 (100%)
     ↓
 Home (Discovery Feed)
 ```
 
 ### **Progress Bar**
-A thin progress indicator shows users completion percentage (14% → 100%) across onboarding.
+A thin animated progress indicator shows users completion percentage (11% → 100%) across the 9-step onboarding flow.
 
 ---
 
@@ -217,46 +221,59 @@ eas submit --platform ios
 - [x] Project setup (Expo + TypeScript)
 - [x] Theme system (colors, typography, spacing)
 - [x] Custom fonts (EB Garamond)
-- [x] Navigation structure
+- [x] Navigation structure (Stack Navigator with 12+ routes)
 - [x] Environment configuration
-- [x] Mock API service layer
+- [x] Mock API service layer (Auth + Photo services)
+- [x] Onboarding flow configuration (9-step centralized config)
 
 **Components:**
 - [x] Button (5 variants, 3 sizes, loading states)
 - [x] Input (validation, error states, password toggle)
 - [x] OTPInput (6-digit, auto-focus, paste support)
-- [x] OnboardingProgressBar (animated)
+- [x] OnboardingProgressBar (animated, 9-step support)
 - [x] MarqueeColumn (animated background)
 - [x] CountryPickerModal (searchable)
 
-**Screens:**
+**Screens (12 total):**
 - [x] Welcome Screen (hero image, CTA buttons)
 - [x] Signup Screen (phone/email, social login, animated background)
 - [x] Login Screen (email/password, social login)
-- [x] OTP Verification (6-digit input, timer, resend)
+- [x] OTP Verification (6-digit input, timer, resend, mock API)
 - [x] Name Input (validation, character limits)
+- [x] Date of Birth Screen (date picker, 18+ validation, age display)
+- [x] Gender Selection Screen (Male/Female cards)
+- [x] Looking For Screen (Men/Women/Everyone options)
+- [x] Relationship Goals Screen (5 options: Marriage, Serious, Casual, Friends, Not Sure)
+- [x] Interests Selection Screen (multi-select, min 5, max 10)
+- [x] Photo Upload Screen (2x3 grid, multi-select, min 3, max 6)
+- [x] Bio Screen (About Me + 3 prompts, skip option)
 
 **Services:**
-- [x] Mock Authentication Service
+- [x] Mock Authentication Service (sendOTP, verifyOTP, resendOTP)
+- [x] Mock Photo Service (upload simulation with 10% failure rate)
 - [x] Theme Context Provider
 - [x] Font Loading Service
-- [x] Country Codes Data
+- [x] Country Codes Data (10 countries)
+
+**Utils & Config:**
+- [x] Bio Prompts (12 curated prompts, 3 defaults)
+- [x] Constants (Gender, Looking For, Relationship Goals, Interests)
+- [x] Validators (email, phone, password, age)
+- [x] Formatters (phone, date, distance, currency)
+- [x] Onboarding Flow Config (centralized step management)
 
 ### In Progress
 
-- [ ] Date of Birth Screen
-- [ ] Gender Selection Screen
-- [ ] Interests Picker (multi-select, min 5)
-- [ ] Photo Upload (min 3, max 6)
-- [ ] Bio & Prompts
+- [ ] Home/Discovery Feed (swipe cards)
+- [ ] Backend API Integration
 
 ### Upcoming
 
 - [ ] Discovery Feed (swipe cards)
 - [ ] Matching Algorithm
 - [ ] Chat/Messaging
-- [ ] Profile Screen
-- [ ] Settings
+- [ ] Profile View Screen
+- [ ] Settings Screen
 - [ ] Premium Features
 - [ ] Backend Integration
 - [ ] Push Notifications
@@ -266,17 +283,25 @@ eas submit --platform ios
 
 ## Onboarding Flow Details
 
-### **Steps & Progress:**
+### **Steps & Progress (9 Total):**
 
 | Step | Screen | Progress | Status |
 |------|--------|----------|--------|
-| 1 | OTP Verification | 14% | ✅ Done |
-| 2 | Name Input | 28% | ✅ Done |
-| 3 | Date of Birth | 42% | 🚧 Building |
-| 4 | Gender Selection | 57% | 📅 Next |
-| 5 | Interests | 71% | 📅 Planned |
-| 6 | Photos | 85% | 📅 Planned |
-| 7 | Bio/Completion | 100% | 📅 Planned |
+| 1 | OTP Verification | 11% | ✅ Done |
+| 2 | Name Input | 22% | ✅ Done |
+| 3 | Date of Birth | 33% | ✅ Done |
+| 4 | Gender Selection | 44% | ✅ Done |
+| 5 | Looking For | 55% | ✅ Done |
+| 6 | Relationship Goals | 66% | ✅ Done |
+| 7 | Interests | 77% | ✅ Done |
+| 8 | Photos | 88% | ✅ Done |
+| 9 | Bio/Completion | 100% | ✅ Done |
+
+### **Data Flow:**
+Each screen passes accumulated user data to the next:
+```
+OTP → Name → DOB/Age → Gender → LookingFor → RelationshipGoal → Interests[] → Photos[] → Bio/Prompts
+```
 
 
 ## 🔧 Configuration Files
@@ -355,10 +380,11 @@ eas submit --platform ios
 
 ## Known Issues
 
-- [ ] OTP doesn't expire (add 10-min expiration)
+- [x] ~~OTP doesn't expire~~ (10-min expiration implemented)
 - [ ] Back button doesn't save draft (implement draft service)
 - [ ] No error boundary (add global error handler)
 - [ ] Images not optimized (add compression)
+- [ ] No photo reordering (drag-and-drop planned)
 
 ---
 
