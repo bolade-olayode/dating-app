@@ -8,7 +8,7 @@
 
 ---
 
-## 📱 About xxxxxxx
+## About xxxxxxx
 
 xxxxxxx is a modern dating application designed to help people find meaningful connections. Unlike typical swipe-based apps, Opueh focuses on values, interests, and intentional relationship-building.
 
