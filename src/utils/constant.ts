@@ -122,6 +122,72 @@ export const AGE_RANGE = {
   MAX: 100,
 } as const;
 
+// --- GENDER OPTIONS (For Gender Selection Screen) ---
+export interface GenderOption {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+export const GENDER_OPTIONS: GenderOption[] = [
+  { id: 'male', label: 'Male', icon: 'man-outline' },
+  { id: 'female', label: 'Female', icon: 'woman-outline' },
+];
+
+// --- LOOKING FOR OPTIONS (For Dating Preference Screen) ---
+export interface LookingForOption {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+export const LOOKING_FOR_OPTIONS: LookingForOption[] = [
+  { id: 'men', label: 'Men', icon: 'man-outline' },
+  { id: 'women', label: 'Women', icon: 'woman-outline' },
+  { id: 'everyone', label: 'Everyone', icon: 'people-outline' },
+];
+
+// --- RELATIONSHIP GOALS (For Relationship Goals Screen) ---
+export interface RelationshipGoal {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+}
+
+export const RELATIONSHIP_GOALS: RelationshipGoal[] = [
+  {
+    id: 'marriage',
+    label: 'Marriage',
+    description: 'Looking for my future spouse',
+    icon: 'diamond-outline'
+  },
+  {
+    id: 'serious',
+    label: 'Serious Relationship',
+    description: 'Commitment and something lasting',
+    icon: 'heart-outline'
+  },
+  {
+    id: 'casual',
+    label: 'Something Casual',
+    description: 'Just having fun, nothing serious yet',
+    icon: 'wine-outline'
+  },
+  {
+    id: 'friends',
+    label: 'New Friends',
+    description: 'Expanding my social circle',
+    icon: 'people-outline'
+  },
+  {
+    id: 'not_sure',
+    label: 'Not Sure Yet',
+    description: 'Open to seeing where things go',
+    icon: 'help-circle-outline'
+  },
+];
+
 export const PROFILE_REQUIREMENTS = {
   MIN_PHOTOS: 3,
   MAX_PHOTOS: 6,
@@ -202,6 +268,9 @@ export default {
   PROMPT_QUESTIONS,
   COUNTRIES,
   AGE_RANGE,
+  GENDER_OPTIONS,
+  LOOKING_FOR_OPTIONS,
+  RELATIONSHIP_GOALS,
   PROFILE_REQUIREMENTS,
   REGEX_PATTERNS,
   ANIMATION_DURATION,

@@ -17,6 +17,9 @@ import { COLORS, SPACING, TYPOGRAPHY, SIZES } from '@config/theme';
 import Button from '../../components/common/Button/Button';
 import OnboardingProgressBar from '../../components/common/OnboardingProgressBar';
 
+// Config
+import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
+
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@navigation/AppNavigator';
@@ -35,9 +38,9 @@ const NameInputScreen: React.FC<Props> = ({ navigation }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Onboarding progress: Step 2 of 7
-  const CURRENT_STEP = 2;
-  const TOTAL_STEPS = 7;
+  // Onboarding progress: Step 2 of 9
+  const CURRENT_STEP = ONBOARDING_STEPS.NAME_INPUT;
+  const TOTAL_STEPS = TOTAL_ONBOARDING_STEPS;
 
   const validateName = (text: string): boolean => {
     // Remove extra spaces and validate
@@ -108,7 +111,7 @@ const NameInputScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.input, error && styles.inputError]}
-                placeholder="OLAYODE Boladde"
+                placeholder="Boladde"
                 placeholderTextColor={COLORS.gray500}
                 value={name}
                 onChangeText={handleNameChange}

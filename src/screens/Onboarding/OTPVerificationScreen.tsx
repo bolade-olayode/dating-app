@@ -22,6 +22,9 @@ import OnboardingProgressBar from '../../components/common/OnboardingProgressBar
 import { authService } from '../../services/api/authService';
 import { devLog } from '@config/environment';
 
+// Config
+import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
+
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@navigation/AppNavigator';
@@ -37,9 +40,17 @@ interface Props {
     params?: {
       phoneNumber?: string;
       email?: string;
+      expiresAt?: number;
     };
   };
 }
+
+// Helper to format time as M:SS
+const formatExpiryTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
 const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const [otp, setOtp] = useState('');
@@ -47,17 +58,44 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expiryTime, setExpiryTime] = useState<number | null>(null); // Seconds until OTP expires
 
   // Get phone number or email from params
   const phoneNumber = route.params?.phoneNumber || '+234 812 345 6789';
   const email = route.params?.email;
+  const expiresAt = route.params?.expiresAt;
   const isPhoneMode = !email;
+  const contact = isPhoneMode ? phoneNumber : email;
 
-  // Onboarding progress: Step 1 of 7
-  const CURRENT_STEP = 1;
-  const TOTAL_STEPS = 7;
+  // Onboarding progress: Step 1 of 9
+  const CURRENT_STEP = ONBOARDING_STEPS.OTP_VERIFICATION;
+  const TOTAL_STEPS = TOTAL_ONBOARDING_STEPS;
 
-  // Countdown timer
+  // Initialize expiry countdown from params
+  useEffect(() => {
+    if (expiresAt) {
+      const secondsRemaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+      setExpiryTime(secondsRemaining);
+    }
+  }, [expiresAt]);
+
+  // OTP Expiry countdown timer
+  useEffect(() => {
+    if (expiryTime === null || expiryTime <= 0) return;
+
+    const interval = setInterval(() => {
+      setExpiryTime((prev) => {
+        if (prev === null || prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [expiryTime]);
+
+  // Resend countdown timer
   useEffect(() => {
     if (timer > 0) {
       const interval = setInterval(() => {
@@ -82,17 +120,25 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleVerify = async (code: string = otp) => {
     if (code.length < 6) return;
 
+    // Check if OTP has expired
+    if (expiryTime !== null && expiryTime <= 0) {
+      setError('OTP has expired. Please request a new one.');
+      Alert.alert('Expired', 'OTP has expired. Please request a new one.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      devLog('Verifying OTP:', code);
-      const result = await authService.verifyOTP(code);
+      devLog('Verifying OTP:', code, 'for:', contact);
+      const result = await authService.verifyOTP(code, contact);
 
       if (result.success) {
         devLog('OTP Verified successfully!', result);
-        // Navigate to Name Input screen
-        navigation.navigate('NameInput');
+        // Replace navigation stack to prevent going back to OTP screen
+        // OTP has been consumed and should not be revisitable
+        navigation.replace('NameInput');
       } else {
         setError(result.message);
         Alert.alert('Verification Failed', result.message);
@@ -108,17 +154,23 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleResend = async () => {
     if (!canResend) return;
 
-    const contact = isPhoneMode ? phoneNumber : email;
     devLog('Resending OTP to:', contact);
 
     try {
       const result = await authService.resendOTP(contact || '');
 
       if (result.success) {
-        // Reset timer
+        // Reset timers
         setTimer(59);
         setCanResend(false);
         setError('');
+
+        // Update expiry countdown with new expiration time
+        if (result.expiresAt) {
+          const secondsRemaining = Math.max(0, Math.floor((result.expiresAt - Date.now()) / 1000));
+          setExpiryTime(secondsRemaining);
+        }
+
         Alert.alert('OTP Sent', 'A new OTP has been sent to your ' + (isPhoneMode ? 'phone' : 'email'));
       } else {
         Alert.alert('Failed', result.message);
@@ -170,6 +222,21 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.errorText}>{error}</Text>
             ) : null}
           </View>
+
+          {/* OTP Expiry Timer */}
+          {expiryTime !== null && (
+            <View style={styles.expiryContainer}>
+              {expiryTime > 0 ? (
+                <Text style={styles.expiryText}>
+                  Code expires in {formatExpiryTime(expiryTime)}
+                </Text>
+              ) : (
+                <Text style={styles.expiryExpiredText}>
+                  Code has expired
+                </Text>
+              )}
+            </View>
+          )}
 
           {/* Timer and Resend */}
           <View style={styles.resendContainer}>
@@ -282,6 +349,22 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     textAlign: 'center',
     marginTop: SPACING.sm,
+  },
+
+  // Expiry Timer
+  expiryContainer: {
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  expiryText: {
+    fontFamily: TYPOGRAPHY.fontFamily.medium,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    color: COLORS.gray500,
+  },
+  expiryExpiredText: {
+    fontFamily: TYPOGRAPHY.fontFamily.bold,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    color: COLORS.error,
   },
 
   // Resend

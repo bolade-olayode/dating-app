@@ -132,10 +132,11 @@ const SignupScreen: React.FC<any> = ({ navigation }) => {
       const result = await authService.sendOTP(contact);
 
       if (result.success) {
-        devLog('OTP sent successfully!');
+        devLog('OTP sent successfully! Expires at:', result.expiresAt);
         navigation.navigate('Verification', {
           phoneNumber: isPhoneMode ? contact : undefined,
           email: !isPhoneMode ? email : undefined,
+          expiresAt: result.expiresAt,
         });
       } else {
         Alert.alert('Error', result.message);

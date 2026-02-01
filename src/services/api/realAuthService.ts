@@ -97,10 +97,11 @@ const sendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
     const response = await apiClient.post('/auth/send-otp', {
       phoneOrEmail,
     });
-    
+
     return {
       success: true,
       message: response.data.message || 'OTP sent successfully',
+      expiresAt: response.data.expiresAt,
     };
   } catch (error: any) {
     return {
@@ -112,22 +113,24 @@ const sendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
 
 /**
  * REAL: Verify OTP
- * 
+ *
  * TODO: Implement when backend endpoint is ready
  * Expected endpoint: POST /auth/verify-otp
  * Expected body: { phoneOrEmail: string, code: string }
  */
-const verifyOTP = async (code: string): Promise<AuthResponse> => {
+const verifyOTP = async (code: string, phoneOrEmail?: string): Promise<AuthResponse> => {
   try {
     const response = await apiClient.post('/auth/verify-otp', {
       code,
+      phoneOrEmail,
     });
-    
+
     return {
       success: true,
       message: 'OTP verified successfully',
       token: response.data.token,
       user: response.data.user,
+      expiresAt: response.data.expiresAt,
     };
   } catch (error: any) {
     return {
@@ -147,10 +150,11 @@ const resendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
     const response = await apiClient.post('/auth/resend-otp', {
       phoneOrEmail,
     });
-    
+
     return {
       success: true,
       message: response.data.message || 'OTP resent successfully',
+      expiresAt: response.data.expiresAt,
     };
   } catch (error: any) {
     return {

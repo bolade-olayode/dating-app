@@ -2,22 +2,27 @@
 
 /**
  * ONBOARDING PROGRESS BAR
- * 
+ *
  * A thin progress bar that shows users how far they are in the signup flow.
- * Appears at the top of onboarding screens (OTP, Name, DOB, Gender, etc.)
- * 
- * 
+ * Appears at the bottom of onboarding screens, just above the Continue button.
+ *
  * USAGE:
- * <OnboardingProgressBar currentStep={2} totalSteps={7} />
- * 
- * ONBOARDING STEPS:
- * 1. OTP Verification (14%)
- * 2. Name Input (28%)
- * 3. Date of Birth (42%)
- * 4. Gender Selection (57%)
- * 5. Interests (71%)
- * 6. Photos (85%)
- * 7. Bio/Completion (100%)
+ * import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
+ * <OnboardingProgressBar currentStep={ONBOARDING_STEPS.NAME_INPUT} totalSteps={TOTAL_ONBOARDING_STEPS} />
+ *
+ * ONBOARDING STEPS (9 Total):
+ * 1. OTP Verification    (11%)
+ * 2. Name Input          (22%)
+ * 3. Date of Birth       (33%)
+ * 4. Gender Selection    (44%)
+ * 5. Looking For         (55%)
+ * 6. Relationship Goals  (66%)
+ * 7. Interests           (77%)
+ * 8. Photos              (88%)
+ * 9. Bio/Completion      (100%)
+ *
+ * NOTE: Always use constants from @config/onboardingFlow instead of hardcoded numbers
+ * to ensure consistency across all screens.
  */
 
 import React, { useEffect } from 'react';
@@ -25,8 +30,8 @@ import { View, StyleSheet, Animated } from 'react-native';
 import { COLORS } from '@config/theme';
 
 interface OnboardingProgressBarProps {
-  currentStep: number;  // Current step number (1-7)
-  totalSteps: number;   // Total steps in onboarding (7)
+  currentStep: number;  // Current step number (1-9)
+  totalSteps: number;   // Total steps in onboarding (9)
   height?: number;      // Bar height in pixels (default: 3)
   backgroundColor?: string;  // Background color (default: gray)
   progressColor?: string;    // Fill color (default: primary pink)
@@ -44,9 +49,9 @@ const OnboardingProgressBar: React.FC<OnboardingProgressBarProps> = ({
 
   /**
    * CALCULATE PROGRESS PERCENTAGE
-   * 
+   *
    * Formula: (currentStep / totalSteps) * 100
-   * Example: Step 2 of 7 = (2/7) * 100 = 28.57%
+   * Example: Step 2 of 9 = (2/9) * 100 = 22.22%
    */
   const progressPercentage = (currentStep / totalSteps) * 100;
 

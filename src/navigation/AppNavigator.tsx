@@ -11,6 +11,13 @@ import SignupScreen from '@screens/Onboarding/SignupScreen';
 import LoginScreen from '@screens/Onboarding/LoginScreen';
 import OTPVerificationScreen from '@screens/Onboarding/OTPVerificationScreen';
 import NameInputScreen from '@screens/Onboarding/NameInputScreen';
+import DateOfBirthScreen from '@screens/Onboarding/DateOfBirthScreen';
+import GenderSelectionScreen from '@screens/Onboarding/GenderSelectionScreen';
+import LookingForScreen from '@screens/Onboarding/LookingForScreen';
+import RelationshipGoalsScreen from '@screens/Onboarding/RelationshipGoalsScreen';
+import InterestsSelectionScreen from '@screens/Onboarding/InterestsSelectionScreen';
+import PhotoUploadScreen from '@screens/Onboarding/PhotoUploadScreen';
+import BioScreen from '@screens/Onboarding/BioScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -20,10 +27,56 @@ export type RootStackParamList = {
   Verification: {
     phoneNumber?: string;
     email?: string;
+    expiresAt?: number;
   } | undefined;
   NameInput: undefined;
   DateOfBirthInput: {
     name: string;
+  };
+  GenderSelection: {
+    name: string;
+    dateOfBirth: string;
+    age: number;
+  };
+  LookingFor: {
+    name: string;
+    dateOfBirth: string;
+    age: number;
+    gender: string;
+  };
+  RelationshipGoals: {
+    name: string;
+    dateOfBirth: string;
+    age: number;
+    gender: string;
+    lookingFor: string;
+  };
+  InterestsSelection: {
+    name: string;
+    dateOfBirth: string;
+    age: number;
+    gender: string;
+    lookingFor: string;
+    relationshipGoal: string;
+  };
+  PhotoUpload: {
+    name: string;
+    dateOfBirth: string;
+    age: number;
+    gender: string;
+    lookingFor: string;
+    relationshipGoal: string;
+    interests: string[];
+  };
+  BioScreen: {
+    name: string;
+    dateOfBirth: string;
+    age: number;
+    gender: string;
+    lookingFor: string;
+    relationshipGoal: string;
+    interests: string[];
+    photos: string[];
   };
 };
 
@@ -50,6 +103,13 @@ const AppNavigator = () => {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Verification" component={OTPVerificationScreen} />
         <Stack.Screen name="NameInput" component={NameInputScreen} />
+        <Stack.Screen name="DateOfBirthInput" component={DateOfBirthScreen} />
+        <Stack.Screen name="GenderSelection" component={GenderSelectionScreen} />
+        <Stack.Screen name="LookingFor" component={LookingForScreen} />
+        <Stack.Screen name="RelationshipGoals" component={RelationshipGoalsScreen} />
+        <Stack.Screen name="InterestsSelection" component={InterestsSelectionScreen} />
+        <Stack.Screen name="PhotoUpload" component={PhotoUploadScreen} />
+        <Stack.Screen name="BioScreen" component={BioScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
