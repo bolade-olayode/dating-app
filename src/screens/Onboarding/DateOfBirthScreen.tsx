@@ -1,48 +1,30 @@
 // src/screens/Onboarding/DateOfBirthScreen.tsx
 
-/**
- * DATE OF BIRTH INPUT SCREEN
- * 
- * Users enter their date of birth to verify they're old enough (18+).
- * 
- * FEATURES:
- * - Platform-specific date picker (iOS wheel, Android calendar)
- * - Age validation (18-100 years)
- * - Privacy note (birth year hidden by default)
- * - Progress bar (Step 3 of 7 - 42%)
- * - Personalized greeting with user's name
- * 
- * VALIDATION RULES:
- * - Must be 18+ years old (dating app requirement)
- * - Must be under 100 years old (reasonable limit)
- * - Valid date format
- * 
- * DATA SAVED:
- * - Full date: YYYY-MM-DD (for backend)
- * - Display age: Calculated from DOB
- * - Privacy setting: Birth year hidden by default
- */
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
+  TouchableOpacity,
+  Keyboard,
+  TouchableWithoutFeedback,
   Platform,
+  KeyboardAvoidingView,
+  TextInput,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import Icon from 'react-native-vector-icons/Ionicons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS, SPACING, TYPOGRAPHY } from '@config/theme';
-
-// Components
-import Button from '../../components/common/Button/Button';
-import OnboardingProgressBar from '../../components/common/OnboardingProgressBar';
 
 // Config
+import { FONTS } from '../../config/fonts';
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
+
+// Components
+import Flare from '../../components/ui/Flare';
+import ProgressIndicator from '../../components/ui/ProgressIndicator';
+import { PrimaryButton } from '../../components/ui/Buttons';
 
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -62,395 +44,294 @@ interface Props {
 }
 
 const DateOfBirthScreen: React.FC<Props> = ({ navigation, route }) => {
-  // Get name from previous screen
-  const userName = route.params?.name || 'there';
+  const insets = useSafeAreaInsets();
+  
+  // Get name from previous screen params
+  const userName = route.params?.name || 'There';
 
   // State
-  const [date, setDate] = useState<Date | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
+  const [day, setDay] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
   const [loading, setLoading] = useState(false);
 
-  /**
-   * CALCULATE AGE FROM DATE OF BIRTH
-   * 
-   * Returns age in years.
-   * Used for validation (must be 18+)
-   */
-  const calculateAge = (birthDate: Date): number => {
+  // Refs for auto-focus
+  const monthRef = useRef<TextInput>(null);
+  const yearRef = useRef<TextInput>(null);
+
+  // Onboarding progress
+  const CURRENT_STEP = ONBOARDING_STEPS.DATE_OF_BIRTH;
+  const TOTAL_STEPS = TOTAL_ONBOARDING_STEPS;
+
+  // --- HANDLERS ---
+
+  const handleDayChange = (text: string) => {
+    const val = text.replace(/[^0-9]/g, '');
+    setDay(val);
+    if (val.length === 2) {
+      monthRef.current?.focus();
+    }
+  };
+
+  const handleMonthChange = (text: string) => {
+    const val = text.replace(/[^0-9]/g, '');
+    setMonth(val);
+    if (val.length === 2) {
+      yearRef.current?.focus();
+    }
+  };
+
+  const handleYearChange = (text: string) => {
+    const val = text.replace(/[^0-9]/g, '');
+    setYear(val);
+    if (val.length === 4) {
+      Keyboard.dismiss();
+    }
+  };
+
+  const calculateAge = () => {
+    const d = parseInt(day);
+    const m = parseInt(month);
+    const y = parseInt(year);
     const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    // Adjust if birthday hasn't occurred this year yet
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    let age = today.getFullYear() - y;
+    const mDiff = today.getMonth() + 1 - m;
+    if (mDiff < 0 || (mDiff === 0 && today.getDate() < d)) {
       age--;
     }
-    
     return age;
   };
 
-  /**
-   * VALIDATE DATE OF BIRTH
-   * 
-   * Checks:
-   * - User is at least 18 years old
-   * - User is under 100 years old
-   * - Date is not in the future
-   */
-  const validateDate = (selectedDate: Date): boolean => {
-    const age = calculateAge(selectedDate);
+  const isDateValid = () => {
+    if (day.length < 1 || month.length < 1 || year.length !== 4) return false;
+    const d = parseInt(day);
+    const m = parseInt(month);
+    const y = parseInt(year);
     
-    // Too young (under 18)
-    if (age < 18) {
-      Alert.alert(
-        'Age Requirement',
-        'You must be at least 18 years old to use MeetPie.',
-        [{ text: 'OK' }]
-      );
-      return false;
-    }
-    
-    // Unrealistic age (over 100)
-    if (age > 100) {
-      Alert.alert(
-        'Invalid Date',
-        'Please enter a valid date of birth.',
-        [{ text: 'OK' }]
-      );
-      return false;
-    }
-    
-    // Date in the future
-    if (selectedDate > new Date()) {
-      Alert.alert(
-        'Invalid Date',
-        'Date of birth cannot be in the future.',
-        [{ text: 'OK' }]
-      );
-      return false;
-    }
+    if (isNaN(d) || isNaN(m) || isNaN(y)) return false;
+    if (d < 1 || d > 31) return false;
+    if (m < 1 || m > 12) return false;
+    if (y < 1920 || y > new Date().getFullYear()) return false;
     
     return true;
   };
 
-  /**
-   * HANDLE DATE CHANGE
-   * 
-   * Called when user selects a date from picker.
-   * Validates and saves the date.
-   */
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    // Android: Close picker after selection
-    if (Platform.OS === 'android') {
-      setShowPicker(false);
-    }
-    
-    if (selectedDate) {
-      if (validateDate(selectedDate)) {
-        setDate(selectedDate);
-      }
-    }
-  };
-
-  /**
-   * FORMAT DATE FOR DISPLAY
-   * 
-   * Converts Date object to readable format.
-   * Example: January 15, 1995
-   */
-  const formatDate = (date: Date): string => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    };
-    return date.toLocaleDateString('en-US', options);
-  };
-
-  /**
-   * CONTINUE TO NEXT SCREEN
-   * 
-   * Saves DOB and navigates to Gender Selection.
-   */
   const handleContinue = () => {
-    if (!date) {
-      Alert.alert('Required', 'Please select your date of birth.');
+    const age = calculateAge();
+
+    // 1. Validate Age Limit
+    if (age < 18) {
+      Alert.alert(
+        'Age Restricted',
+        'You must be at least 18 years old to use this app.',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
-    setLoading(true);
-    
-    // TODO: Save to backend or local storage
-    // Format: YYYY-MM-DD for backend
-    const dobString = date.toISOString().split('T')[0];
-    const age = calculateAge(date);
-    
-    console.log('DOB:', dobString, 'Age:', age);
-    
-    setTimeout(() => {
-      setLoading(false);
-      // Navigate to Gender Selection screen
-      navigation.navigate('GenderSelection', {
-        name: userName,
-        dateOfBirth: dobString,
-        age,
-      });
-    }, 800);
+    // 2. Confirm Age
+    Alert.alert(
+      'Confirm Age',
+      `You are ${age} years old. Is this correct?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: () => {
+             // 3. Navigate
+             setLoading(true);
+             const dobString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+             
+             // Simulate small delay for UX
+             setTimeout(() => {
+                setLoading(false);
+                navigation.navigate('GenderSelection', {
+                  name: userName,
+                  dateOfBirth: dobString,
+                  age: age,
+                });
+             }, 300);
+          }
+        },
+      ]
+    );
   };
 
   return (
-    <View style={styles.mainContainer}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Icon name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.container}
+    >
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <Flare />
 
-        <View style={styles.container}>
-          <View style={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>
-                Hi {userName}, Now tell us your date of birth?
-              </Text>
-              <Text style={styles.subtitle}>
-                Your birth year is hidden by default, you can make it visible in 
-                your profile settings.
-              </Text>
-            </View>
-
-            {/* Date Picker Button */}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
+          
+          {/* Back Button */}
+          <View style={styles.topBar}>
             <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowPicker(true)}
-              activeOpacity={0.7}
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.8}
             >
-              <View style={styles.dateButtonContent}>
-                <Icon 
-                  name="calendar-outline" 
-                  size={24} 
-                  color={date ? COLORS.black : COLORS.gray500} 
-                />
-                <Text style={[
-                  styles.dateButtonText,
-                  !date && styles.dateButtonTextPlaceholder
-                ]}>
-                  {date ? formatDate(date) : 'Select your date of birth'}
-                </Text>
-              </View>
-              <Icon name="chevron-forward" size={20} color={COLORS.gray500} />
+              <Icon name="chevron-back" size={24} color="#fff" />
             </TouchableOpacity>
-
-            {/* Display Age (if date selected) */}
-            {date && (
-              <View style={styles.ageDisplay}>
-                <Text style={styles.ageText}>
-                  Age: {calculateAge(date)} years old
-                </Text>
-              </View>
-            )}
-
-            {/* Privacy Note */}
-            <View style={styles.noteContainer}>
-              <Icon name="lock-closed-outline" size={16} color={COLORS.gray500} />
-              <Text style={styles.noteText}>
-                Only your age will be visible to others. Your exact birth date 
-                remains private.
-              </Text>
-            </View>
           </View>
 
-          {/* Progress Bar - just above button */}
-          <View style={styles.progressContainer}>
-            <OnboardingProgressBar
-              currentStep={ONBOARDING_STEPS.DATE_OF_BIRTH}
-              totalSteps={TOTAL_ONBOARDING_STEPS}
+          {/* Header Text */}
+          <View style={styles.header}>
+            <Text style={styles.title}>
+              Hi <Text style={styles.highlightName}>{userName},</Text> Now tell us your date of birth?
+            </Text>
+          </View>
+
+          {/* Input Section */}
+          <View style={styles.inputSection}>
+            <View style={styles.dateRow}>
+              
+              {/* Day Input */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Day</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="DD"
+                  placeholderTextColor="#333"
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  value={day}
+                  onChangeText={handleDayChange}
+                  autoFocus
+                />
+              </View>
+
+              {/* Month Input */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Month</Text>
+                <TextInput
+                  ref={monthRef}
+                  style={styles.input}
+                  placeholder="MM"
+                  placeholderTextColor="#333"
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  value={month}
+                  onChangeText={handleMonthChange}
+                />
+              </View>
+
+              {/* Year Input */}
+              <View style={[styles.inputWrapper, { flex: 1.5 }]}>
+                <Text style={styles.label}>Year</Text>
+                <TextInput
+                  ref={yearRef}
+                  style={styles.input}
+                  placeholder="YYYY"
+                  placeholderTextColor="#333"
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  value={year}
+                  onChangeText={handleYearChange}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.helperText}>
+              We only show your age to potential matches, not your full date of birth.
+            </Text>
+          </View>
+
+          {/* Spacer & Progress Indicator */}
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <ProgressIndicator step={CURRENT_STEP} totalSteps={TOTAL_STEPS} />
+          </View>
+
+          {/* Footer Button */}
+          <View style={[styles.footer, { marginBottom: insets.bottom + 20 }]}>
+            <PrimaryButton
+              variant={1}
+              text="Continue"
+              disabled={!isDateValid() || loading}
+              onPress={handleContinue}
             />
           </View>
 
-          {/* Continue Button */}
-          <View style={styles.buttonContainer}>
-            <Button
-              onPress={handleContinue}
-              loading={loading}
-              disabled={!date}
-            >
-              Continue
-            </Button>
-          </View>
         </View>
-
-        {/* Date Picker Modal */}
-        {showPicker && (
-          <DateTimePicker
-            value={date || new Date(2000, 0, 1)} // Default: Jan 1, 2000
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleDateChange}
-            maximumDate={new Date()} // Can't select future dates
-            minimumDate={new Date(1924, 0, 1)} // 100 years ago
-            textColor={COLORS.white} // iOS only
-            // iOS: Show inline picker
-            // Android: Shows native modal automatically
-          />
-        )}
-
-        {/* iOS: Done button for date picker */}
-        {showPicker && Platform.OS === 'ios' && (
-          <View style={styles.pickerControls}>
-            <TouchableOpacity
-              style={styles.doneButton}
-              onPress={() => setShowPicker(false)}
-            >
-              <Text style={styles.doneButtonText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </SafeAreaView>
-    </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: COLORS.black,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  backButton: {
-    position: 'absolute',
-    top: SPACING.xl,
-    left: SPACING.md,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   container: {
     flex: 1,
-    paddingTop: SPACING['3xl'],
+    backgroundColor: '#000',
   },
   content: {
     flex: 1,
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: 24,
   },
-
-  // Header
+  topBar: {
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#202427',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
-    marginBottom: SPACING['3xl'],
+    marginBottom: 40,
   },
   title: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
+    fontFamily: FONTS.H3,
     fontSize: 32,
-    color: COLORS.white,
-    marginBottom: SPACING.sm,
+    color: '#fff',
     lineHeight: 40,
   },
-  subtitle: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.gray500,
-    lineHeight: 24,
+  highlightName: {
+    color: '#666',
   },
-
-  // Date Button
-  dateButton: {
+  inputSection: {
+    marginTop: 10,
+  },
+  dateRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.white,
-    borderRadius: 14,
-    paddingHorizontal: SPACING.md,
-    height: 56,
-    marginBottom: SPACING.md,
+    gap: 12,
   },
-  dateButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  dateButtonText: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.black,
-  },
-  dateButtonTextPlaceholder: {
-    color: COLORS.gray500,
-  },
-
-  // Age Display
-  ageDisplay: {
-    backgroundColor: COLORS.gray900,
-    borderRadius: 12,
-    padding: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  ageText: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    fontSize: TYPOGRAPHY.fontSize.lg,
-    color: COLORS.white,
-    textAlign: 'center',
-  },
-
-  // Privacy Note
-  noteContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.sm,
-    padding: SPACING.md,
-    backgroundColor: COLORS.gray900,
-    borderRadius: 12,
-  },
-  noteText: {
+  inputWrapper: {
     flex: 1,
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.gray500,
+    backgroundColor: '#0D0D0D', // Dark background as per reference
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#222', // Subtle border
+    padding: 12,
+    height: 80,
+    justifyContent: 'center',
+  },
+  label: {
+    fontFamily: FONTS.Body,
+    fontSize: 12,
+    color: '#444',
+    marginBottom: 4,
+  },
+  input: {
+    fontFamily: FONTS.H3,
+    fontSize: 20,
+    color: '#fff',
+    padding: 0,
+  },
+  helperText: {
+    fontFamily: FONTS.Body,
+    fontSize: 14,
+    color: '#666',
+    marginTop: 20,
     lineHeight: 20,
   },
-
-  // Progress Bar
-  progressContainer: {
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-
-  // Button
-  buttonContainer: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
-
-  // iOS Picker Controls
-  pickerControls: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.gray900,
-    padding: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray800,
-  },
-  doneButton: {
+  footer: {
     alignItems: 'center',
-    padding: SPACING.md,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-  },
-  doneButtonText: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.white,
   },
 });
 

@@ -1,4 +1,5 @@
-// src/hooks/useFonts.ts
+// src/hooks/UseFonts.ts
+// Updated to load Sora font family (replacing EB Garamond)
 import { useEffect, useState } from 'react';
 import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -6,29 +7,27 @@ import * as SplashScreen from 'expo-splash-screen';
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
+// Font files to load - Sora font family
+const FONT_FILES = {
+  'Sora-Thin': require('../assets/fonts/Sora-Thin.ttf'),
+  'Sora-ExtraLight': require('../assets/fonts/Sora-ExtraLight.ttf'),
+  'Sora-Light': require('../assets/fonts/Sora-Light.ttf'),
+  'Sora-Regular': require('../assets/fonts/Sora-Regular.ttf'),
+  'Sora-Medium': require('../assets/fonts/Sora-Medium.ttf'),
+  'Sora-SemiBold': require('../assets/fonts/Sora-SemiBold.ttf'),
+  'Sora-Bold': require('../assets/fonts/Sora-Bold.ttf'),
+  'Sora-ExtraBold': require('../assets/fonts/Sora-ExtraBold.ttf'),
+};
+
 export const useFonts = () => {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
     async function loadFonts() {
       try {
-        await Font.loadAsync({
-          // Main fonts you'll use (Regular, Medium, SemiBold, Bold)
-          'EBGaramond-Regular': require('../assets/fonts/EBGaramond-Regular.ttf'),
-          'EBGaramond-Medium': require('../assets/fonts/EBGaramond-Medium.ttf'),
-          'EBGaramond-SemiBold': require('../assets/fonts/EBGaramond-SemiBold.ttf'),
-          'EBGaramond-Bold': require('../assets/fonts/EBGaramond-Bold.ttf'),
-          'EBGaramond-ExtraBold': require('../assets/fonts/EBGaramond-ExtraBold.ttf'),
-          
-          
-          /* 'EBGaramond-Italic': require('../../assets/fonts/EBGaramond-Italic.ttf'),
-          'EBGaramond-MediumItalic': require('../../assets/fonts/EBGaramond-MediumItalic.ttf'),
-          'EBGaramond-SemiBoldItalic': require('../../assets/fonts/EBGaramond-SemiBoldItalic.ttf'),
-          'EBGaramond-BoldItalic': require('../../assets/fonts/EBGaramond-BoldItalic.ttf'),
-          'EBGaramond-ExtraBoldItalic': require('../../assets/fonts/EBGaramond-ExtraBoldItalic.ttf'), */
-        });
+        await Font.loadAsync(FONT_FILES);
       } catch (e) {
-        console.warn(e);
+        console.warn('Error loading fonts:', e);
       } finally {
         setFontsLoaded(true);
         await SplashScreen.hideAsync();
@@ -40,3 +39,6 @@ export const useFonts = () => {
 
   return fontsLoaded;
 };
+
+// Export font files for use in _layout if needed
+export { FONT_FILES };

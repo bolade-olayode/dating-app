@@ -1,521 +1,129 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Dimensions,
-  TextInput,
-  Alert,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { COLORS, SPACING, TYPOGRAPHY } from '@config/theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  PrimaryButton,
+  FacebookButton,
+  GoogleButton,
+} from '@components/ui/Buttons';
+import { FONTS } from '@config/fonts';
+import MarqueeColumn from '@components/common/AnimatedBackground/MarqueeColumn';
 
-// Components
-import Button from '../../components/common/Button/Button';
-import MarqueeColumn from '../../components/common/AnimatedBackground/MarqueeColumn';
-import CountryPickerModal from '../../components/common/CountryPicker/CountryPickerModal';
-import { Country, COUNTRY_CODES } from '../../data/CountryCodes';
+const { height } = Dimensions.get('window');
 
-// Validation
-import { isValidEmail, isValidPhone, ValidationErrors, formatPhoneNumber } from '../../utils/validation';
-
-// Services
-import { authService } from '../../services/api/authService';
-import { devLog } from '@config/environment';
-
-// Placeholder Images
-const placeholderImages = [
-  require('../../assets/images/opuehbckgdimg.jpg'), 
+// Placeholder images - replace with your actual images
+const SLIDE_IMAGES = [
+  require('../../assets/images/opuehbckgdimg.jpg'),
   require('../../assets/images/opuehbckgdimg.jpg'),
   require('../../assets/images/opuehbckgdimg.jpg'),
 ];
 
-const { width, height } = Dimensions.get('window');
-
 const SignupScreen: React.FC<any> = ({ navigation }) => {
-  const [isPhoneMode, setIsPhoneMode] = useState(true);
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRY_CODES[0]); // Default: Nigeria
-  const [isCountryPickerVisible, setIsCountryPickerVisible] = useState(false);
-
-  // Validation states
-  const [phoneError, setPhoneError] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [touched, setTouched] = useState({ phone: false, email: false });
-
-  // Validate phone number
-  const validatePhone = useCallback((value: string): boolean => {
-    if (!value.trim()) {
-      setPhoneError(ValidationErrors.PHONE_REQUIRED);
-      return false;
-    }
-    if (!isValidPhone(value, selectedCountry.dial_code)) {
-      setPhoneError(ValidationErrors.PHONE_INVALID);
-      return false;
-    }
-    setPhoneError('');
-    return true;
-  }, [selectedCountry.dial_code]);
-
-  // Validate email
-  const validateEmail = useCallback((value: string): boolean => {
-    if (!value.trim()) {
-      setEmailError(ValidationErrors.EMAIL_REQUIRED);
-      return false;
-    }
-    if (!isValidEmail(value)) {
-      setEmailError(ValidationErrors.EMAIL_INVALID);
-      return false;
-    }
-    setEmailError('');
-    return true;
-  }, []);
-
-  // Handle phone input change
-  const handlePhoneChange = (value: string) => {
-    const formatted = formatPhoneNumber(value);
-    setPhone(formatted);
-    if (touched.phone) {
-      validatePhone(value);
-    }
-  };
-
-  // Handle email input change
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
-    if (touched.email) {
-      validateEmail(value);
-    }
-  };
-
-  // Handle blur events
-  const handlePhoneBlur = () => {
-    setTouched(prev => ({ ...prev, phone: true }));
-    validatePhone(phone);
-  };
-
-  const handleEmailBlur = () => {
-    setTouched(prev => ({ ...prev, email: true }));
-    validateEmail(email);
-  };
-
-  // Check if form is valid
-  const isFormValid = isPhoneMode
-    ? phone.trim() && !phoneError && isValidPhone(phone, selectedCountry.dial_code)
-    : email.trim() && !emailError && isValidEmail(email);
-
-  const handleContinue = async () => {
-    // Final validation before submit
-    const isValid = isPhoneMode ? validatePhone(phone) : validateEmail(email);
-
-    if (!isValid) {
-      setTouched({ phone: true, email: true });
-      return;
-    }
-
-    setLoading(true);
-
-    const contact = isPhoneMode
-      ? `${selectedCountry.dial_code} ${phone}`
-      : email;
-
-    try {
-      devLog('Sending OTP to:', contact);
-      const result = await authService.sendOTP(contact);
-
-      if (result.success) {
-        devLog('OTP sent successfully! Expires at:', result.expiresAt);
-        navigation.navigate('Verification', {
-          phoneNumber: isPhoneMode ? contact : undefined,
-          email: !isPhoneMode ? email : undefined,
-          expiresAt: result.expiresAt,
-        });
-      } else {
-        Alert.alert('Error', result.message);
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to send OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // The Country Selector Component
-  const CountrySelector = () => (
-    <TouchableOpacity
-      style={styles.countrySelector}
-      onPress={() => setIsCountryPickerVisible(true)}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.countryFlag}>{selectedCountry.flag}</Text>
-      <Text style={styles.countryText}>{selectedCountry.dial_code}</Text>
-      <Icon name="chevron-down" size={14} color={COLORS.black} />
-    </TouchableOpacity>
-  );
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.mainContainer}>
-      
-      {/* --- 1. ANIMATED BACKGROUND (Top Half) --- */}
-      <View style={styles.backgroundLayer}>
-        <MarqueeColumn images={placeholderImages} direction="up" duration={40000} />
-        <MarqueeColumn images={placeholderImages} direction="down" duration={35000} />
-        <MarqueeColumn images={placeholderImages} direction="up" duration={45000} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      {/* Animated Background Grid */}
+      <View style={styles.backgroundContainer}>
+        <View style={styles.gridRow}>
+          <MarqueeColumn images={SLIDE_IMAGES} direction="up" duration={20000} />
+          <MarqueeColumn images={SLIDE_IMAGES} direction="down" duration={25000} />
+          <MarqueeColumn images={SLIDE_IMAGES} direction="up" duration={22000} />
+        </View>
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,1)']}
+          style={styles.gridOverlay}
+        />
       </View>
 
-      {/* --- 2. DARK GRADIENT MASK --- */}
-      <LinearGradient
-        colors={[
-          'transparent',
-          COLORS.overlayDark,
-          COLORS.black,
-          COLORS.black,
+      {/* Content Container */}
+      <View
+        style={[
+          styles.content,
+          {
+            paddingBottom: insets.bottom + 20,
+            paddingHorizontal: 24,
+          },
         ]}
-        locations={[0, 0.4, 0.6, 1]}
-        style={styles.gradientLayer}
-      />
+      >
+        <Text style={styles.title}>Sign up for MeetPie</Text>
+        <Text style={styles.subtitle}>
+          Find your perfect match, chat with interesting people, and start your dating journey today.
+        </Text>
 
-      {/* --- 3. CONTENT AREA --- */}
-      <SafeAreaView style={styles.safeArea}>
-        {/* Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Icon name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
-
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Dynamic Spacer: Pushes content down */}
-            <View style={{ height: height * 0.35 }} /> 
-
-            <View style={styles.headerContainer}>
-              <Text style={styles.title}>Sign up for MeetPie</Text>
-              <Text style={styles.subtitle}>
-                Create a profile, follow your heart, and find meaningful Connections.
-              </Text>
-            </View>
-
-            <View style={styles.formContainer}>
-              {/* Tab Selector: Phone / Email */}
-              <View style={styles.tabContainer}>
-                <TouchableOpacity
-                  style={[styles.tab, isPhoneMode && styles.tabActive]}
-                  onPress={() => setIsPhoneMode(true)}
-                  activeOpacity={0.7}
-                >
-                  <Icon
-                    name="call-outline"
-                    size={18}
-                    color={isPhoneMode ? COLORS.white : COLORS.gray500}
-                  />
-                  <Text style={[styles.tabText, isPhoneMode && styles.tabTextActive]}>
-                    Phone
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.tab, !isPhoneMode && styles.tabActive]}
-                  onPress={() => setIsPhoneMode(false)}
-                  activeOpacity={0.7}
-                >
-                  <Icon
-                    name="mail-outline"
-                    size={18}
-                    color={!isPhoneMode ? COLORS.white : COLORS.gray500}
-                  />
-                  <Text style={[styles.tabText, !isPhoneMode && styles.tabTextActive]}>
-                    Email
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Input Field */}
-              <View style={[
-                styles.inputWrapper,
-                isPhoneMode && touched.phone && phoneError ? styles.inputError : null,
-                !isPhoneMode && touched.email && emailError ? styles.inputError : null,
-              ]}>
-                {isPhoneMode ? (
-                  <>
-                    <CountrySelector />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="812 345 6789"
-                      placeholderTextColor={COLORS.gray500}
-                      value={phone}
-                      onChangeText={handlePhoneChange}
-                      onBlur={handlePhoneBlur}
-                      keyboardType="number-pad"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.emailIconWrapper}>
-                      <Icon name="mail-outline" size={20} color={COLORS.gray600} />
-                    </View>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="bigboladde@yahoo.com"
-                      placeholderTextColor={COLORS.gray500}
-                      value={email}
-                      onChangeText={handleEmailChange}
-                      onBlur={handleEmailBlur}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                    />
-                  </>
-                )}
-              </View>
-
-              {/* Error Message */}
-              {isPhoneMode && touched.phone && phoneError ? (
-                <Text style={styles.errorText}>{phoneError}</Text>
-              ) : null}
-              {!isPhoneMode && touched.email && emailError ? (
-                <Text style={styles.errorText}>{emailError}</Text>
-              ) : null}
-
-              <Button
-                onPress={handleContinue}
-                loading={loading}
-                disabled={!isFormValid}
-                style={styles.continueButton}
-              >
-                Continue
-              </Button>
-            </View>
-
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <View style={styles.socialContainer}>
-              <Button
-                variant="outline"
-                icon={<Icon name="logo-facebook" size={20} color={COLORS.facebook} />}
-                style={styles.socialButton}
-                textStyle={styles.socialButtonText}
-                onPress={() => {}}
-              >
-                Sign up with Facebook
-              </Button>
-
-              <Button
-                variant="outline"
-                icon={<Icon name="logo-google" size={20} color={COLORS.google} />}
-                style={styles.socialButton}
-                textStyle={styles.socialButtonText}
-                onPress={() => {}}
-              >
-                Sign Up with Google
-              </Button>
-            </View>
-            
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-
-      {/* Country Picker Modal */}
-      <CountryPickerModal
-        visible={isCountryPickerVisible}
-        onClose={() => setIsCountryPickerVisible(false)}
-        onSelect={(country) => setSelectedCountry(country)}
-      />
+        <View style={styles.buttonGroup}>
+          <FacebookButton onPress={() => {}} />
+          <View style={{ height: 12 }} />
+          <GoogleButton onPress={() => {}} />
+          <View style={{ height: 12 }} />
+          <PrimaryButton
+            text="Use Phone or Email"
+            variant={1}
+            onPress={() => navigation.navigate('Register')}
+          />
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: {
+  container: {
     flex: 1,
-    backgroundColor: COLORS.black,
+    backgroundColor: '#000',
   },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
+  backgroundContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.65,
+    overflow: 'hidden',
+  },
+  gridRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    height: height * 0.7,
   },
-  gradientLayer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  backButton: {
+  gridOverlay: {
     position: 'absolute',
-    top: SPACING.xl,
-    left: SPACING.md,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.overlay,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '100%',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
-
-  // Header
-  headerContainer: {
-    marginBottom: SPACING.md,
   },
   title: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
+    fontFamily: FONTS.H1,
     fontSize: 32,
-    color: COLORS.white,
-    marginBottom: SPACING.xs,
+    color: '#fff',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   subtitle: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.gray500,
-    lineHeight: 24,
+    fontFamily: FONTS.Body,
+    fontSize: 16,
+    color: '#9A9A9A',
+    textAlign: 'center',
+    marginBottom: 40,
+    paddingHorizontal: 20,
+    lineHeight: 22,
   },
-
-  // Form
-  formContainer: {
-    marginTop: SPACING.sm,
-  },
-
-  // Tab Selector
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.gray900,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: SPACING.lg,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 8,
-  },
-  tabActive: {
-    backgroundColor: COLORS.primary,
-  },
-  tabText: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.gray500,
-  },
-  tabTextActive: {
-    color: COLORS.white,
-  },
-
-  // Input Field
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 14,
-    height: 56,
-    paddingHorizontal: SPACING.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  inputError: {
-    borderColor: COLORS.error,
-  },
-  errorText: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.error,
-    marginTop: SPACING.xs,
-    marginLeft: SPACING.xs,
-  },
-  textInput: {
-    flex: 1,
-    height: '100%',
-    fontFamily: TYPOGRAPHY.fontFamily.regular,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.black,
-  },
-  countrySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: SPACING.sm,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.gray300,
-    marginRight: SPACING.sm,
-    height: 28,
-    gap: 6,
-  },
-  countryFlag: {
-    fontSize: 18,
-  },
-  countryText: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.black,
-  },
-  emailIconWrapper: {
-    paddingRight: SPACING.sm,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.gray300,
-    marginRight: SPACING.sm,
-    height: 28,
-    justifyContent: 'center',
-  },
-
-  // Continue Button
-  continueButton: {
-    marginTop: SPACING.lg,
-  },
-
-  // Divider
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: SPACING.xl,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.gray800,
-  },
-  dividerText: {
-    paddingHorizontal: SPACING.md,
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    color: COLORS.gray600,
-  },
-
-  // Socials
-  socialContainer: {
-    gap: SPACING.md,
-  },
-  socialButton: {
-    borderColor: COLORS.gray800,
-    backgroundColor: COLORS.gray900,
-  },
-  socialButtonText: {
-    color: COLORS.white,
+  buttonGroup: {
+    width: '100%',
+    marginBottom: 30,
   },
 });
 

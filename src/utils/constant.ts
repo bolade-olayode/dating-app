@@ -11,8 +11,7 @@ export enum IntentType {
 export enum Gender {
   MALE = 'MALE',
   FEMALE = 'FEMALE',
-  OTHER = 'OTHER',
-  PREFER_NOT_TO_SAY = 'PREFER_NOT_TO_SAY',
+
 }
 
 export const INTENT_LABELS: Record<IntentType, string> = {
@@ -31,39 +30,57 @@ export const INTENT_COLORS: Record<IntentType, string> = {
   [IntentType.CASUAL_FLING]: '#FF9800',
 };
 
-export interface Interest {
+export interface InterestItem {
   id: string;
   label: string;
-  icon: string;
-  hashtag: string;
+  emoji: string;
 }
 
-export const INTERESTS: Interest[] = [
-  { id: 'sports', label: 'Sports', icon: '⚽', hashtag: '#sports' },
-  { id: 'fashion', label: 'Fashion', icon: '👗', hashtag: '#fashion' },
-  { id: 'influencer', label: 'Influencer', icon: '📱', hashtag: '#influencer' },
-  { id: 'art', label: 'Art', icon: '🎨', hashtag: '#art' },
-  { id: 'photography', label: 'Photography', icon: '📷', hashtag: '#photography' },
-  { id: 'celebrities', label: 'Celebrities', icon: '⭐', hashtag: '#celebrities' },
-  { id: 'travel', label: 'Travel', icon: '✈️', hashtag: '#travel' },
-  { id: 'food', label: 'Food', icon: '🍕', hashtag: '#food' },
-  { id: 'makeup', label: 'Makeup', icon: '💄', hashtag: '#makeup' },
-  { id: 'fitness', label: 'Fitness', icon: '💪', hashtag: '#fitness' },
-  { id: 'business', label: 'Business', icon: '💼', hashtag: '#business' },
-  { id: 'marketing', label: 'Marketing', icon: '📊', hashtag: '#marketing' },
-  { id: 'nature', label: 'Nature', icon: '🌿', hashtag: '#nature' },
-  { id: 'model', label: 'Model', icon: '👠', hashtag: '#model' },
-  { id: 'jobs', label: 'Jobs', icon: '💻', hashtag: '#jobs' },
-  { id: 'gaming', label: 'Gaming', icon: '🎮', hashtag: '#gaming' },
-  { id: 'socialmedia', label: 'Social Media', icon: '📲', hashtag: '#socialmedia' },
-  { id: 'competition', label: 'Competition', icon: '🏆', hashtag: '#competition' },
-  { id: 'design', label: 'Design', icon: '✏️', hashtag: '#design' },
-  { id: 'creativity', label: 'Creativity', icon: '🎭', hashtag: '#creativity' },
-  { id: 'leadership', label: 'Leadership', icon: '👔', hashtag: '#leadership' },
-  { id: 'entrepreneurship', label: 'Entrepreneurship', icon: '🚀', hashtag: '#entrepreneurship' },
-  { id: 'health', label: 'Health', icon: '🏥', hashtag: '#health' },
-  { id: 'faith', label: 'Faith & Spirituality', icon: '🙏', hashtag: '#faith' },
-  { id: 'music', label: 'Music', icon: '🎵', hashtag: '#music' },
+export interface InterestCategory {
+  title: string;
+  items: InterestItem[];
+}
+
+export const INTEREST_CATEGORIES: InterestCategory[] = [
+  {
+    title: "Food and drink",
+    items: [
+      { id: "sushi", label: "Sushi", emoji: "🍣" },
+      { id: "vegan", label: "Vegan", emoji: "🌱" },
+      { id: "coffee", label: "Coffee", emoji: "☕" },
+      { id: "pizza", label: "Pizza", emoji: "🍕" },
+      { id: "wine", label: "Wine", emoji: "🍷" },
+      { id: "home_food", label: "Home food", emoji: "🥘" },
+      { id: "tacos", label: "Tacos", emoji: "🌮" },
+      { id: "burger", label: "Burger", emoji: "🍔" },
+    ],
+  },
+  {
+    title: "Sport",
+    items: [
+      { id: "athletics", label: "Athletics", emoji: "🏃" },
+      { id: "basketball", label: "Basketball", emoji: "🏀" },
+      { id: "swimming", label: "Swimming", emoji: "🏊" },
+      { id: "pilates", label: "Pilates", emoji: "🧘" },
+      { id: "gymnastics", label: "Gymnastics", emoji: "🤸" },
+      { id: "fencing", label: "Fencing", emoji: "🤺" },
+      { id: "football", label: "Football", emoji: "⚽" },
+      { id: "tennis", label: "Tennis", emoji: "🎾" },
+    ],
+  },
+  {
+    title: "Going out",
+    items: [
+      { id: "galleries", label: "Galleries", emoji: "🖼️" },
+      { id: "theatres", label: "Theatres", emoji: "🎭" },
+      { id: "museums", label: "Museums", emoji: "🏛️" },
+      { id: "cafes", label: "Cafes", emoji: "☕" },
+      { id: "karaoke", label: "Karaoke", emoji: "🎤" },
+      { id: "restaurants", label: "Restaurants", emoji: "🍲" },
+      { id: "bars", label: "Bars", emoji: "🍸" },
+      { id: "concerts", label: "Concerts", emoji: "🎸" },
+    ],
+  },
 ];
 
 export const SWIPE_LIMITS = {
@@ -144,7 +161,7 @@ export interface LookingForOption {
 export const LOOKING_FOR_OPTIONS: LookingForOption[] = [
   { id: 'men', label: 'Men', icon: 'man-outline' },
   { id: 'women', label: 'Women', icon: 'woman-outline' },
-  { id: 'everyone', label: 'Everyone', icon: 'people-outline' },
+  { id: 'both', label: 'Both', icon: 'people-outline' }, 
 ];
 
 // --- RELATIONSHIP GOALS (For Relationship Goals Screen) ---
@@ -156,35 +173,35 @@ export interface RelationshipGoal {
 }
 
 export const RELATIONSHIP_GOALS: RelationshipGoal[] = [
-  {
-    id: 'marriage',
-    label: 'Marriage',
-    description: 'Looking for my future spouse',
-    icon: 'diamond-outline'
+  { 
+    id: 'marriage', 
+    label: 'Marriage', 
+    description: 'Looking for a life partner', 
+    icon: 'diamond-outline' // Ionicons name
   },
-  {
-    id: 'serious',
-    label: 'Serious Relationship',
-    description: 'Commitment and something lasting',
-    icon: 'heart-outline'
+  { 
+    id: 'serious', 
+    label: 'Relationship', 
+    description: 'Looking for something serious', 
+    icon: 'heart-outline' 
   },
-  {
-    id: 'casual',
-    label: 'Something Casual',
-    description: 'Just having fun, nothing serious yet',
-    icon: 'wine-outline'
+  { 
+    id: 'casual', 
+    label: 'Something Casual', 
+    description: 'Just here to have fun', 
+    icon: 'wine-outline' 
   },
-  {
-    id: 'friends',
-    label: 'New Friends',
-    description: 'Expanding my social circle',
-    icon: 'people-outline'
+  { 
+    id: 'friends', 
+    label: 'New Friends', 
+    description: 'Expanding my social circle', 
+    icon: 'people-outline' 
   },
-  {
-    id: 'not_sure',
-    label: 'Not Sure Yet',
-    description: 'Open to seeing where things go',
-    icon: 'help-circle-outline'
+  { 
+    id: 'unsure', 
+    label: 'Not sure yet', 
+    description: 'Still figuring it out', 
+    icon: 'help-circle-outline' 
   },
 ];
 
@@ -194,7 +211,7 @@ export const PROFILE_REQUIREMENTS = {
   MIN_BIO_LENGTH: 50,
   MAX_BIO_LENGTH: 500,
   MIN_INTERESTS: 5,
-  MAX_INTERESTS: 10,
+  MAX_INTERESTS: 15,
 } as const;
 
 export const REGEX_PATTERNS = {
@@ -262,7 +279,7 @@ export default {
   Gender,
   INTENT_LABELS,
   INTENT_COLORS,
-  INTERESTS,
+  INTEREST_CATEGORIES,
   SWIPE_LIMITS,
   REPORT_REASONS,
   PROMPT_QUESTIONS,

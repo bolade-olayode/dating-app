@@ -1,37 +1,31 @@
-/**
- * PHOTO UPLOAD SCREEN
- * * Step 8 of Onboarding.
- * * FEATURES:
- * - 2x3 Grid Layout
- * - Image Picker integration
- * - MOCK Upload simulation
- * - Enforces Min/Max photo limits
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Ionicons';
-import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SPACING, TYPOGRAPHY } from '@config/theme';
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Platform,
+    Image,
+    Alert,
+    Dimensions,
+    ActivityIndicator,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
+import * as NavigationBar from "expo-navigation-bar";
+import { StatusBar } from "expo-status-bar";
+import Icon from "react-native-vector-icons/Ionicons";
 
-// Config & Services
-import { PROFILE_REQUIREMENTS } from '../../utils/constant';
-import { MockPhotoService } from '../../services/api/mockPhotoService';
+// Config & Data
+import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
+import { MockPhotoService } from '../../services/api/mockPhotoService';
 
 // Components
-import Button from '../../components/common/Button/Button';
-import OnboardingProgressBar from '../../components/common/OnboardingProgressBar';
+import Flare from "@components/ui/Flare";
+import ProgressIndicator from "@components/ui/ProgressIndicator";
+import { PrimaryButton } from "@components/ui/Buttons";
 
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -46,7 +40,6 @@ interface Props {
   route: PhotoUploadScreenRouteProp;
 }
 
-// Interface for our local photo state
 interface Photo {
   id: string;
   uri: string;
@@ -55,376 +48,283 @@ interface Photo {
 }
 
 const PhotoUploadScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { name, dateOfBirth, age, gender, lookingFor, relationshipGoal, interests } = route.params || {};
-  
-  // State
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [mainLoading, setMainLoading] = useState(false);
-
-  // Limits
-  const MIN_PHOTOS = PROFILE_REQUIREMENTS.MIN_PHOTOS; // 3
-  const MAX_PHOTOS = PROFILE_REQUIREMENTS.MAX_PHOTOS; // 6
-
-  // Slots for the 2x3 grid (We always render 6 slots, some filled, some empty)
-  const photoSlots = Array.from({ length: MAX_PHOTOS });
-
-  /**
-   * PICK AND "UPLOAD" MULTIPLE IMAGES
-   */
-  const handleAddPhoto = async () => {
-    // 1. Check Permissions
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Needed', 'We need access to your photos to upload your profile pictures.');
-      return;
-    }
-
-    // 2. Calculate remaining slots
-    const remainingSlots = MAX_PHOTOS - photos.length;
-    if (remainingSlots <= 0) {
-      Alert.alert('Maximum Reached', `You can only upload ${MAX_PHOTOS} photos.`);
-      return;
-    }
-
-    // 3. Pick Multiple Images
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: remainingSlots,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets.length > 0) {
-      // 4. Process each selected image
-      for (const asset of result.assets) {
-        const localUri = asset.uri;
-        const tempId = Math.random().toString();
-
-        // Add to state as "Uploading"
-        const newPhoto: Photo = { id: tempId, uri: localUri, isUploading: true };
-        setPhotos(prev => [...prev, newPhoto]);
-
-        // Simulate Upload API Call
-        try {
-          await MockPhotoService.uploadPhoto(localUri);
-
-          // Mark as uploaded
-          setPhotos(prev => prev.map(p =>
-            p.id === tempId ? { ...p, isUploading: false } : p
-          ));
-        } catch (error) {
-          // Handle Error (Simulated 10% failure)
-          Alert.alert('Upload Failed', 'Could not upload one of the photos. Please try again.');
-          setPhotos(prev => prev.filter(p => p.id !== tempId)); // Remove failed photo
-        }
-      }
-    }
-  };
-
-  /**
-   * REMOVE PHOTO
-   */
-  const handleRemovePhoto = (id: string) => {
-    setPhotos(prev => prev.filter(p => p.id !== id));
-  };
-
-  /**
-   * FINISH STEP
-   */
-  const handleContinue = () => {
-    // Validate
-    const uploadedCount = photos.filter(p => !p.isUploading && !p.error).length;
+    const insets = useSafeAreaInsets();
+    const { name, dateOfBirth, age, gender, lookingFor, relationshipGoal, interests } = route.params || {};
     
-    if (uploadedCount < MIN_PHOTOS) {
-      Alert.alert('Photos Required', `Please upload at least ${MIN_PHOTOS} photos to continue.`);
-      return;
-    }
+    const [photos, setPhotos] = useState<Photo[]>([]);
+    const [mainLoading, setMainLoading] = useState(false);
 
-    setMainLoading(true);
-    setTimeout(() => {
-      setMainLoading(false);
-      
-      console.log('Final Profile Data Block:', {
-        name, age, gender, lookingFor, relationshipGoal, interests,
-        photos: photos.map(p => p.uri)
-      });
+    // Limits (Your Requirements: Min 2, Max 4)
+    const MIN_PHOTOS = 2;
+    const MAX_PHOTOS = 4;
 
-      // Navigate to Bio (Final Step) - You'll create 'BioScreen' next
-      navigation.navigate('BioScreen', {
-        name, dateOfBirth, age, gender, lookingFor, relationshipGoal, interests,
-        photos: photos.map(p => p.uri)
-      });
-    }, 500);
-  };
+    const CURRENT_STEP = ONBOARDING_STEPS.PHOTOS || 9;
+    const TOTAL_STEPS = TOTAL_ONBOARDING_STEPS;
 
-  return (
-    <View style={styles.mainContainer}>
-      <SafeAreaView style={styles.safeArea}>
-        
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
+    useEffect(() => {
+        if (Platform.OS === "android") {
+            NavigationBar.setBackgroundColorAsync("#000000");
+            NavigationBar.setButtonStyleAsync("light");
+        }
+    }, []);
 
-        <View style={styles.container}>
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>Add your photos</Text>
-              <Text style={styles.subtitle}>
-                Add at least {MIN_PHOTOS} photos to continue. The first photo will be your main profile picture.
-              </Text>
-            </View>
+    const handleAddPhoto = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Needed', 'We need access to your photos to upload your profile pictures.');
+            return;
+        }
 
-            {/* Photo Grid */}
-            <View style={styles.gridContainer}>
-              {photoSlots.map((_, index) => {
-                const photo = photos[index]; // Get photo at this slot index
+        const remainingSlots = MAX_PHOTOS - photos.length;
+        if (remainingSlots <= 0) {
+            Alert.alert('Maximum Reached', `You can only upload ${MAX_PHOTOS} photos.`);
+            return;
+        }
 
-                return (
-                  <View key={index} style={styles.slotContainer}>
-                    {photo ? (
-                      // --- FILLED SLOT ---
-                      <View style={styles.photoWrapper}>
-                        <Image source={{ uri: photo.uri }} style={styles.photoImage} />
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsMultipleSelection: true,
+            selectionLimit: remainingSlots,
+            quality: 0.8,
+            aspect: [4, 5],
+        });
 
-                        {/* Loading Overlay */}
-                        {photo.isUploading && (
-                          <View style={styles.loadingOverlay}>
-                            <ActivityIndicator size="small" color={COLORS.white} />
-                          </View>
-                        )}
+        if (!result.canceled && result.assets.length > 0) {
+            for (const asset of result.assets) {
+                if (photos.length >= MAX_PHOTOS) break; // Double check limit loop
 
-                        {/* Remove Button (X) */}
-                        {!photo.isUploading && (
-                          <TouchableOpacity
-                            style={styles.removeButton}
-                            onPress={() => handleRemovePhoto(photo.id)}
-                          >
-                            <Icon name="close" size={16} color={COLORS.white} />
-                          </TouchableOpacity>
-                        )}
+                const localUri = asset.uri;
+                const tempId = Math.random().toString();
+                const newPhoto: Photo = { id: tempId, uri: localUri, isUploading: true };
+                
+                // Add to state immediately
+                setPhotos(prev => [...prev, newPhoto]);
 
-                        {/* "Main" Label for first photo */}
-                        {index === 0 && !photo.isUploading && (
-                          <View style={styles.mainLabel}>
-                            <Text style={styles.mainLabelText}>Main</Text>
-                          </View>
-                        )}
-                      </View>
-                    ) : (
-                      // --- EMPTY SLOT ---
-                      <TouchableOpacity
-                        style={styles.emptySlot}
-                        onPress={handleAddPhoto}
+                // Simulate Upload
+                try {
+                    await MockPhotoService.uploadPhoto(localUri);
+                    setPhotos(prev => prev.map(p => 
+                        p.id === tempId ? { ...p, isUploading: false } : p
+                    ));
+                } catch (error) {
+                    Alert.alert('Upload Failed', 'Could not upload one of the photos.');
+                    setPhotos(prev => prev.filter(p => p.id !== tempId));
+                }
+            }
+        }
+    };
+
+    const handleRemovePhoto = (id: string) => {
+        setPhotos(prev => prev.filter(p => p.id !== id));
+    };
+
+    const handleContinue = () => {
+        const uploadedCount = photos.filter(p => !p.isUploading && !p.error).length;
+
+        if (uploadedCount < MIN_PHOTOS) {
+            Alert.alert('Photos Required', `Please upload at least ${MIN_PHOTOS} photos to continue.`);
+            return;
+        }
+
+        setMainLoading(true);
+        setTimeout(() => {
+            setMainLoading(false);
+            // Navigate to Next Screen (Bio)
+            navigation.navigate('BioScreen', {
+                name, dateOfBirth, age, gender, lookingFor, relationshipGoal, interests,
+                photos: photos.map(p => p.uri),
+            });
+        }, 500);
+    };
+
+    // Render a single slot based on index (0-3)
+    const renderSlot = (index: number) => {
+        const photo = photos[index]; // Can be undefined if empty
+
+        return (
+            <View key={index} style={styles.slotContainer}>
+                <LinearGradient
+                    colors={["#FF007B", "#00B4D8"]} // Pink to Blue Gradient Border
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={styles.gradientBorder}
+                >
+                    <TouchableOpacity
+                        style={styles.slot}
+                        onPress={!photo ? handleAddPhoto : undefined}
                         activeOpacity={0.7}
-                        // Disable only when max photos reached
-                        disabled={photos.length >= MAX_PHOTOS}
-                      >
-                        <Icon name="add" size={32} color={COLORS.gray600} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })}
+                        disabled={!!photo}
+                    >
+                        {photo ? (
+                            <>
+                                <Image source={{ uri: photo.uri }} style={styles.image} />
+                                
+                                {photo.isUploading && (
+                                    <View style={styles.loadingOverlay}>
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    </View>
+                                )}
+
+                                {!photo.isUploading && (
+                                    <TouchableOpacity
+                                        style={styles.removeButton}
+                                        onPress={() => handleRemovePhoto(photo.id)}
+                                    >
+                                        <Icon name="close" size={16} color="#fff" />
+                                    </TouchableOpacity>
+                                )}
+                            </>
+                        ) : (
+                            <Icon name="add" size={32} color="#00B4D8" />
+                        )}
+                    </TouchableOpacity>
+                </LinearGradient>
             </View>
+        );
+    };
 
-            {/* Tip for reordering */}
-            <View style={styles.tipContainer}>
-              <Icon name="bulb-outline" size={16} color={COLORS.gray500} />
-              <Text style={styles.tipText}>
-                First photo = Main profile picture. Remove and re-add to change order.
-              </Text>
+    return (
+        <View style={styles.container}>
+            <StatusBar style="light" translucent backgroundColor="black" />
+            <Flare />
+
+            <View style={[styles.content, { paddingTop: insets.top + 20 }]}>
+                {/* Back Button */}
+                <TouchableOpacity 
+                    style={styles.backButton} 
+                    onPress={() => navigation.goBack()}
+                >
+                    <Icon name="chevron-back" size={24} color="#fff" />
+                </TouchableOpacity>
+
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>
+                        Well done <Text style={styles.nameHighlight}>{name}</Text>, now add some photos!
+                    </Text>
+                    <Text style={styles.subtitle}>
+                        Upload at least {MIN_PHOTOS} photos to show a bit of your life, personality and what you're passionate about.
+                    </Text>
+                </View>
+
+                {/* Grid Layout (2 Rows of 2) */}
+                <View style={styles.gridContainer}>
+                    <View style={styles.row}>
+                        {renderSlot(0)}
+                        {renderSlot(1)}
+                    </View>
+                    <View style={styles.row}>
+                        {renderSlot(2)}
+                        {renderSlot(3)}
+                    </View>
+                </View>
+
+                {/* Progress Indicator */}
+                <View style={{ flex: 1, justifyContent: "center" }}>
+                    <ProgressIndicator step={CURRENT_STEP} totalSteps={TOTAL_STEPS} />
+                </View>
+
+                {/* Footer Button */}
+                <View style={[styles.footer, { marginBottom: insets.bottom + 20 }]}>
+                    <PrimaryButton
+                        variant={1}
+                        text="Next"
+                        disabled={photos.length < MIN_PHOTOS || mainLoading}
+                        onPress={handleContinue}
+                    />
+                </View>
             </View>
-
-          </ScrollView>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-             <View style={styles.counterWrapper}>
-              <Text style={styles.counterText}>
-                {photos.length}/{MAX_PHOTOS} photos added
-              </Text>
-            </View>
-
-            <View style={styles.progressWrapper}>
-              <OnboardingProgressBar currentStep={ONBOARDING_STEPS.PHOTOS} totalSteps={TOTAL_ONBOARDING_STEPS} />
-            </View>
-
-            <Button 
-              onPress={handleContinue} 
-              loading={mainLoading} 
-              disabled={photos.length < MIN_PHOTOS}
-            >
-              Continue
-            </Button>
-          </View>
         </View>
-      </SafeAreaView>
-    </View>
-  );
+    );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: COLORS.black,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  backButton: {
-    position: 'absolute',
-    top: SPACING.xl,
-    left: SPACING.md,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  container: {
-    flex: 1,
-    paddingTop: SPACING['3xl'],
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: SPACING.lg,
-  },
-  
-  // Header
-  header: {
-    marginBottom: SPACING.lg,
-  },
-  title: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    fontSize: 32,
-    color: COLORS.white,
-    marginBottom: SPACING.sm,
-    lineHeight: 40,
-  },
-  subtitle: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.gray500,
-    lineHeight: 24,
-  },
-
-  // Grid
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12, // Gap between rows/cols
-  },
-  slotContainer: {
-    width: '31%', // Fits 3 items with gaps
-    aspectRatio: 0.75, // Portrait Aspect Ratio (3:4)
-    marginBottom: 12,
-  },
-  
-  // Empty State
-  emptySlot: {
-    flex: 1,
-    backgroundColor: COLORS.gray900,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.gray800,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  
-  // Filled State
-  photoWrapper: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: COLORS.gray800,
-  },
-  photoImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeButton: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mainLabel: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingVertical: 4,
-    alignItems: 'center',
-  },
-  mainLabelText: {
-    color: COLORS.white,
-    fontSize: 10,
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    textTransform: 'uppercase',
-  },
-
-  // Footer
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.black,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray900,
-    paddingTop: SPACING.sm,
-  },
-  counterWrapper: {
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  counterText: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.gray500,
-  },
-  progressWrapper: {
-    marginBottom: SPACING.md,
-  },
-
-  // Tip
-  tipContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.sm,
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-  },
-  tipText: {
-    flex: 1,
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.gray500,
-    lineHeight: 20,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#000",
+    },
+    content: {
+        flex: 1,
+        paddingHorizontal: 24,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: "#1A1A1A",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 20,
+    },
+    header: {
+        marginBottom: 30,
+    },
+    title: {
+        fontFamily: FONTS.H3,
+        fontSize: 28,
+        color: "#fff",
+        lineHeight: 36,
+        marginBottom: 12,
+    },
+    nameHighlight: {
+        color: "#FF007B",
+    },
+    subtitle: {
+        fontFamily: FONTS.Body,
+        fontSize: 15,
+        color: "#666",
+        lineHeight: 22,
+    },
+    // --- Grid Styling ---
+    gridContainer: {
+        gap: 16,
+    },
+    row: {
+        flexDirection: "row",
+        gap: 16,
+    },
+    slotContainer: {
+        flex: 1,
+        aspectRatio: 0.8, // 4:5 Aspect Ratio approx
+    },
+    gradientBorder: {
+        padding: 1.5, // Thickness of the border
+        borderRadius: 20,
+        height: "100%",
+    },
+    slot: {
+        flex: 1,
+        borderRadius: 18.5, // Slightly less than outer to fit
+        overflow: "hidden",
+        backgroundColor: "#0D0D0D", // Dark fill
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    image: {
+        width: "100%",
+        height: "100%",
+        resizeMode: "cover",
+    },
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    removeButton: {
+        position: "absolute",
+        top: 8,
+        right: 8,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    footer: {
+        alignItems: "center",
+    },
 });
 
 export default PhotoUploadScreen;

@@ -26,7 +26,7 @@ export const ENV = {
     : 'https://api.opueh.com/v1',      // Production API
   
   // Test credentials (ONLY available in development)
-  TEST_OTP: '123456',
+  TEST_OTP: '12345',
   TEST_PHONE: '+234 812 345 6789',
   TEST_EMAIL: 'test@opueh.com',
   

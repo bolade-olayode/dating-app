@@ -1,35 +1,35 @@
-import React, { useCallback } from 'react';
-import { View } from 'react-native';
-import { ThemeProvider } from '@context/ThemeContext';
-import { useFonts } from './src/hooks/UseFonts';
+import React, { useEffect } from 'react';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ThemeProvider } from '@context/ThemeContext';
+import { QueryProvider } from '@services/api-new/QueryProvider';
+import { FONT_FILES } from '@config/fonts';
 import AppNavigator from '@navigation/AppNavigator';
 
-// Keep splash screen visible while fonts load
+// Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-function App(): React.JSX.Element | null {
-  const fontsLoaded = useFonts();
+export default function App() {
+  const [fontsLoaded, fontError] = useFonts(FONT_FILES);
 
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  // Show nothing until fonts are ready
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <ThemeProvider>
-        <AppNavigator />
-      </ThemeProvider>
-    </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryProvider>
+        <ThemeProvider>
+          <AppNavigator />
+        </ThemeProvider>
+      </QueryProvider>
+    </GestureHandlerRootView>
   );
 }
-
-export default App;

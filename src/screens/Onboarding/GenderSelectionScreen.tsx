@@ -1,35 +1,25 @@
-/**
- * GENDER SELECTION SCREEN
- * * Step 4 of Onboarding.
- * Users select their gender identity.
- * * FEATURES:
- * - Card-based selection (Male/Female)
- * - Visual active states
- * - Data passing chain (Name -> DOB -> Gender -> LookingFor)
- * - Progress bar (Step 4 of 9)
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { COLORS, SPACING, TYPOGRAPHY } from '@config/theme';
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Platform,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import * as NavigationBar from "expo-navigation-bar";
+import { StatusBar } from "expo-status-bar";
 
 // Components
-import Button from '../../components/common/Button/Button';
-import OnboardingProgressBar from '../../components/common/OnboardingProgressBar';
+import Icons, { IconsType } from "@components/ui/Icons";
+import Flare from "@components/ui/Flare";
+import ProgressIndicator from "@components/ui/ProgressIndicator";
+import { PrimaryButton } from "@components/ui/Buttons";
 
 // Config
+import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
-
-// Constants
-import { GENDER_OPTIONS } from '../../utils/constant';
 
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -49,245 +39,196 @@ interface Props {
 }
 
 const GenderSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
-  // Get data from previous screens
-  const { name, dateOfBirth, age } = route.params || {};
+    const insets = useSafeAreaInsets();
+    
+    // Params from previous screen
+    const { name, dateOfBirth, age } = route.params || {};
+    
+    const [gender, setGender] = useState<"male" | "female" | null>(null);
 
-  // State
-  const [selectedGender, setSelectedGender] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+    // Onboarding progress
+    const CURRENT_STEP = ONBOARDING_STEPS.GENDER_SELECTION || 5;
+    const TOTAL_STEPS = TOTAL_ONBOARDING_STEPS;
 
-  /**
-   * HANDLE CONTINUE
-   * * Validates selection and moves to Interests screen.
-   */
-  const handleContinue = () => {
-    if (!selectedGender) {
-      Alert.alert('Required', 'Please select your gender to continue.');
-      return;
-    }
+    useEffect(() => {
+        if (Platform.OS === "android") {
+            NavigationBar.setBackgroundColorAsync("#000000");
+            NavigationBar.setButtonStyleAsync("light");
+        }
+    }, []);
 
-    setLoading(true);
+    const handleContinue = () => {
+        if (!gender) return;
 
-    // Simulate short processing delay for UX smoothness
-    setTimeout(() => {
-      setLoading(false);
-      
-      console.log('User Data So Far:', { name, dateOfBirth, age, gender: selectedGender });
+        // Navigate to Next Screen (LookingFor) passing all data
+        navigation.navigate('LookingFor', {
+            name,
+            dateOfBirth,
+            age,
+            gender,
+        });
+    };
 
-      // Navigate to Looking For Screen (Next Step)
-      navigation.navigate('LookingFor', {
-        name,
-        dateOfBirth,
-        age,
-        gender: selectedGender,
-      });
-    }, 500);
-  };
-
-  return (
-    <View style={styles.mainContainer}>
-      <SafeAreaView style={styles.safeArea}>
-        
-        {/* Back Button (Consistent with DOB Screen) */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Icon name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
-
+    return (
         <View style={styles.container}>
-          <View style={styles.content}>
-            
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>
-                How do you identify?
-              </Text>
-              <Text style={styles.subtitle}>
-                Select your gender to help us find you the right matches.
-                You can change who you see later in settings.
-              </Text>
+            <StatusBar style="light" translucent backgroundColor="black" />
+            <Flare />
+
+            <View style={[styles.content, { paddingTop: insets.top + 50 }]}>
+                <View style={styles.header}>
+                    <Text style={styles.title}>How may we refer to you?</Text>
+                </View>
+
+                <View style={styles.genderRow}>
+                    {/* MALE BUTTON */}
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => setGender("male")}
+                        style={styles.genderButtonWrapper}
+                    >
+                        {gender === "male" ? (
+                            <LinearGradient
+                                colors={["#FF007B", "#6366F1", "#00B4D8"]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.genderButton}
+                            >
+                                <Icons
+                                    type={IconsType.Ionicons}
+                                    name="male"
+                                    size={24}
+                                    color="#fff"
+                                    style={{ marginRight: 8 }}
+                                />
+                                <Text style={styles.genderTextActive}>Male</Text>
+                            </LinearGradient>
+                        ) : (
+                            <View style={styles.genderButtonInactive}>
+                                <Icons
+                                    type={IconsType.Ionicons}
+                                    name="male"
+                                    size={24}
+                                    color="#666"
+                                    style={{ marginRight: 8 }}
+                                />
+                                <Text style={styles.genderTextInactive}>Male</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
+                    {/* FEMALE BUTTON */}
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => setGender("female")}
+                        style={styles.genderButtonWrapper}
+                    >
+                        {gender === "female" ? (
+                            <LinearGradient
+                                colors={["#FF007B", "#6366F1", "#00B4D8"]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.genderButton}
+                            >
+                                <Icons
+                                    type={IconsType.Ionicons}
+                                    name="female"
+                                    size={24}
+                                    color="#fff"
+                                    style={{ marginRight: 8 }}
+                                />
+                                <Text style={styles.genderTextActive}>Female</Text>
+                            </LinearGradient>
+                        ) : (
+                            <View style={styles.genderButtonInactive}>
+                                <Icons
+                                    type={IconsType.Ionicons}
+                                    name="female"
+                                    size={24}
+                                    color="#666"
+                                    style={{ marginRight: 8 }}
+                                />
+                                <Text style={styles.genderTextInactive}>Female</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
+
+                {/* Spacer & Progress */}
+                <View style={{ flex: 1, justifyContent: "center" }}>
+                    <ProgressIndicator step={CURRENT_STEP} totalSteps={TOTAL_STEPS} />
+                </View>
+
+                {/* Footer Button */}
+                <View style={[styles.footer, { marginBottom: insets.bottom + 20 }]}>
+                    <PrimaryButton
+                        variant={1}
+                        text="Continue"
+                        disabled={!gender}
+                        onPress={handleContinue}
+                    />
+                </View>
             </View>
-
-            {/* Gender Selection Cards */}
-            <View style={styles.optionsContainer}>
-              {GENDER_OPTIONS.map((option) => {
-                const isSelected = selectedGender === option.id;
-                
-                return (
-                  <TouchableOpacity
-                    key={option.id}
-                    style={[
-                      styles.genderCard,
-                      isSelected && styles.genderCardActive
-                    ]}
-                    onPress={() => setSelectedGender(option.id)}
-                    activeOpacity={0.9}
-                  >
-                    <View style={[
-                      styles.iconContainer,
-                      isSelected && styles.iconContainerActive
-                    ]}>
-                      <Icon 
-                        name={option.icon} 
-                        size={32} 
-                        color={isSelected ? COLORS.white : COLORS.gray500} 
-                      />
-                    </View>
-                    <Text style={[
-                      styles.genderLabel,
-                      isSelected && styles.genderLabelActive
-                    ]}>
-                      {option.label}
-                    </Text>
-                    
-                    {/* Checkmark Indicator for Active State */}
-                    {isSelected && (
-                      <View style={styles.checkmark}>
-                        <Icon name="checkmark-circle" size={24} color={COLORS.primary} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-          </View>
-
-          {/* Progress Bar */}
-          <View style={styles.progressContainer}>
-            <OnboardingProgressBar
-              currentStep={ONBOARDING_STEPS.GENDER_SELECTION} // Step 4
-              totalSteps={TOTAL_ONBOARDING_STEPS}
-            />
-          </View>
-
-          {/* Continue Button */}
-          <View style={styles.buttonContainer}>
-            <Button
-              onPress={handleContinue}
-              loading={loading}
-              disabled={!selectedGender}
-            >
-              Continue
-            </Button>
-          </View>
         </View>
-
-      </SafeAreaView>
-    </View>
-  );
+    );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: COLORS.black,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  // Back Button - Matched exactly to DOB Screen
-  backButton: {
-    position: 'absolute',
-    top: SPACING.xl,
-    left: SPACING.md,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  container: {
-    flex: 1,
-    paddingTop: SPACING['3xl'],
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: SPACING.lg,
-  },
-
-  // Header
-  header: {
-    marginBottom: SPACING['2xl'],
-  },
-  title: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    fontSize: 32,
-    color: COLORS.white,
-    marginBottom: SPACING.sm,
-    lineHeight: 40,
-  },
-  subtitle: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.gray500,
-    lineHeight: 24,
-  },
-
-  // Options Styling
-  optionsContainer: {
-    gap: SPACING.md,
-  },
-  genderCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.gray900,
-    borderRadius: 16,
-    padding: SPACING.md,
-    height: 80, // Substantial tap area
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  genderCardActive: {
-    backgroundColor: COLORS.gray900, // Keep background dark
-    borderColor: COLORS.primary, // Pink border highlight
-  },
-  
-  // Icon Styling
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.black,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.md,
-  },
-  iconContainerActive: {
-    backgroundColor: COLORS.primary, // Filled circle when active
-  },
-
-  // Text Styling
-  genderLabel: {
-    flex: 1,
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.lg,
-    color: COLORS.gray500,
-  },
-  genderLabelActive: {
-    color: COLORS.white,
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-  },
-
-  // Checkmark
-  checkmark: {
-    marginLeft: SPACING.sm,
-  },
-
-  // Progress & Footer
-  progressContainer: {
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  buttonContainer: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#000",
+    },
+    content: {
+        flex: 1,
+        paddingHorizontal: 24,
+    },
+    header: {
+        marginBottom: 40,
+    },
+    title: {
+        fontFamily: FONTS.H3,
+        fontSize: 32,
+        color: "#fff",
+        lineHeight: 40,
+    },
+    genderRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 12,
+        marginTop: 10,
+    },
+    genderButtonWrapper: {
+        flex: 1,
+    },
+    genderButton: {
+        height: 60,
+        borderRadius: 100,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    genderButtonInactive: {
+        height: 60,
+        borderRadius: 100,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 1,
+        borderColor: "#222",
+        backgroundColor: "transparent",
+    },
+    genderTextActive: {
+        fontFamily: FONTS.H3,
+        fontSize: 18,
+        color: "#fff",
+    },
+    genderTextInactive: {
+        fontFamily: FONTS.H3,
+        fontSize: 18,
+        color: "#666",
+    },
+    footer: {
+        alignItems: "center",
+    },
 });
 
 export default GenderSelectionScreen;

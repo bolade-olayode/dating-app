@@ -1,26 +1,32 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  ImageBackground, 
-  StatusBar 
+import {
+  View,
+  Text,
+  ImageBackground,
+  StatusBar,
+  StyleSheet,
+  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { styles } from './WelcomeScreen.styles';
-import Button from '@components/common/Button';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@navigation/AppNavigator';
+import { PrimaryButton } from '@components/ui/Buttons';
+import { FONTS } from '@config/fonts';
+
+const { height } = Dimensions.get('window');
 
 type WelcomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Welcome'>;
 
 interface Props {
-  navigation: WelcomeScreenNavigationProp; 
+  navigation: WelcomeScreenNavigationProp;
 }
 
 const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
-  
+  const insets = useSafeAreaInsets();
+
   const handleGetStarted = () => {
-    navigation.navigate('Signup'); 
+    navigation.navigate('Signup');
   };
 
   const handleLogin = () => {
@@ -28,61 +34,113 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/images/opuehbckgdimg.jpg')}
-      style={styles.container}
-      resizeMode="cover"
-    >
-      <View style={styles.overlay} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ImageBackground
+        source={require('../../assets/images/opuehbckgdimg.jpg')}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,1)']}
+          style={styles.gradient}
+        />
 
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-        
-        <View style={styles.contentContainer}>
-          {/* Hero Text with Nested Styling */}
-          <Text style={styles.title}>
-            Everybody needs somebody,
-          </Text>
-          <Text style={styles.title}>
-            so do <Text style={styles.highlight}>you.</Text>
-          </Text>
+        <View style={[
+          styles.content,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 20,
+            paddingLeft: insets.left + 24,
+            paddingRight: insets.right + 24,
+          }
+        ]}>
+          <View style={styles.topSpace} />
 
-          {/* Subtitle */}
-          {/* <Text style={styles.subtitle}>
-            Join the community and find your perfect match today.
-          </Text> */}
-
-          {/* Buttons */}
-          <View style={styles.buttonContainer}>
-            {/* Pink Primary Button */}
-            <Button 
-              onPress={handleGetStarted}
-              size="lg"
-              fullWidth
-            >
-              Get Started
-            </Button>
-
-            {/* Black Secondary Button */}
-            {/* We override the style prop to force it Black */}
-            <Button 
-              onPress={handleLogin}
-              size="lg"
-              fullWidth
-              style={styles.blackButton} 
-            >
-              Already have an account? Login Here
-            </Button>
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>
+              Everybody, needs{'\n'}
+              somebody, so do{'\n'}
+              <Text style={styles.highlight}>YOU!</Text>
+            </Text>
           </View>
 
-          {/* Terms Text */}
-          <Text style={styles.termsText}>
-            By signing up, you agree to our terms. See how we use your data in our Privacy Policy
-          </Text>
+          <View style={styles.buttonContainer}>
+            <PrimaryButton
+              text="Get started"
+              variant={1}
+              onPress={handleGetStarted}
+            />
+            <View style={{ height: 16 }} />
+            <PrimaryButton
+              text="Already have an account"
+              variant={2}
+              onPress={handleLogin}
+            />
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              By signing up, you agree to our{' '}
+              <Text style={styles.link}>terms</Text>. See how we use your data in
+              our <Text style={styles.link}>Privacy Policy</Text>
+            </Text>
+          </View>
         </View>
-      </SafeAreaView>
-    </ImageBackground>
+      </ImageBackground>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: height * 0.7,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  topSpace: {
+    flex: 1,
+  },
+  textContainer: {
+    marginBottom: 40,
+  },
+  title: {
+    fontFamily: FONTS.H1,
+    fontSize: 32,
+    lineHeight: 48,
+    color: '#fff',
+  },
+  highlight: {
+    color: '#FF007B',
+  },
+  buttonContainer: {
+    width: '100%',
+    marginBottom: 30,
+  },
+  footer: {
+    alignItems: 'center',
+  },
+  footerText: {
+    fontFamily: FONTS.Body,
+    fontSize: 12,
+    color: '#fff',
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 18,
+  },
+  link: {
+    fontFamily: FONTS.SemiBold,
+    textDecorationLine: 'underline',
+  },
+});
 
 export default WelcomeScreen;

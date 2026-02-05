@@ -1,24 +1,11 @@
-// src/services/api/mockAuthService.ts
-
 /**
  * MOCK AUTHENTICATION SERVICE
- * 
- * This file simulates backend API calls during development.
+ * * This file simulates backend API calls during development.
  * It allows frontend development to proceed without waiting for the backend.
- * 
- * WHY WE NEED THIS:
- * - Develop and test UI flows without a backend
- * - Simulate network delays and errors realistically
- * - Easy to swap with real API when backend is ready
- * 
- * HOW IT WORKS:
- * - Returns promises like a real API would
- * - Includes artificial delays to simulate network requests
- * - Can simulate both success and error cases
- * 
- * REPLACING WITH REAL API:
- * When backend is ready, just change one line in authService.ts:
- * export const authService = realAuthService; // Instead of mockAuthService
+ * * FEATURES:
+ * - Simulates network delays (1-2 seconds)
+ * - "Magic Codes" (12345) always work for testing
+ * - Simulates OTP expiration and storage
  */
 
 import { ENV, devLog } from '@config/environment';
@@ -33,7 +20,7 @@ export interface AuthResponse {
     phone?: string;
     email?: string;
   };
-  expiresAt?: number; // Timestamp when OTP expires
+  expiresAt?: number;
 }
 
 // OTP Storage with expiration tracking
@@ -49,26 +36,24 @@ const mockOTPStorage = new Map<string, OTPData>();
 // OTP expiration time: 10 minutes
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
+// MAGIC CODES: These will ALWAYS verify successfully (for testing)
+const MAGIC_TEST_CODES = ['12345', '00000', '11111'];
+
 /**
  * MOCK: Send OTP to phone number or email
- *
- * In real implementation, this would:
- * - Call SMS provider (Twilio, Termii, etc.)
- * - Generate and store OTP in database
- * - Return success/error status
  */
 const sendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
   devLog('📱 Mock API: Sending OTP to', phoneOrEmail);
 
-  // Simulate network delay (realistic API behavior)
+  // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, ENV.TIMEOUTS.MOCK_DELAY));
 
   // Store OTP with expiration time
   const now = Date.now();
   const otpData: OTPData = {
-    code: ENV.TEST_OTP, // '123456'
+    code: '12345', // Default 5-digit code
     sentAt: now,
-    expiresAt: now + OTP_EXPIRY_MS, // 10 minutes from now
+    expiresAt: now + OTP_EXPIRY_MS,
   };
 
   mockOTPStorage.set(phoneOrEmail, otpData);
@@ -83,12 +68,7 @@ const sendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
 
 /**
  * MOCK: Verify OTP code
- *
- * In real implementation, this would:
- * - Check if OTP matches what was sent
- * - Verify it hasn't expired
- * - Return JWT token if valid
- * - Return error if invalid/expired
+ * UPDATED: Includes "Magic Code" bypass so testing never gets stuck.
  */
 const verifyOTP = async (code: string, phoneOrEmail?: string): Promise<AuthResponse> => {
   devLog('🔐 Mock API: Verifying OTP:', code);
@@ -96,97 +76,74 @@ const verifyOTP = async (code: string, phoneOrEmail?: string): Promise<AuthRespo
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, ENV.TIMEOUTS.MOCK_DELAY));
 
-  // If phoneOrEmail provided, check against stored OTP with expiration
+  // 1. Check if it is a "Magic Code" (Always works, bypasses storage)
+  const isMagicCode = MAGIC_TEST_CODES.includes(code);
+
+  // 2. Try to verify against "Real" Storage first
   if (phoneOrEmail) {
     const otpData = mockOTPStorage.get(phoneOrEmail);
 
-    if (!otpData) {
-      return {
-        success: false,
-        message: 'No OTP found. Please request a new one.',
-      };
-    }
+    if (otpData) {
+      // Check expiration
+      if (Date.now() > otpData.expiresAt) {
+        mockOTPStorage.delete(phoneOrEmail);
+        return {
+          success: false,
+          message: 'OTP has expired. Please request a new one.',
+        };
+      }
 
-    // Check expiration
-    if (Date.now() > otpData.expiresAt) {
-      devLog('🔐 Mock API: OTP expired!');
-      mockOTPStorage.delete(phoneOrEmail); // Clear expired OTP
-      return {
-        success: false,
-        message: 'OTP has expired. Please request a new one.',
-      };
-    }
-
-    // Verify code matches
-    if (code === otpData.code) {
-      mockOTPStorage.delete(phoneOrEmail); // Clear used OTP
-      return {
-        success: true,
-        message: 'OTP verified successfully',
-        token: 'mock_jwt_token_' + Date.now(),
-        user: {
-          id: 'mock_user_' + Date.now(),
-          phone: phoneOrEmail,
-        },
-      };
-    } else {
-      return {
-        success: false,
-        message: 'Invalid OTP. Please try again.',
-      };
+      // Check if code matches storage
+      if (code === otpData.code) {
+        mockOTPStorage.delete(phoneOrEmail); // Clear used OTP
+        return generateSuccessResponse(phoneOrEmail);
+      }
     }
   }
 
-  // Fallback: Accept test OTPs without expiration check (for backwards compatibility)
-  const validTestOTPs = [
-    ENV.TEST_OTP, // '123456' from environment
-    '000000', // Alternative test code
-    '111111', // Alternative test code
-  ];
-
-  const isValid = validTestOTPs.includes(code);
-
-  if (isValid) {
-    return {
-      success: true,
-      message: 'OTP verified successfully',
-      token: 'mock_jwt_token_' + Date.now(),
-      user: {
-        id: 'mock_user_' + Date.now(),
-        phone: ENV.TEST_PHONE,
-      },
-    };
-  } else {
-    return {
-      success: false,
-      message: 'Invalid OTP. Please try again.',
-    };
+  // 3. FALLBACK: If storage check failed (or didn't exist), but it IS a magic code, allow it.
+  if (isMagicCode) {
+    devLog('✨ Mock API: Magic Code used, bypassing storage check.');
+    return generateSuccessResponse(phoneOrEmail || 'test_user');
   }
+
+  // 4. Failure
+  return {
+    success: false,
+    message: 'Invalid OTP. Please try again.',
+  };
 };
 
 /**
+ * Helper to generate consistent success response
+ */
+const generateSuccessResponse = (identifier: string): AuthResponse => ({
+  success: true,
+  message: 'OTP verified successfully',
+  token: 'mock_jwt_token_' + Date.now(),
+  user: {
+    id: 'mock_user_' + Date.now(),
+    phone: identifier,
+  },
+});
+
+/**
  * MOCK: Resend OTP
- *
- * In real implementation, this would:
- * - Generate new OTP
- * - Invalidate old OTP
- * - Send new OTP via SMS/email
  */
 const resendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
   devLog('🔄 Mock API: Resending OTP to', phoneOrEmail);
 
   await new Promise(resolve => setTimeout(resolve, ENV.TIMEOUTS.MOCK_DELAY));
 
-  // Store new OTP with fresh expiration
   const now = Date.now();
   const otpData: OTPData = {
-    code: ENV.TEST_OTP,
+    code: '12345',
     sentAt: now,
     expiresAt: now + OTP_EXPIRY_MS,
   };
 
   mockOTPStorage.set(phoneOrEmail, otpData);
-  devLog('🔄 Mock API: New OTP stored, expires at', new Date(otpData.expiresAt).toLocaleTimeString());
+  devLog('🔄 Mock API: New OTP stored', otpData);
 
   return {
     success: true,
@@ -196,20 +153,13 @@ const resendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
 };
 
 /**
- * MOCK: Login with email and password
- * 
- * In real implementation, this would:
- * - Verify credentials against database
- * - Return JWT token if valid
- * - Return error if invalid
+ * MOCK: Login
  */
 const login = async (email: string, password: string): Promise<AuthResponse> => {
   devLog('🔑 Mock API: Logging in user:', email);
   
   await new Promise(resolve => setTimeout(resolve, ENV.TIMEOUTS.MOCK_DELAY));
   
-  // Accept any credentials in development
-  // In production, this would verify against database
   return {
     success: true,
     message: 'Login successful',
@@ -222,29 +172,17 @@ const login = async (email: string, password: string): Promise<AuthResponse> => 
 };
 
 /**
- * MOCK: Logout user
- * 
- * In real implementation, this would:
- * - Invalidate JWT token on server
- * - Clear user session
+ * MOCK: Logout
  */
 const logout = async (): Promise<AuthResponse> => {
   devLog('👋 Mock API: Logging out user');
-  
   await new Promise(resolve => setTimeout(resolve, 500));
-  
   return {
     success: true,
     message: 'Logged out successfully',
   };
 };
 
-/**
- * EXPORT: Mock Authentication Service
- * 
- * This object mimics the real API service interface.
- * All functions return promises, just like real API calls.
- */
 export const mockAuthService = {
   sendOTP,
   verifyOTP,

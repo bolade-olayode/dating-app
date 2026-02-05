@@ -1,25 +1,31 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
-  ScrollView 
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { COLORS, SPACING, TYPOGRAPHY } from '@config/theme';
+import React, { useState, useEffect } from "react";
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Platform,
+    ScrollView,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import * as NavigationBar from "expo-navigation-bar";
+import { StatusBar } from "expo-status-bar";
 
-// Import Data from Constants
-import { RELATIONSHIP_GOALS } from '../../utils/constant';
-import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
+// 1. REVERTED: Using standard Ionicons instead of custom Icons component
+import Icon from 'react-native-vector-icons/Ionicons'; 
 
 // Components
-import Button from '../../components/common/Button/Button';
-import OnboardingProgressBar from '../../components/common/OnboardingProgressBar';
+import Flare from "@components/ui/Flare";
+import ProgressIndicator from "@components/ui/ProgressIndicator";
+import { PrimaryButton } from "@components/ui/Buttons";
 
-// Navigation Types
+// Config
+import { FONTS } from "@config/fonts";
+import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
+import { RELATIONSHIP_GOALS } from '../../utils/constant';
+
+// Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@navigation/AppNavigator';
 import { RouteProp } from '@react-navigation/native';
@@ -33,234 +39,219 @@ interface Props {
 }
 
 const RelationshipGoalsScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { name, dateOfBirth, age, gender, lookingFor } = route.params || {};
-  const [goal, setGoal] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+    const insets = useSafeAreaInsets();
+    
+    const { name, dateOfBirth, age, gender, lookingFor } = route.params || {};
+    
+    const [goal, setGoal] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
-    if (!goal) {
-      Alert.alert('Required', 'Please select a relationship goal.');
-      return;
-    }
+    const CURRENT_STEP = ONBOARDING_STEPS.RELATIONSHIP_GOALS || 7;
+    const TOTAL_STEPS = TOTAL_ONBOARDING_STEPS;
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('InterestsSelection', {
-        name, dateOfBirth, age, gender, lookingFor, relationshipGoal: goal,
-      });
-    }, 500);
-  };
+    useEffect(() => {
+        if (Platform.OS === "android") {
+            NavigationBar.setBackgroundColorAsync("#000000");
+            NavigationBar.setButtonStyleAsync("light");
+        }
+    }, []);
 
-  return (
-    <View style={styles.mainContainer}>
-      <SafeAreaView style={styles.safeArea}>
-        
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
+    const handleContinue = () => {
+        if (!goal) return;
 
+        setLoading(true);
+        setTimeout(() => {
+            setLoading(false);
+            navigation.navigate('InterestsSelection', {
+                name,
+                dateOfBirth,
+                age,
+                gender,
+                lookingFor,
+                relationshipGoal: goal,
+            });
+        }, 500);
+    };
+
+    return (
         <View style={styles.container}>
-          <ScrollView 
-            style={styles.content} 
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Header Section */}
-            <View style={styles.header}>
-              <Text style={styles.title}>What is your goal?</Text>
-              <Text style={styles.subtitle}>
-                Select what you are looking for. This helps us match you with people on the same page.
-              </Text>
-            </View>
+            <StatusBar style="light" translucent backgroundColor="black" />
+            <Flare />
 
-            {/* Options List */}
-            <View style={styles.optionsContainer}>
-              {RELATIONSHIP_GOALS.map((option) => {
-                const isSelected = goal === option.id;
-                return (
-                  <TouchableOpacity
-                    key={option.id}
-                    style={[styles.card, isSelected && styles.cardActive]}
-                    onPress={() => setGoal(option.id)}
-                    activeOpacity={0.9}
-                  >
-                    <View style={[styles.cardIcon, isSelected && styles.cardIconActive]}>
-                      <Icon name={option.icon} size={24} color={isSelected ? COLORS.white : COLORS.gray500} />
-                    </View>
-                    
-                    <View style={styles.cardTextContainer}>
-                      <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
-                        {option.label}
-                      </Text>
-                      <Text style={styles.cardDescription}>
-                        {option.description}
-                      </Text>
-                    </View>
-                    
-                    <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                      {isSelected && <View style={styles.radioDot} />}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            
-            {/* Spacer for Scrolling */}
-            <View style={{ height: 120 }} />
-          </ScrollView>
+            <View style={[styles.content, { paddingTop: insets.top + 50 }]}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>What are you looking for?</Text>
+                    <Text style={styles.subtitle}>
+                        This helps us show you people who share similar intentions.
+                    </Text>
+                </View>
 
-          {/* Footer Section */}
-          <View style={styles.footer}>
-            <View style={styles.progressWrapper}>
-              <OnboardingProgressBar currentStep={ONBOARDING_STEPS.RELATIONSHIP_GOALS} totalSteps={TOTAL_ONBOARDING_STEPS} />
+                {/* Content List */}
+                <ScrollView 
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                >
+                    <View style={styles.optionsContainer}>
+                        {RELATIONSHIP_GOALS.map((option) => (
+                            <TouchableOpacity
+                                key={option.id}
+                                activeOpacity={0.9}
+                                onPress={() => setGoal(option.id)}
+                                style={styles.optionWrapper}
+                            >
+                                {goal === option.id ? (
+                                    // ACTIVE STATE (Gradient)
+                                    <LinearGradient
+                                        colors={["#FF007B", "#6366F1", "#00B4D8"]}
+                                        start={{ x: 0, y: 0.5 }}
+                                        end={{ x: 1, y: 0.5 }}
+                                        style={styles.optionButton}
+                                    >
+                                        <View style={styles.optionLeft}>
+                                            {/* 2. REVERTED: Using standard Icon component */}
+                                            <Icon
+                                                name={option.icon}
+                                                size={24}
+                                                color="#fff"
+                                                style={{ marginRight: 12 }}
+                                            />
+                                            <View>
+                                                <Text style={styles.optionTextActive}>{option.label}</Text>
+                                            </View>
+                                        </View>
+                                        
+                                        {/* Checkmark Icon */}
+                                        <Icon
+                                            name="checkmark-circle"
+                                            size={24}
+                                            color="#fff"
+                                        />
+                                    </LinearGradient>
+                                ) : (
+                                    // INACTIVE STATE (Dark BG)
+                                    <View style={styles.optionButtonInactive}>
+                                        <View style={styles.optionLeft}>
+                                            {/* 3. REVERTED: Using standard Icon component */}
+                                            <Icon
+                                                name={option.icon}
+                                                size={24}
+                                                color="#666"
+                                                style={{ marginRight: 12 }}
+                                            />
+                                            <View>
+                                                <Text style={styles.optionTextInactive}>{option.label}</Text>
+                                            </View>
+                                        </View>
+                                        
+                                        {/* Empty Circle */}
+                                        <View style={styles.checkboxInactive} />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </ScrollView>
+
+                {/* Progress & Footer */}
+                <View style={styles.bottomSection}>
+                    <View style={{ marginBottom: 20, alignItems: 'center' }}>
+                        <ProgressIndicator step={CURRENT_STEP} totalSteps={TOTAL_STEPS} />
+                    </View>
+
+                    <PrimaryButton
+                        variant={1}
+                        text="Continue"
+                        disabled={!goal || loading}
+                        onPress={handleContinue}
+                    />
+                </View>
             </View>
-            <Button onPress={handleContinue} loading={loading} disabled={!goal}>
-              Continue
-            </Button>
-          </View>
         </View>
-      </SafeAreaView>
-    </View>
-  );
+    );
 };
 
 const styles = StyleSheet.create({
-  // --- LAYOUT ---
-  mainContainer: {
-    flex: 1,
-    backgroundColor: COLORS.black,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    paddingTop: SPACING['3xl'],
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: SPACING.lg,
-  },
-
-  // --- HEADER ---
-  header: {
-    marginBottom: SPACING.xl,
-  },
-  title: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    fontSize: 32,
-    color: COLORS.white,
-    marginBottom: SPACING.sm,
-    lineHeight: 40,
-  },
-  subtitle: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.gray500,
-    lineHeight: 24,
-  },
-  backButton: {
-    position: 'absolute',
-    top: SPACING.xl,
-    left: SPACING.md,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // --- CARDS ---
-  optionsContainer: {
-    gap: SPACING.md,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.gray900,
-    borderRadius: 16,
-    padding: SPACING.md,
-    minHeight: 80,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  cardActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: 'rgba(233, 30, 99, 0.05)',
-  },
-  cardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.black,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.md,
-  },
-  cardIconActive: {
-    backgroundColor: COLORS.primary,
-  },
-  
-  // --- CARD TEXT ---
-  cardTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  cardTitle: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    fontSize: TYPOGRAPHY.fontSize.lg,
-    color: COLORS.gray300,
-    marginBottom: 2,
-  },
-  cardTitleActive: {
-    color: COLORS.white,
-  },
-  cardDescription: {
-    fontFamily: TYPOGRAPHY.fontFamily.regular,
-    fontSize: TYPOGRAPHY.fontSize.sm,
-    color: COLORS.gray600,
-  },
-
-  // --- RADIO BUTTON ---
-  radioCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.gray600,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: SPACING.sm,
-  },
-  radioCircleActive: {
-    borderColor: COLORS.primary,
-  },
-  radioDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.primary,
-  },
-
-  // --- FOOTER ---
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.black,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray900,
-    paddingTop: SPACING.md,
-  },
-  progressWrapper: {
-    marginBottom: SPACING.md,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#000",
+    },
+    content: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingBottom: 20,
+    },
+    header: {
+        marginBottom: 30,
+    },
+    title: {
+        fontFamily: FONTS.H3,
+        fontSize: 32,
+        color: "#fff",
+        lineHeight: 40,
+        marginBottom: 12,
+    },
+    subtitle: {
+        fontFamily: FONTS.Body,
+        fontSize: 15,
+        color: "#666",
+        lineHeight: 22,
+    },
+    scrollContent: {
+        flexGrow: 0, 
+    },
+    optionsContainer: {
+        gap: 16,
+        marginTop: 10,
+        paddingBottom: 20, 
+    },
+    optionWrapper: {
+        width: "100%",
+    },
+    optionButton: {
+        height: 64,
+        borderRadius: 16, 
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 20,
+    },
+    optionButtonInactive: {
+        height: 64,
+        borderRadius: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 20,
+        borderWidth: 1,
+        borderColor: "#222",
+        backgroundColor: "#0D0D0D",
+    },
+    optionLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    optionTextActive: {
+        fontFamily: FONTS.H3,
+        fontSize: 18,
+        color: "#fff",
+    },
+    optionTextInactive: {
+        fontFamily: FONTS.H3,
+        fontSize: 18,
+        color: "#666",
+    },
+    checkboxInactive: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: "#222",
+    },
+    bottomSection: {
+        marginTop: 'auto',
+        paddingBottom: 20,
+    },
 });
 
 export default RelationshipGoalsScreen;

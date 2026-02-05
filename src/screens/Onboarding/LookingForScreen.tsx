@@ -1,34 +1,26 @@
-/**
- * LOOKING FOR SCREEN
- * * Step 5 of Onboarding.
- * Users select their dating preference.
- * * FEATURES:
- * - Options: Men, Women, Everyone (Both)
- * - Card-based selection
- * - Passes accumulated data to next screen (RelationshipGoals)
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { COLORS, SPACING, TYPOGRAPHY } from '@config/theme';
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Platform,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import * as NavigationBar from "expo-navigation-bar";
+import { StatusBar } from "expo-status-bar";
 
 // Components
-import Button from '../../components/common/Button/Button';
-import OnboardingProgressBar from '../../components/common/OnboardingProgressBar';
+import Icons, { IconsType } from "@components/ui/Icons";
+import Flare from "@components/ui/Flare";
+import ProgressIndicator from "@components/ui/ProgressIndicator";
+import { PrimaryButton } from "@components/ui/Buttons";
 
-// Config
+// Config & Data
+import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
-
-// Constants
-import { LOOKING_FOR_OPTIONS } from '../../utils/constant';
+import { LOOKING_FOR_OPTIONS } from '../../utils/constant'; // <--- USING CONSTANTS
 
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -48,246 +40,183 @@ interface Props {
 }
 
 const LookingForScreen: React.FC<Props> = ({ navigation, route }) => {
-  // Get data from previous screens
-  const { name, dateOfBirth, age, gender } = route.params || {};
+    const insets = useSafeAreaInsets();
+    
+    // Params
+    const { name, dateOfBirth, age, gender } = route.params || {};
+    
+    // State
+    const [preference, setPreference] = useState<string | null>(null);
 
-  // State
-  const [preference, setPreference] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+    // Progress
+    const CURRENT_STEP = ONBOARDING_STEPS.LOOKING_FOR || 6;
+    const TOTAL_STEPS = TOTAL_ONBOARDING_STEPS;
 
-  const handleContinue = () => {
-    if (!preference) {
-      Alert.alert('Required', 'Please tell us who you are looking for.');
-      return;
-    }
+    useEffect(() => {
+        if (Platform.OS === "android") {
+            NavigationBar.setBackgroundColorAsync("#000000");
+            NavigationBar.setButtonStyleAsync("light");
+        }
+    }, []);
 
-    setLoading(true);
+    const handleContinue = () => {
+        if (!preference) return;
 
-    setTimeout(() => {
-      setLoading(false);
-      
-      console.log('User Profile Data:', { 
-        name, 
-        dateOfBirth, 
-        age, 
-        gender, 
-        lookingFor: preference 
-      });
+        navigation.navigate('RelationshipGoals', {
+            name,
+            dateOfBirth,
+            age,
+            gender,
+            lookingFor: preference,
+        });
+    };
 
-      // Navigate to Relationship Goals (Next Step)
-      navigation.navigate('RelationshipGoals', {
-        name,
-        dateOfBirth,
-        age,
-        gender,
-        lookingFor: preference,
-      });
-    }, 500);
-  };
-
-  return (
-    <View style={styles.mainContainer}>
-      <SafeAreaView style={styles.safeArea}>
-        
-        {/* Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Icon name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
-
+    return (
         <View style={styles.container}>
-          <View style={styles.content}>
-            
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>
-                Who do you want to date?
-              </Text>
-              <Text style={styles.subtitle}>
-                We'll show you people based on this preference.
-                You can always change this later in settings.
-              </Text>
-            </View>
+            <StatusBar style="light" translucent backgroundColor="black" />
+            <Flare />
 
-            {/* Preference Cards */}
-            <View style={styles.optionsContainer}>
-              {LOOKING_FOR_OPTIONS.map((option) => {
-                const isSelected = preference === option.id;
-                
-                return (
-                  <TouchableOpacity
-                    key={option.id}
-                    style={[
-                      styles.optionCard,
-                      isSelected && styles.optionCardActive
-                    ]}
-                    onPress={() => setPreference(option.id)}
-                    activeOpacity={0.9}
-                  >
-                    <View style={[
-                      styles.iconContainer,
-                      isSelected && styles.iconContainerActive
-                    ]}>
-                      <Icon 
-                        name={option.icon} 
-                        size={28} 
-                        color={isSelected ? COLORS.white : COLORS.gray500} 
-                      />
-                    </View>
-                    
-                    <Text style={[
-                      styles.optionLabel,
-                      isSelected && styles.optionLabelActive
-                    ]}>
-                      {option.label}
+            <View style={[styles.content, { paddingTop: insets.top + 50 }]}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>Who are you looking for?</Text>
+                    <Text style={styles.subtitle}>
+                        We'll use this to show you people who match your orientation.
                     </Text>
-                    
-                    {/* Checkmark */}
-                    {isSelected && (
-                      <View style={styles.checkmark}>
-                        <Icon name="checkmark-circle" size={24} color={COLORS.primary} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+                </View>
+
+                {/* Options List (Mapped from Constants) */}
+                <View style={styles.optionsContainer}>
+                    {LOOKING_FOR_OPTIONS.map((option) => (
+                        <TouchableOpacity
+                            key={option.id}
+                            activeOpacity={0.9}
+                            onPress={() => setPreference(option.id)}
+                            style={styles.optionWrapper}
+                        >
+                            {preference === option.id ? (
+                                // ACTIVE STATE (Gradient + Checkmark)
+                                <LinearGradient
+                                    colors={["#FF007B", "#6366F1", "#00B4D8"]}
+                                    start={{ x: 0, y: 0.5 }}
+                                    end={{ x: 1, y: 0.5 }}
+                                    style={styles.optionButton}
+                                >
+                                    {/* Text Left */}
+                                    <Text style={styles.optionTextActive}>{option.label}</Text>
+                                    
+                                    {/* Icon Right */}
+                                    <Icons
+                                        type={IconsType.Ionicons}
+                                        name="checkmark-circle"
+                                        size={24}
+                                        color="#fff"
+                                    />
+                                </LinearGradient>
+                            ) : (
+                                // INACTIVE STATE (Dark BG + Empty Circle)
+                                <View style={styles.optionButtonInactive}>
+                                    {/* Text Left */}
+                                    <Text style={styles.optionTextInactive}>{option.label}</Text>
+                                    
+                                    {/* Circle Right */}
+                                    <View style={styles.checkboxInactive} />
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* Progress Indicator */}
+                <View style={{ flex: 1, justifyContent: "center" }}>
+                    <ProgressIndicator step={CURRENT_STEP} totalSteps={TOTAL_STEPS} />
+                </View>
+
+                {/* Footer */}
+                <View style={[styles.footer, { marginBottom: insets.bottom + 20 }]}>
+                    <PrimaryButton
+                        variant={1}
+                        text="Continue"
+                        disabled={!preference}
+                        onPress={handleContinue}
+                    />
+                </View>
             </View>
-
-          </View>
-
-          {/* Progress Bar (Step 5) */}
-          <View style={styles.progressContainer}>
-            <OnboardingProgressBar
-              currentStep={ONBOARDING_STEPS.LOOKING_FOR}
-              totalSteps={TOTAL_ONBOARDING_STEPS}
-            />
-          </View>
-
-          {/* Continue Button */}
-          <View style={styles.buttonContainer}>
-            <Button
-              onPress={handleContinue}
-              loading={loading}
-              disabled={!preference}
-            >
-              Continue
-            </Button>
-          </View>
         </View>
-
-      </SafeAreaView>
-    </View>
-  );
+    );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: COLORS.black,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  backButton: {
-    position: 'absolute',
-    top: SPACING.xl,
-    left: SPACING.md,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  container: {
-    flex: 1,
-    paddingTop: SPACING['3xl'],
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: SPACING.lg,
-  },
-
-  // Header
-  header: {
-    marginBottom: SPACING['2xl'],
-  },
-  title: {
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    fontSize: 32,
-    color: COLORS.white,
-    marginBottom: SPACING.sm,
-    lineHeight: 40,
-  },
-  subtitle: {
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.base,
-    color: COLORS.gray500,
-    lineHeight: 24,
-  },
-
-  // Options Styling
-  optionsContainer: {
-    gap: SPACING.md,
-  },
-  optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.gray900,
-    borderRadius: 16,
-    padding: SPACING.md,
-    height: 72,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  optionCardActive: {
-    borderColor: COLORS.primary,
-  },
-  
-  // Icon Styling
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.black,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.md,
-  },
-  iconContainerActive: {
-    backgroundColor: COLORS.primary,
-  },
-
-  // Text Styling
-  optionLabel: {
-    flex: 1,
-    fontFamily: TYPOGRAPHY.fontFamily.medium,
-    fontSize: TYPOGRAPHY.fontSize.lg,
-    color: COLORS.gray500,
-  },
-  optionLabelActive: {
-    color: COLORS.white,
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-  },
-
-  // Checkmark
-  checkmark: {
-    marginLeft: SPACING.sm,
-  },
-
-  // Progress & Footer
-  progressContainer: {
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  buttonContainer: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#000",
+    },
+    content: {
+        flex: 1,
+        paddingHorizontal: 24,
+    },
+    header: {
+        marginBottom: 40,
+    },
+    title: {
+        fontFamily: FONTS.H3,
+        fontSize: 32,
+        color: "#fff",
+        lineHeight: 40,
+        marginBottom: 12,
+    },
+    subtitle: {
+        fontFamily: FONTS.Body,
+        fontSize: 15,
+        color: "#666",
+        lineHeight: 22,
+    },
+    optionsContainer: {
+        gap: 16,
+        marginTop: 10,
+    },
+    optionWrapper: {
+        width: "100%",
+    },
+    optionButton: {
+        height: 64,
+        borderRadius: 16, // Rounded Rectangle
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 20,
+    },
+    optionButtonInactive: {
+        height: 64,
+        borderRadius: 16, // Rounded Rectangle
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 20,
+        borderWidth: 1,
+        borderColor: "#222",
+        backgroundColor: "#0D0D0D",
+    },
+    optionTextActive: {
+        fontFamily: FONTS.H3,
+        fontSize: 18,
+        color: "#fff",
+    },
+    optionTextInactive: {
+        fontFamily: FONTS.H3,
+        fontSize: 18,
+        color: "#666",
+    },
+    checkboxInactive: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: "#222",
+    },
+    footer: {
+        alignItems: "center",
+    },
 });
 
 export default LookingForScreen;

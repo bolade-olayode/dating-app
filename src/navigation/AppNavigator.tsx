@@ -2,6 +2,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTheme } from '@context/ThemeContext';
 import { StatusBar } from 'react-native';
 
@@ -18,11 +19,13 @@ import RelationshipGoalsScreen from '@screens/Onboarding/RelationshipGoalsScreen
 import InterestsSelectionScreen from '@screens/Onboarding/InterestsSelectionScreen';
 import PhotoUploadScreen from '@screens/Onboarding/PhotoUploadScreen';
 import BioScreen from '@screens/Onboarding/BioScreen';
+import RegisterScreen from '@screens/Onboarding/RegisterScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
   Welcome: undefined;
   Signup: undefined;
+  Register: undefined;
   Login: undefined;
   Verification: {
     phoneNumber?: string;
@@ -86,32 +89,34 @@ const AppNavigator = () => {
   const theme = useTheme();
 
   return (
-    <NavigationContainer>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-      <Stack.Navigator
-        initialRouteName="Welcome"
-        screenOptions={{
-          headerShown: false, // We will build custom headers if needed
-          cardStyle: { backgroundColor: theme.colors.background }, // Default white bg
-          // Standard iOS-style slide animation for all phones
-          gestureEnabled: true,
-        }}
-      >
-        <Stack.Screen name="Welcome" component={WelcomeScreen} />
-        <Stack.Screen name="Signup" component={SignupScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Verification" component={OTPVerificationScreen} />
-        <Stack.Screen name="NameInput" component={NameInputScreen} />
-        <Stack.Screen name="DateOfBirthInput" component={DateOfBirthScreen} />
-        <Stack.Screen name="GenderSelection" component={GenderSelectionScreen} />
-        <Stack.Screen name="LookingFor" component={LookingForScreen} />
-        <Stack.Screen name="RelationshipGoals" component={RelationshipGoalsScreen} />
-        <Stack.Screen name="InterestsSelection" component={InterestsSelectionScreen} />
-        <Stack.Screen name="PhotoUpload" component={PhotoUploadScreen} />
-        <Stack.Screen name="BioScreen" component={BioScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+        <Stack.Navigator
+          initialRouteName="Welcome"
+          screenOptions={{
+            headerShown: false,
+            cardStyle: { backgroundColor: theme.colors.background },
+            gestureEnabled: true,
+          }}
+        >
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
+          <Stack.Screen name="Signup" component={SignupScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Verification" component={OTPVerificationScreen} />
+          <Stack.Screen name="NameInput" component={NameInputScreen} />
+          <Stack.Screen name="DateOfBirthInput" component={DateOfBirthScreen} />
+          <Stack.Screen name="GenderSelection" component={GenderSelectionScreen} />
+          <Stack.Screen name="LookingFor" component={LookingForScreen} />
+          <Stack.Screen name="RelationshipGoals" component={RelationshipGoalsScreen} />
+          <Stack.Screen name="InterestsSelection" component={InterestsSelectionScreen} />
+          <Stack.Screen name="PhotoUpload" component={PhotoUploadScreen} />
+          <Stack.Screen name="BioScreen" component={BioScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 };
 
