@@ -208,8 +208,6 @@ export const RELATIONSHIP_GOALS: RelationshipGoal[] = [
 export const PROFILE_REQUIREMENTS = {
   MIN_PHOTOS: 3,
   MAX_PHOTOS: 6,
-  MIN_BIO_LENGTH: 50,
-  MAX_BIO_LENGTH: 500,
   MIN_INTERESTS: 5,
   MAX_INTERESTS: 15,
 } as const;

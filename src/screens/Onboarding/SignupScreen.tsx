@@ -21,8 +21,8 @@ const { height } = Dimensions.get('window');
 // Placeholder images - replace with your actual images
 const SLIDE_IMAGES = [
   require('../../assets/images/opuehbckgdimg.jpg'),
-  require('../../assets/images/opuehbckgdimg.jpg'),
-  require('../../assets/images/opuehbckgdimg.jpg'),
+  require('../../assets/images/opuehbckgdimg2.png'),
+  require('../../assets/images/opuehbckgdimg3.png'),
 ];
 
 const SignupScreen: React.FC<any> = ({ navigation }) => {

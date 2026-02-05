@@ -18,8 +18,8 @@ import LookingForScreen from '@screens/Onboarding/LookingForScreen';
 import RelationshipGoalsScreen from '@screens/Onboarding/RelationshipGoalsScreen';
 import InterestsSelectionScreen from '@screens/Onboarding/InterestsSelectionScreen';
 import PhotoUploadScreen from '@screens/Onboarding/PhotoUploadScreen';
-import BioScreen from '@screens/Onboarding/BioScreen';
 import RegisterScreen from '@screens/Onboarding/RegisterScreen';
+import InitializingScreen from '@screens/Home/InitializingScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -71,16 +71,7 @@ export type RootStackParamList = {
     relationshipGoal: string;
     interests: string[];
   };
-  BioScreen: {
-    name: string;
-    dateOfBirth: string;
-    age: number;
-    gender: string;
-    lookingFor: string;
-    relationshipGoal: string;
-    interests: string[];
-    photos: string[];
-  };
+  InitializingScreen: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -113,7 +104,7 @@ const AppNavigator = () => {
           <Stack.Screen name="RelationshipGoals" component={RelationshipGoalsScreen} />
           <Stack.Screen name="InterestsSelection" component={InterestsSelectionScreen} />
           <Stack.Screen name="PhotoUpload" component={PhotoUploadScreen} />
-          <Stack.Screen name="BioScreen" component={BioScreen} />
+          <Stack.Screen name="InitializingScreen" component={InitializingScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

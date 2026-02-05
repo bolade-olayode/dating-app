@@ -8,18 +8,26 @@ interface Props {
   images: any[];
   direction?: 'up' | 'down';
   duration?: number;
+  borderRadius?: number;
+  marginHorizontal?: number;
+  marginBottom?: number;
+  imageHeight?: number;
 }
 
-const MarqueeColumn: React.FC<Props> = ({ 
-  images, 
-  direction = 'up', 
-  duration = 30000 
+const MarqueeColumn: React.FC<Props> = ({
+  images,
+  direction = 'up',
+  duration = 30000,
+  borderRadius = 8,
+  marginHorizontal = 4,
+  marginBottom = 10,
+  imageHeight = 190,
 }) => {
   const scrollAnim = useRef(new Animated.Value(0)).current;
-  
+
   // Triple the images to create a seamless loop
   const allImages = [...images, ...images, ...images];
-  const IMAGE_HEIGHT = 200; 
+  const IMAGE_HEIGHT = imageHeight;
   const contentHeight = images.length * IMAGE_HEIGHT; 
 
   useEffect(() => {
@@ -42,11 +50,22 @@ const MarqueeColumn: React.FC<Props> = ({
     <View style={[styles.columnContainer, { width: COLUMN_WIDTH }]}>
       <Animated.View style={{ transform: [{ translateY: scrollAnim }] }}>
         {allImages.map((img, index) => (
-          <View key={index} style={styles.imageContainer}>
-            <Image 
-              source={img} 
-              style={styles.image} 
-              resizeMode="cover" 
+          <View
+            key={index}
+            style={[
+              styles.imageContainer,
+              {
+                height: imageHeight,
+                marginBottom: marginBottom,
+                marginHorizontal: marginHorizontal,
+                borderRadius: borderRadius,
+              }
+            ]}
+          >
+            <Image
+              source={img}
+              style={styles.image}
+              resizeMode="cover"
             />
           </View>
         ))}
@@ -62,12 +81,9 @@ const styles = StyleSheet.create({
     // paddingHorizontal: 4, // Optional: minimal gap
   },
   imageContainer: {
-    height: 190, // Slightly shorter than calculation to create gap
-    marginBottom: 10,
-    marginHorizontal: 4,
-    borderRadius: 8,
+    // Dynamic styles passed via props
     overflow: 'hidden',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'transparent',
   },
   image: {
     width: '100%',

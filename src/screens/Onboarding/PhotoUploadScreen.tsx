@@ -129,11 +129,8 @@ const PhotoUploadScreen: React.FC<Props> = ({ navigation, route }) => {
         setMainLoading(true);
         setTimeout(() => {
             setMainLoading(false);
-            // Navigate to Next Screen (Bio)
-            navigation.navigate('BioScreen', {
-                name, dateOfBirth, age, gender, lookingFor, relationshipGoal, interests,
-                photos: photos.map(p => p.uri),
-            });
+            // Onboarding Complete! Navigate to Initializing Screen
+            navigation.replace('InitializingScreen');
         }, 500);
     };
 
