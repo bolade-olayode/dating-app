@@ -643,14 +643,6 @@ Step 9 (Bio)         → 100%
 
 ---
 
-## 📞 CONTACTS
-
-**Frontend Developer:** Olayode Bolade
-**Email:** olayodeb6@gmail.com
-**GitHub:** github.com/bolade-olayode/dating-app
-
----
-
 **Next Session Goals:**
 1. Build Home/Discovery Feed with swipe cards
 2. Implement matching logic
