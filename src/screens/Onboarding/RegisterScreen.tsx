@@ -145,6 +145,7 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
           {/* Input Section */}
           <View style={styles.inputContainer}>
             <InputField
+              key={activeTab}
               placeholder={activeTab === 'phone' ? '08123456789' : 'Enter your email'}
               keyboardType={activeTab === 'phone' ? 'phone-pad' : 'email-address'}
               countryCode={activeTab === 'phone' ? `${country.flag} ${country.dial_code}` : undefined}

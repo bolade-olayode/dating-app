@@ -20,6 +20,8 @@ import InterestsSelectionScreen from '@screens/Onboarding/InterestsSelectionScre
 import PhotoUploadScreen from '@screens/Onboarding/PhotoUploadScreen';
 import RegisterScreen from '@screens/Onboarding/RegisterScreen';
 import InitializingScreen from '@screens/Home/InitializingScreen';
+import NearbyMatchesScreen from '@screens/Home/NearbyMatchesScreen';
+import TabNavigator from '@navigation/TabNavigator';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -72,6 +74,8 @@ export type RootStackParamList = {
     interests: string[];
   };
   InitializingScreen: undefined;
+  NearbyMatches: undefined;
+  HomeTabs: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -105,6 +109,8 @@ const AppNavigator = () => {
           <Stack.Screen name="InterestsSelection" component={InterestsSelectionScreen} />
           <Stack.Screen name="PhotoUpload" component={PhotoUploadScreen} />
           <Stack.Screen name="InitializingScreen" component={InitializingScreen} />
+          <Stack.Screen name="NearbyMatches" component={NearbyMatchesScreen} />
+          <Stack.Screen name="HomeTabs" component={TabNavigator} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

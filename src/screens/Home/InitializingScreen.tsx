@@ -21,6 +21,7 @@ import {
   Text,
   StyleSheet,
   StatusBar,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -37,15 +38,19 @@ const COLUMN_IMAGES = {
 
 const InitializingScreen = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
+  const { height } = Dimensions.get('window');
+
+  // Use full screen height for each image to ensure no gaps
+  // The images will overlap slightly to prevent any spacing during scroll
+  const imageHeight = height;
 
   useEffect(() => {
-    // Auto-navigate after 3 seconds
-    // TODO: Uncomment when HomeTabs is created
-    // const timer = setTimeout(() => {
-    //   navigation.replace('HomeTabs' as never);
-    // }, 3000);
+    // Auto-navigate to NearbyMatches after 2.5 seconds
+    const timer = setTimeout(() => {
+      navigation.replace('NearbyMatches' as never);
+    }, 2500);
 
-    // return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -69,8 +74,8 @@ const InitializingScreen = () => {
           duration={30000}
           borderRadius={0}
           marginHorizontal={0}
-          marginBottom={4}
-          imageHeight={200}
+          marginBottom={-2}
+          imageHeight={imageHeight}
         />
 
         {/* Column 2 - Scrolls Down */}
@@ -80,8 +85,8 @@ const InitializingScreen = () => {
           duration={30000}
           borderRadius={0}
           marginHorizontal={0}
-          marginBottom={4}
-          imageHeight={200}
+          marginBottom={-2}
+          imageHeight={imageHeight}
         />
 
         {/* Column 3 - Scrolls Up */}
@@ -91,8 +96,8 @@ const InitializingScreen = () => {
           duration={30000}
           borderRadius={0}
           marginHorizontal={0}
-          marginBottom={4}
-          imageHeight={200}
+          marginBottom={-2}
+          imageHeight={imageHeight}
         />
       </View>
 
