@@ -139,13 +139,13 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
+        name="Wallet"
+        component={WalletScreen}
         options={{
-          tabBarLabel: 'Notifications',
+          tabBarLabel: 'Wallet',
           tabBarIcon: ({ focused, color, size }) => (
             <Icon
-              name={focused ? "notifications" : "notifications-outline"}
+              name={focused ? "wallet" : "wallet-outline"}
               size={26}
               color={color}
             />

@@ -24,6 +24,8 @@ import NearbyMatchesScreen from '@screens/Home/NearbyMatchesScreen';
 import TabNavigator from '@navigation/TabNavigator';
 import WalletScreen from '@screens/Home/WalletScreen';
 import TopUpScreen from '@screens/Home/TopUpScreen';
+import MatchScreen from '@screens/Home/MatchScreen';
+import ProfileDetailScreen from '@screens/Home/ProfileDetailScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -80,6 +82,18 @@ export type RootStackParamList = {
   HomeTabs: undefined;
   Wallet: undefined;
   TopUp: undefined;
+  Match: {
+    matchedProfile: {
+      name: string;
+      photo: any;
+      age: number;
+    };
+    userPhoto: any;
+  };
+  ProfileDetail: {
+    profile: any;
+    isPaidView?: boolean;
+  };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -93,7 +107,8 @@ const AppNavigator = () => {
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
         <Stack.Navigator
-          initialRouteName="Welcome"
+          // TODO: Change back to "Welcome" when APIs are ready
+          initialRouteName="InitializingScreen"
           screenOptions={{
             headerShown: false,
             cardStyle: { backgroundColor: theme.colors.background },
@@ -117,6 +132,17 @@ const AppNavigator = () => {
           <Stack.Screen name="HomeTabs" component={TabNavigator} />
           <Stack.Screen name="Wallet" component={WalletScreen} />
           <Stack.Screen name="TopUp" component={TopUpScreen} />
+          <Stack.Screen name="ProfileDetail" component={ProfileDetailScreen} />
+          <Stack.Screen
+            name="Match"
+            component={MatchScreen}
+            options={{
+              gestureEnabled: false,
+              cardStyleInterpolator: ({ current }) => ({
+                cardStyle: { opacity: current.progress },
+              }),
+            }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

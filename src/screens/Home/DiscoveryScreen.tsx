@@ -176,11 +176,38 @@ const DiscoveryScreen = () => {
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [coinBalance, setCoinBalance] = useState(20000); // Mock balance
+  const [likeCount, setLikeCount] = useState(0);
   const currentProfile = profiles[currentIndex];
 
   // Use ref to store current index for PanResponder (avoids stale closure)
   const currentIndexRef = useRef(currentIndex);
   const swipeCountRef = useRef(swipeCount);
+  const likeCountRef = useRef(likeCount);
+  const coinBalanceRef = useRef(coinBalance);
+
+  // Mock user photo (use first profile image as placeholder for current user)
+  const userPhoto = require('@assets/images/img3.jpg');
+
+  // Trigger match every 3rd like
+  const checkForMatch = (likedProfile: typeof currentProfile) => {
+    const newLikeCount = likeCountRef.current + 1;
+    setLikeCount(newLikeCount);
+    likeCountRef.current = newLikeCount;
+
+    if (newLikeCount % 3 === 0) {
+      // It's a match! Navigate after animation completes
+      setTimeout(() => {
+        navigation.navigate('Match', {
+          matchedProfile: {
+            name: likedProfile.name,
+            photo: likedProfile.photo,
+            age: likedProfile.age,
+          },
+          userPhoto,
+        });
+      }, 400);
+    }
+  };
 
   useEffect(() => {
     currentIndexRef.current = currentIndex;
@@ -189,6 +216,10 @@ const DiscoveryScreen = () => {
   useEffect(() => {
     swipeCountRef.current = swipeCount;
   }, [swipeCount]);
+
+  useEffect(() => {
+    coinBalanceRef.current = coinBalance;
+  }, [coinBalance]);
 
   // Debug: Log initial mount
   useEffect(() => {
@@ -226,15 +257,39 @@ const DiscoveryScreen = () => {
     extrapolate: 'clamp',
   });
 
+  const FREE_SWIPE_LIMIT = 10;
+  const SWIPE_COST = 3;
+
+  const isFreeSwipesRemaining = () => swipeCount < FREE_SWIPE_LIMIT;
+
   const checkSwipeLimit = () => {
     const newCount = swipeCount + 1;
     setSwipeCount(newCount);
 
-    if (newCount >= 10) {
-      setShowLimitAlert(true);
-      return true;
+    // Free swipes still available
+    if (newCount <= FREE_SWIPE_LIMIT) {
+      return false;
     }
-    return false;
+
+    // Paid swipes - check coin balance
+    if (coinBalance >= SWIPE_COST) {
+      setCoinBalance(prev => prev - SWIPE_COST);
+      console.log(`💰 Deducted ${SWIPE_COST} coins. Balance: ${coinBalance - SWIPE_COST}`);
+      return false;
+    }
+
+    // No coins left - show top-up alert
+    setShowLimitAlert(true);
+    return true;
+  };
+
+  // Navigate to profile detail view
+  const handleViewProfile = () => {
+    const isPaid = !isFreeSwipesRemaining();
+    navigation.navigate('ProfileDetail', {
+      profile: currentProfile,
+      isPaidView: isPaid,
+    });
   };
 
   const handleReject = () => {
@@ -271,6 +326,7 @@ const DiscoveryScreen = () => {
     if (checkSwipeLimit()) return;
 
     console.log('Liked:', currentProfile.name);
+    checkForMatch(currentProfile);
     setIsTransitioning(true);
 
     // Animate card to right and fade out
@@ -314,7 +370,56 @@ const DiscoveryScreen = () => {
     setCurrentIndex(nextIndex);
   };
 
-  // Pan responder for swipe gestures
+  // Helper: check if swipe is allowed (free or has coins)
+  const canSwipeRef = () => {
+    const count = swipeCountRef.current + 1;
+    if (count <= FREE_SWIPE_LIMIT) return true;
+    if (coinBalanceRef.current >= SWIPE_COST) return true;
+    return false;
+  };
+
+  // Helper: consume a swipe (increment count, deduct coins if needed)
+  const consumeSwipeRef = () => {
+    const newCount = swipeCountRef.current + 1;
+    setSwipeCount(newCount);
+
+    if (newCount > FREE_SWIPE_LIMIT) {
+      const newBalance = coinBalanceRef.current - SWIPE_COST;
+      setCoinBalance(newBalance);
+      console.log(`💰 Deducted ${SWIPE_COST} coins. Balance: ${newBalance}`);
+    }
+  };
+
+  // Animate card away and move to next
+  const animateSwipeOut = (direction: 'left' | 'right', callback?: () => void) => {
+    setIsTransitioning(true);
+    const toX = direction === 'right' ? width * 1.5 : -width * 1.5;
+
+    Animated.parallel([
+      Animated.timing(position, {
+        toValue: { x: toX, y: 0 },
+        duration: 300,
+        useNativeDriver: false,
+      }),
+      Animated.timing(cardOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      position.setValue({ x: 0, y: 0 });
+      const nextIdx = currentIndexRef.current < profiles.length - 1 ? currentIndexRef.current + 1 : 0;
+      setCurrentIndex(nextIdx);
+      callback?.();
+      Animated.timing(cardOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => setIsTransitioning(false));
+    });
+  };
+
+  // Pan responder for swipe gestures + tap detection
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -323,93 +428,43 @@ const DiscoveryScreen = () => {
       },
       onPanResponderRelease: (_, gesture) => {
         const swipeThreshold = 120;
+        const isTap = Math.abs(gesture.dx) < 10 && Math.abs(gesture.dy) < 10;
+
+        if (isTap) {
+          // Tap detected - open profile detail
+          handleViewProfile();
+          return;
+        }
 
         if (gesture.dx > swipeThreshold) {
-          // Check swipe limit
-          const newCount = swipeCountRef.current + 1;
-          setSwipeCount(newCount);
-
-          if (newCount >= 10) {
-            // Reset position and show alert
+          if (!canSwipeRef()) {
             Animated.spring(position, {
               toValue: { x: 0, y: 0 },
               friction: 4,
               useNativeDriver: false,
-            }).start(() => {
-              setShowLimitAlert(true);
-            });
+            }).start(() => setShowLimitAlert(true));
             return;
           }
 
           // Swipe right - Like
-          console.log('👉 SWIPE RIGHT detected');
-          console.log('❤️ Liked via swipe:', profiles[currentIndexRef.current].name);
-          setIsTransitioning(true);
-
-          Animated.parallel([
-            Animated.timing(position, {
-              toValue: { x: width * 1.5, y: 0 },
-              duration: 300,
-              useNativeDriver: false,
-            }),
-            Animated.timing(cardOpacity, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: false,
-            }),
-          ]).start(() => {
-            position.setValue({ x: 0, y: 0 });
-            const nextIdx = currentIndexRef.current < profiles.length - 1 ? currentIndexRef.current + 1 : 0;
-            setCurrentIndex(nextIdx);
-            Animated.timing(cardOpacity, {
-              toValue: 1,
-              duration: 200,
-              useNativeDriver: false,
-            }).start(() => setIsTransitioning(false));
-          });
+          console.log('👉 SWIPE RIGHT - Liked:', profiles[currentIndexRef.current].name);
+          consumeSwipeRef();
+          checkForMatch(profiles[currentIndexRef.current]);
+          animateSwipeOut('right');
         } else if (gesture.dx < -swipeThreshold) {
-          // Check swipe limit
-          const newCount = swipeCountRef.current + 1;
-          setSwipeCount(newCount);
-
-          if (newCount >= 10) {
-            // Reset position and show alert
+          if (!canSwipeRef()) {
             Animated.spring(position, {
               toValue: { x: 0, y: 0 },
               friction: 4,
               useNativeDriver: false,
-            }).start(() => {
-              setShowLimitAlert(true);
-            });
+            }).start(() => setShowLimitAlert(true));
             return;
           }
 
           // Swipe left - Reject
-          console.log('👈 SWIPE LEFT detected');
-          console.log('❌ Rejected via swipe:', profiles[currentIndexRef.current].name);
-          setIsTransitioning(true);
-
-          Animated.parallel([
-            Animated.timing(position, {
-              toValue: { x: -width * 1.5, y: 0 },
-              duration: 300,
-              useNativeDriver: false,
-            }),
-            Animated.timing(cardOpacity, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: false,
-            }),
-          ]).start(() => {
-            position.setValue({ x: 0, y: 0 });
-            const nextIdx = currentIndexRef.current < profiles.length - 1 ? currentIndexRef.current + 1 : 0;
-            setCurrentIndex(nextIdx);
-            Animated.timing(cardOpacity, {
-              toValue: 1,
-              duration: 200,
-              useNativeDriver: false,
-            }).start(() => setIsTransitioning(false));
-          });
+          console.log('👈 SWIPE LEFT - Rejected:', profiles[currentIndexRef.current].name);
+          consumeSwipeRef();
+          animateSwipeOut('left');
         } else {
           // Return to original position
           Animated.spring(position, {
@@ -475,6 +530,24 @@ const DiscoveryScreen = () => {
           onPress={() => navigation.navigate('Wallet')}
         />
       </View>
+
+      {/* Swipe Status Indicator */}
+      {swipeCount > 0 && (
+        <View style={styles.swipeStatus}>
+          {isFreeSwipesRemaining() ? (
+            <Text style={styles.swipeStatusText}>
+              {FREE_SWIPE_LIMIT - swipeCount} free swipes left
+            </Text>
+          ) : (
+            <View style={styles.swipeStatusPaid}>
+              <Icon name="heart" size={12} color="#FF007B" />
+              <Text style={styles.swipeStatusText}>
+                {SWIPE_COST} coins per swipe
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Profile Card */}
       <Animated.View
@@ -563,12 +636,12 @@ const DiscoveryScreen = () => {
               <Icon name="warning-outline" size={48} color="#FF007B" />
             </View>
 
-            <Text style={styles.modalTitle}>Free Swipes Exhausted</Text>
+            <Text style={styles.modalTitle}>Out of Coins</Text>
             <Text style={styles.modalMessage}>
-              You have exhausted your free swipes for today. Each swipe now costs 3 coins.
+              You've used all your free swipes for today. Each additional swipe costs {SWIPE_COST} coins and includes a full profile view.
             </Text>
             <Text style={styles.modalSubMessage}>
-              Top up your wallet to continue swiping!
+              Top up your wallet to keep swiping!
             </Text>
 
             <View style={styles.modalButtons}>
@@ -645,6 +718,21 @@ const styles = StyleSheet.create({
   },
   cardImage: {
     borderRadius: 16,
+  },
+  swipeStatus: {
+    alignSelf: 'center',
+    marginBottom: 8,
+    marginTop: -12,
+  },
+  swipeStatusPaid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  swipeStatusText: {
+    fontFamily: FONTS.Medium,
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   headerRow: {
     flexDirection: 'row',

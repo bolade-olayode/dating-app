@@ -75,17 +75,6 @@ const WalletScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Wallet</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.headerIcon} activeOpacity={0.7}>
-            <Icon name="camera-outline" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIcon} activeOpacity={0.7}>
-            <Icon name="search-outline" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIcon} activeOpacity={0.7}>
-            <Icon name="ellipsis-vertical" size={22} color="#FFF" />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <ScrollView
@@ -163,9 +152,6 @@ const styles = StyleSheet.create({
   },
   // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginBottom: 24,
   },
@@ -173,19 +159,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.Bold,
     fontSize: 28,
     color: '#FFF',
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  headerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   scrollContent: {
     paddingBottom: 140,
