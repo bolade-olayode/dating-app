@@ -7,7 +7,7 @@
  * 1. Home (Discovery)
  * 2. Explore
  * 3. Chats
- * 4. Notifications
+ * 4. Wallet
  * 5. Me (Profile)
  */
 
@@ -22,14 +22,14 @@ import { FONTS } from '@config/fonts';
 import DiscoveryScreen from '@screens/Home/DiscoveryScreen';
 import ExploreScreen from '@screens/Home/ExploreScreen';
 import ChatsScreen from '@screens/Home/ChatsScreen';
-import NotificationsScreen from '@screens/Home/NotificationsScreen';
+import WalletScreen from '@screens/Home/WalletScreen';
 import ProfileScreen from '@screens/Home/ProfileScreen';
 
 export type TabParamList = {
   Discovery: undefined;
   Explore: undefined;
   Chats: undefined;
-  Notifications: undefined;
+  Wallet: undefined;
   Profile: undefined;
 };
 

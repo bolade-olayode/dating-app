@@ -30,6 +30,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
+import CoinBalance from '@components/ui/CoinBalance';
 
 const { width, height } = Dimensions.get('window');
 
@@ -158,7 +159,10 @@ const MOCK_PROFILES = [
   },
 ];
 
+import { useNavigation } from '@react-navigation/native';
+
 const DiscoveryScreen = () => {
+  const navigation = useNavigation<any>();
   // Shuffle profiles on mount to show random order
   const [profiles] = useState(() => {
     const shuffled = [...MOCK_PROFILES].sort(() => Math.random() - 0.5);
@@ -171,6 +175,7 @@ const DiscoveryScreen = () => {
   const [swipeCount, setSwipeCount] = useState(0);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [coinBalance, setCoinBalance] = useState(20000); // Mock balance
   const currentProfile = profiles[currentIndex];
 
   // Use ref to store current index for PanResponder (avoids stale closure)
@@ -441,24 +446,34 @@ const DiscoveryScreen = () => {
       {/* Flare Background Effect (top-right radial gradient) */}
       <Flare />
 
-      {/* For You / Nearby Toggle */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[styles.toggleButton, activeTab === 'forYou' && styles.activeToggle]}
-          onPress={() => setActiveTab('forYou')}
-        >
-          <Text style={[styles.toggleText, activeTab === 'forYou' && styles.activeToggleText]}>
-            For You
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, activeTab === 'nearby' && styles.activeToggle]}
-          onPress={() => setActiveTab('nearby')}
-        >
-          <Text style={[styles.toggleText, activeTab === 'nearby' && styles.activeToggleText]}>
-            Nearby
-          </Text>
-        </TouchableOpacity>
+      {/* Header Row: Toggle + Coin Balance */}
+      <View style={styles.headerRow}>
+        {/* For You / Nearby Toggle */}
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
+            style={[styles.toggleButton, activeTab === 'forYou' && styles.activeToggle]}
+            onPress={() => setActiveTab('forYou')}
+          >
+            <Text style={[styles.toggleText, activeTab === 'forYou' && styles.activeToggleText]}>
+              For You
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, activeTab === 'nearby' && styles.activeToggle]}
+            onPress={() => setActiveTab('nearby')}
+          >
+            <Text style={[styles.toggleText, activeTab === 'nearby' && styles.activeToggleText]}>
+              Nearby
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Compact Coin Balance */}
+        <CoinBalance
+          balance={coinBalance}
+          variant="compact"
+          onPress={() => navigation.navigate('Wallet')}
+        />
       </View>
 
       {/* Profile Card */}
@@ -561,8 +576,7 @@ const DiscoveryScreen = () => {
                 style={[styles.modalButton, styles.topUpButton]}
                 onPress={() => {
                   setShowLimitAlert(false);
-                  console.log('Navigate to wallet top-up');
-                  // TODO: Navigate to wallet/top-up screen
+                  navigation.navigate('TopUp');
                 }}
               >
                 <Text style={styles.topUpButtonText}>Top Up Wallet</Text>
@@ -632,13 +646,17 @@ const styles = StyleSheet.create({
   cardImage: {
     borderRadius: 16,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   toggleContainer: {
     flexDirection: 'row',
-    alignSelf: 'center',
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 30,
     padding: 4,
-    marginBottom: 20,
   },
   toggleButton: {
     paddingHorizontal: 24,

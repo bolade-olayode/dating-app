@@ -22,6 +22,8 @@ import RegisterScreen from '@screens/Onboarding/RegisterScreen';
 import InitializingScreen from '@screens/Home/InitializingScreen';
 import NearbyMatchesScreen from '@screens/Home/NearbyMatchesScreen';
 import TabNavigator from '@navigation/TabNavigator';
+import WalletScreen from '@screens/Home/WalletScreen';
+import TopUpScreen from '@screens/Home/TopUpScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -76,6 +78,8 @@ export type RootStackParamList = {
   InitializingScreen: undefined;
   NearbyMatches: undefined;
   HomeTabs: undefined;
+  Wallet: undefined;
+  TopUp: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -111,6 +115,8 @@ const AppNavigator = () => {
           <Stack.Screen name="InitializingScreen" component={InitializingScreen} />
           <Stack.Screen name="NearbyMatches" component={NearbyMatchesScreen} />
           <Stack.Screen name="HomeTabs" component={TabNavigator} />
+          <Stack.Screen name="Wallet" component={WalletScreen} />
+          <Stack.Screen name="TopUp" component={TopUpScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
