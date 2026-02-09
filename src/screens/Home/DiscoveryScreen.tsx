@@ -283,11 +283,12 @@ const DiscoveryScreen = () => {
     return true;
   };
 
-  // Navigate to profile detail view
+  // Navigate to profile detail view (uses refs to avoid stale closure in PanResponder)
   const handleViewProfile = () => {
-    const isPaid = !isFreeSwipesRemaining();
+    const profile = profiles[currentIndexRef.current];
+    const isPaid = swipeCountRef.current >= FREE_SWIPE_LIMIT;
     navigation.navigate('ProfileDetail', {
-      profile: currentProfile,
+      profile,
       isPaidView: isPaid,
     });
   };

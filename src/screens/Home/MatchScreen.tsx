@@ -18,63 +18,37 @@ import { FONTS } from '@config/fonts';
 
 const { width, height } = Dimensions.get('window');
 
-// Heart-shaped clip using a wrapper approach
-const HeartPhoto = ({
+// Rounded portrait photo component - better for showing faces than circles
+const PortraitPhoto = ({
   source,
   style,
-  size = 180,
+  photoWidth = 150,
 }: {
   source: any;
   style?: any;
-  size?: number;
+  photoWidth?: number;
 }) => {
-  const heartSize = size;
-  const imageSize = heartSize * 0.85;
+  const photoHeight = photoWidth * 1.3; // Portrait aspect ratio
+  const borderRadius = photoWidth * 0.22; // Soft rounded corners
 
   return (
-    <View style={[{ width: heartSize, height: heartSize * 1.05, alignItems: 'center' }, style]}>
-      {/* Heart shape background */}
-      <View style={[styles.heartShape, { width: heartSize, height: heartSize }]}>
-        <View
-          style={[
-            styles.heartLeft,
-            {
-              width: heartSize,
-              height: heartSize,
-              borderRadius: heartSize / 2,
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.heartRight,
-            {
-              width: heartSize,
-              height: heartSize,
-              borderRadius: heartSize / 2,
-            },
-          ]}
-        />
-      </View>
-
-      {/* Photo in circular frame with pink border */}
+    <View style={[styles.portraitContainer, { width: photoWidth, height: photoHeight }, style]}>
       <View
         style={[
           styles.photoFrame,
           {
-            width: imageSize,
-            height: imageSize,
-            borderRadius: imageSize / 2,
-            top: heartSize * 0.08,
+            width: photoWidth,
+            height: photoHeight,
+            borderRadius: borderRadius,
           },
         ]}
       >
         <Image
           source={source}
           style={{
-            width: imageSize - 8,
-            height: imageSize - 8,
-            borderRadius: (imageSize - 8) / 2,
+            width: photoWidth - 8,
+            height: photoHeight - 8,
+            borderRadius: borderRadius - 2,
           }}
           resizeMode="cover"
         />
@@ -111,6 +85,8 @@ const MatchScreen: React.FC<MatchScreenProps> = ({ route, navigation }) => {
   const heart1Anim = useRef(new Animated.Value(0)).current;
   const heart2Anim = useRef(new Animated.Value(0)).current;
   const heart3Anim = useRef(new Animated.Value(0)).current;
+  const heart4Anim = useRef(new Animated.Value(0)).current;
+  const heart5Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Orchestrated entrance animation
@@ -178,32 +154,40 @@ const MatchScreen: React.FC<MatchScreenProps> = ({ route, navigation }) => {
     };
 
     animateHeart(heart1Anim, 0);
-    animateHeart(heart2Anim, 1000);
-    animateHeart(heart3Anim, 2000);
+    animateHeart(heart2Anim, 600);
+    animateHeart(heart3Anim, 1200);
+    animateHeart(heart4Anim, 1800);
+    animateHeart(heart5Anim, 2400);
   }, []);
 
-  const floatingHeartStyle = (anim: Animated.Value, startX: number) => ({
+  const floatingHeartStyle = (anim: Animated.Value, startX: number, drift: number = 30) => ({
     opacity: anim.interpolate({
-      inputRange: [0, 0.3, 0.7, 1],
-      outputRange: [0, 1, 1, 0],
+      inputRange: [0, 0.1, 0.6, 1],
+      outputRange: [0, 1, 0.8, 0],
     }),
     transform: [
       {
         translateY: anim.interpolate({
           inputRange: [0, 1],
-          outputRange: [0, -120],
+          outputRange: [0, -height * 0.45],
         }),
       },
       {
         translateX: anim.interpolate({
-          inputRange: [0, 0.5, 1],
-          outputRange: [startX, startX + 20, startX - 10],
+          inputRange: [0, 0.25, 0.5, 0.75, 1],
+          outputRange: [startX, startX + drift, startX - drift * 0.5, startX + drift * 0.3, startX - drift * 0.2],
         }),
       },
       {
         scale: anim.interpolate({
+          inputRange: [0, 0.3, 0.7, 1],
+          outputRange: [0.3, 1.1, 0.8, 0.4],
+        }),
+      },
+      {
+        rotate: anim.interpolate({
           inputRange: [0, 0.5, 1],
-          outputRange: [0.4, 1, 0.6],
+          outputRange: ['0deg', `${drift > 0 ? 15 : -15}deg`, '0deg'],
         }),
       },
     ],
@@ -219,20 +203,26 @@ const MatchScreen: React.FC<MatchScreenProps> = ({ route, navigation }) => {
         style={styles.topGradient}
       />
 
-      {/* Floating Hearts */}
+      {/* Floating Hearts - start from mid-screen and float up */}
       <View style={styles.floatingHeartsContainer}>
-        <Animated.View style={[styles.floatingHeart, floatingHeartStyle(heart1Anim, width * 0.4)]}>
-          <Icon name="heart" size={28} color="#FF007B" />
+        <Animated.View style={[styles.floatingHeart, floatingHeartStyle(heart1Anim, width * 0.1, 25)]}>
+          <Icon name="heart" size={24} color="#FF007B" />
         </Animated.View>
-        <Animated.View style={[styles.floatingHeart, floatingHeartStyle(heart2Anim, width * 0.55)]}>
-          <Icon name="heart" size={20} color="#FF69B4" />
+        <Animated.View style={[styles.floatingHeart, floatingHeartStyle(heart2Anim, width * 0.35, -20)]}>
+          <Icon name="heart" size={18} color="#FF69B4" />
         </Animated.View>
-        <Animated.View style={[styles.floatingHeart, floatingHeartStyle(heart3Anim, width * 0.3)]}>
-          <Icon name="heart" size={16} color="#FF007B" />
+        <Animated.View style={[styles.floatingHeart, floatingHeartStyle(heart3Anim, width * 0.65, 30)]}>
+          <Icon name="heart" size={22} color="#FF007B" />
+        </Animated.View>
+        <Animated.View style={[styles.floatingHeart, floatingHeartStyle(heart4Anim, width * 0.5, -25)]}>
+          <Icon name="heart" size={16} color="#FFB6C1" />
+        </Animated.View>
+        <Animated.View style={[styles.floatingHeart, floatingHeartStyle(heart5Anim, width * 0.8, 20)]}>
+          <Icon name="heart" size={14} color="#FF69B4" />
         </Animated.View>
       </View>
 
-      {/* Photos Section */}
+      {/* Photos Section - lowered so hearts float above */}
       <Animated.View style={[styles.photosContainer, { opacity: fadeAnim }]}>
         {/* Left photo (user) */}
         <Animated.View
@@ -241,7 +231,7 @@ const MatchScreen: React.FC<MatchScreenProps> = ({ route, navigation }) => {
             { transform: [{ translateX: leftPhotoAnim }] },
           ]}
         >
-          <HeartPhoto source={userPhoto} size={170} />
+          <PortraitPhoto source={userPhoto} photoWidth={140} />
         </Animated.View>
 
         {/* Right photo (match) */}
@@ -251,7 +241,7 @@ const MatchScreen: React.FC<MatchScreenProps> = ({ route, navigation }) => {
             { transform: [{ translateX: rightPhotoAnim }] },
           ]}
         >
-          <HeartPhoto source={matchedProfile.photo} size={170} />
+          <PortraitPhoto source={matchedProfile.photo} photoWidth={140} />
         </Animated.View>
 
         {/* Center heart icon */}
@@ -335,13 +325,15 @@ const styles = StyleSheet.create({
     right: 0,
     height: height * 0.4,
   },
-  // Floating hearts
+  // Floating hearts - originate from mid-screen (photo area) and float up
   floatingHeartsContainer: {
     position: 'absolute',
-    top: 60,
+    top: height * 0.35,
     left: 0,
     right: 0,
-    height: 150,
+    height: height * 0.5,
+    zIndex: 5,
+    pointerEvents: 'none',
   },
   floatingHeart: {
     position: 'absolute',
@@ -352,42 +344,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: height * 0.12,
+    marginTop: height * 0.22,
     paddingHorizontal: 20,
   },
   leftPhoto: {
     zIndex: 1,
-    marginRight: -30,
+    marginRight: -16,
   },
   rightPhoto: {
     zIndex: 2,
-    marginLeft: -30,
+    marginLeft: -16,
   },
-  // Heart shape components
-  heartShape: {
-    position: 'absolute',
-    overflow: 'hidden',
-  },
-  heartLeft: {
-    position: 'absolute',
-    backgroundColor: '#FF007B',
-    left: 0,
-    top: 0,
-    transform: [{ rotate: '-45deg' }],
-    opacity: 0.15,
-  },
-  heartRight: {
-    position: 'absolute',
-    backgroundColor: '#FF007B',
-    right: 0,
-    top: 0,
-    transform: [{ rotate: '45deg' }],
-    opacity: 0.15,
+  // Portrait photo
+  portraitContainer: {
+    alignItems: 'center',
   },
   photoFrame: {
-    position: 'absolute',
-    alignSelf: 'center',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: '#FF007B',
     justifyContent: 'center',
     alignItems: 'center',
@@ -397,11 +370,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
+    overflow: 'hidden',
   },
   centerHeart: {
     position: 'absolute',
     zIndex: 10,
-    bottom: 10,
+    bottom: -10,
   },
   centerHeartCircle: {
     width: 44,
@@ -426,7 +400,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginTop: 30,
+    marginTop: 20,
     gap: 8,
     alignItems: 'center',
   },

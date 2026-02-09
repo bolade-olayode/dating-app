@@ -6,7 +6,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Dimensions,
   StatusBar,
   Image,
@@ -18,7 +17,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 
 const { width, height } = Dimensions.get('window');
-const PHOTO_HEIGHT = height * 0.55;
+const PHOTO_HEIGHT = height * 0.5;
 
 interface ProfileDetailProps {
   route: {
@@ -34,10 +33,6 @@ interface ProfileDetailProps {
         verified: boolean;
         photo: any;
         bio?: string;
-        height?: string;
-        education?: string;
-        job?: string;
-        interests?: string[];
       };
       isPaidView?: boolean;
     };
@@ -50,9 +45,28 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
   const { profile, isPaidView } = route.params;
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Default bio and interests if not provided
-  const bio = profile.bio || "Living life one adventure at a time. Love meeting new people, trying new foods, and exploring new places. Looking for someone who can keep up!";
-  const interests = profile.interests || ['Travel', 'Music', 'Cooking', 'Fitness', 'Movies', 'Photography'];
+  // Default bio
+  const bio = profile.bio || "Confident, easy-going with great sense of humor, hardworker, watches anime, romantic, enjoys meeting people and having meaningful conversations. My love language is food.";
+
+  // Mock basics (placeholders - will come from backend)
+  const basics = [
+    { icon: '🏳️‍🌈', label: 'Bisexual' },
+    { icon: '❤️', label: 'Single' },
+    { icon: '📏', label: '155cm' },
+    { icon: '⚖️', label: '75kg' },
+    { icon: '♒', label: profile.zodiac },
+    { icon: '🌍', label: 'Nigerian' },
+  ];
+
+  // Mock interests (placeholders)
+  const interests = [
+    { icon: '🏳️‍🌈', label: 'Bisexual' },
+    { icon: '❤️', label: 'Single' },
+    { icon: '📏', label: '155cm' },
+    { icon: '⚖️', label: '75kg' },
+    { icon: '♒', label: 'Aquarius' },
+    { icon: '🌍', label: 'Nigerian' },
+  ];
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, PHOTO_HEIGHT - 100],
@@ -69,18 +83,14 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
         <View style={[styles.headerBgInner, { paddingTop: insets.top }]} />
       </Animated.View>
 
-      {/* Fixed header buttons */}
+      {/* Back button */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
-          style={styles.headerButton}
+          style={styles.backButton}
           onPress={() => navigation.goBack()}
           activeOpacity={0.8}
         >
           <Icon name="chevron-back" size={24} color="#FFF" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.headerButton} activeOpacity={0.8}>
-          <Icon name="ellipsis-horizontal" size={22} color="#FFF" />
         </TouchableOpacity>
       </View>
 
@@ -91,6 +101,7 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: 40 }}
       >
         {/* Main Photo */}
         <View style={styles.photoContainer}>
@@ -100,110 +111,83 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
             resizeMode="cover"
           />
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.8)', '#000']}
+            colors={['transparent', 'rgba(0,0,0,0.6)', '#000']}
             style={styles.photoGradient}
           />
 
-          {/* Name overlay on photo */}
+          {/* Location & Name overlay */}
           <View style={styles.photoOverlay}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>{profile.name}, {profile.age}</Text>
-              {profile.verified && (
-                <Icon name="checkmark-circle" size={22} color="#00B4FF" />
-              )}
-            </View>
             <View style={styles.locationRow}>
-              <Icon name="location-outline" size={16} color="#FFF" />
+              <Icon name="location" size={14} color="#FFF" />
               <Text style={styles.locationText}>{profile.location}</Text>
-              <Text style={styles.distanceText}> · {profile.distance}</Text>
             </View>
+            <Text style={styles.name}>{profile.name}</Text>
           </View>
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          {/* Quick Info Pills */}
-          <View style={styles.quickInfo}>
-            <View style={styles.infoPill}>
-              <Icon name="star-outline" size={14} color="#FF007B" />
-              <Text style={styles.infoPillText}>{profile.zodiac}</Text>
-            </View>
-            <View style={styles.infoPill}>
-              <Icon name="heart-outline" size={14} color="#FF007B" />
-              <Text style={styles.infoPillText}>{profile.interest}</Text>
-            </View>
-            {profile.height && (
-              <View style={styles.infoPill}>
-                <Icon name="resize-outline" size={14} color="#FF007B" />
-                <Text style={styles.infoPillText}>{profile.height}</Text>
-              </View>
-            )}
-            {profile.education && (
-              <View style={styles.infoPill}>
-                <Icon name="school-outline" size={14} color="#FF007B" />
-                <Text style={styles.infoPillText}>{profile.education}</Text>
-              </View>
-            )}
-            {profile.job && (
-              <View style={styles.infoPill}>
-                <Icon name="briefcase-outline" size={14} color="#FF007B" />
-                <Text style={styles.infoPillText}>{profile.job}</Text>
-              </View>
-            )}
-          </View>
+        {/* Action Buttons Row */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.connectButton} activeOpacity={0.8}>
+            <Text style={styles.connectText}>Say Hi 👋</Text>
+          </TouchableOpacity>
 
-          {/* Bio */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About me</Text>
-            <Text style={styles.bioText}>{bio}</Text>
-          </View>
+          <TouchableOpacity style={styles.actionCircle} activeOpacity={0.8}>
+            <Icon name="chatbubble-outline" size={20} color="#FFF" />
+          </TouchableOpacity>
 
-          {/* Interests */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Interests</Text>
-            <View style={styles.interestsGrid}>
-              {interests.map((item, index) => (
-                <View key={index} style={styles.interestChip}>
-                  <Text style={styles.interestChipText}>{item}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          <TouchableOpacity style={[styles.actionCircle, styles.heartCircle]} activeOpacity={0.8}>
+            <Icon name="heart" size={20} color="#FFF" />
+          </TouchableOpacity>
 
-          {/* Paid view badge */}
-          {isPaidView && (
-            <View style={styles.paidBadge}>
-              <Icon name="diamond-outline" size={16} color="#FFD700" />
-              <Text style={styles.paidBadgeText}>Premium profile view · 3 coins</Text>
-            </View>
-          )}
+          <TouchableOpacity
+            style={[styles.actionCircle, styles.passCircle]}
+            activeOpacity={0.8}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="close" size={22} color="#FFF" />
+          </TouchableOpacity>
         </View>
+
+        {/* Bio Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Bio</Text>
+          <Text style={styles.bioText}>{bio}</Text>
+        </View>
+
+        {/* My Basics */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My Basics</Text>
+          <View style={styles.chipGrid}>
+            {basics.map((item, index) => (
+              <View key={index} style={styles.chip}>
+                <Text style={styles.chipEmoji}>{item.icon}</Text>
+                <Text style={styles.chipText}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Interests */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Interests</Text>
+          <View style={styles.chipGrid}>
+            {interests.map((item, index) => (
+              <View key={index} style={styles.chip}>
+                <Text style={styles.chipEmoji}>{item.icon}</Text>
+                <Text style={styles.chipText}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Paid view badge */}
+        {isPaidView && (
+          <View style={styles.paidBadge}>
+            <Icon name="diamond-outline" size={16} color="#FFD700" />
+            <Text style={styles.paidBadgeText}>Premium profile view</Text>
+          </View>
+        )}
       </Animated.ScrollView>
-
-      {/* Bottom Action Bar */}
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 16 }]}>
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.rejectBtn]}
-          onPress={() => {
-            navigation.goBack();
-            // The DiscoveryScreen will handle the actual reject
-          }}
-          activeOpacity={0.8}
-        >
-          <Icon name="close" size={28} color="#FF4458" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.likeBtn]}
-          onPress={() => {
-            navigation.goBack();
-            // The DiscoveryScreen will handle the actual like
-          }}
-          activeOpacity={0.8}
-        >
-          <Icon name="heart" size={28} color="#FFF" />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -229,14 +213,10 @@ const styles = StyleSheet.create({
   header: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
+    left: 16,
     zIndex: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
   },
-  headerButton: {
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -258,78 +238,79 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: PHOTO_HEIGHT * 0.5,
+    height: PHOTO_HEIGHT * 0.45,
   },
   photoOverlay: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 24,
     left: 20,
     right: 20,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  name: {
-    fontFamily: FONTS.Bold,
-    fontSize: 28,
-    color: '#FFF',
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
   },
   locationText: {
     fontFamily: FONTS.Regular,
     fontSize: 14,
     color: '#DDD',
-    marginLeft: 4,
   },
-  distanceText: {
-    fontFamily: FONTS.Regular,
-    fontSize: 14,
-    color: '#999',
+  name: {
+    fontFamily: FONTS.Bold,
+    fontSize: 32,
+    color: '#FFF',
   },
-  // Content
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 120,
-  },
-  // Quick Info
-  quickInfo: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 28,
-  },
-  infoPill: {
+  // Action Row
+  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    gap: 12,
   },
-  infoPillText: {
-    fontFamily: FONTS.Medium,
-    fontSize: 13,
-    color: '#DDD',
+  connectButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  connectText: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 14,
+    color: '#FFF',
+  },
+  actionCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heartCircle: {
+    backgroundColor: '#FF007B',
+    borderColor: '#FF007B',
+  },
+  passCircle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   // Sections
   section: {
+    paddingHorizontal: 20,
     marginBottom: 28,
   },
   sectionTitle: {
     fontFamily: FONTS.SemiBold,
-    fontSize: 18,
+    fontSize: 16,
     color: '#FFF',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   bioText: {
     fontFamily: FONTS.Regular,
@@ -337,24 +318,30 @@ const styles = StyleSheet.create({
     color: '#BBB',
     lineHeight: 24,
   },
-  // Interests
-  interestsGrid: {
+  // Chips
+  chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  interestChip: {
-    backgroundColor: 'rgba(255, 0, 123, 0.12)',
-    paddingHorizontal: 16,
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 0.5,
-    borderColor: 'rgba(255, 0, 123, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  interestChipText: {
+  chipEmoji: {
+    fontSize: 14,
+  },
+  chipText: {
     fontFamily: FONTS.Medium,
     fontSize: 13,
-    color: '#FF007B',
+    color: '#DDD',
   },
   // Paid badge
   paidBadge: {
@@ -368,39 +355,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 0.5,
     borderColor: 'rgba(255, 215, 0, 0.3)',
+    marginBottom: 20,
   },
   paidBadgeText: {
     fontFamily: FONTS.Medium,
     fontSize: 12,
     color: '#FFD700',
-  },
-  // Action Bar
-  actionBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    paddingTop: 16,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-  },
-  actionBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-  rejectBtn: {
-    borderColor: '#FF4458',
-    backgroundColor: 'rgba(255, 68, 88, 0.1)',
-  },
-  likeBtn: {
-    borderColor: '#FF007B',
-    backgroundColor: '#FF007B',
   },
 });
 

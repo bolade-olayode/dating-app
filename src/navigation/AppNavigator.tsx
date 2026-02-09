@@ -26,6 +26,7 @@ import WalletScreen from '@screens/Home/WalletScreen';
 import TopUpScreen from '@screens/Home/TopUpScreen';
 import MatchScreen from '@screens/Home/MatchScreen';
 import ProfileDetailScreen from '@screens/Home/ProfileDetailScreen';
+import ChatConversationScreen from '@screens/Home/ChatConversationScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -94,6 +95,13 @@ export type RootStackParamList = {
     profile: any;
     isPaidView?: boolean;
   };
+  ChatConversation: {
+    chatId: number;
+    name: string;
+    photo: any;
+    age: number;
+    location: string;
+  };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -133,6 +141,7 @@ const AppNavigator = () => {
           <Stack.Screen name="Wallet" component={WalletScreen} />
           <Stack.Screen name="TopUp" component={TopUpScreen} />
           <Stack.Screen name="ProfileDetail" component={ProfileDetailScreen} />
+          <Stack.Screen name="ChatConversation" component={ChatConversationScreen} />
           <Stack.Screen
             name="Match"
             component={MatchScreen}
