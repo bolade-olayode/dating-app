@@ -4,7 +4,7 @@
 
 **Status:**  In Development  
 **Platform:** iOS & Android (React Native + Expo)  
-**Target Launch:** Q2 2026
+**Target Launch:** Q1 2026
 
 ---
 
