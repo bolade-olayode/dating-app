@@ -1,6 +1,6 @@
 // src/screens/Home/ChatConversationScreen.tsx
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Platform,
   Dimensions,
   StatusBar,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,44 +27,68 @@ interface Message {
   text?: string;
   image?: any;
   isVideo?: boolean;
-  sent: boolean; // true = current user sent, false = received
+  sent: boolean;
   time: string;
   liked: boolean;
-  date?: string; // date separator
+  date?: string;
 }
 
-// Placeholder messages matching Figma
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: 1,
-    image: require('../../assets/images/opuehbckgdimg.jpg'),
-    isVideo: true,
-    sent: false,
-    time: '11:42',
-    liked: false,
-  },
-  {
-    id: 2,
-    text: "I had a really stressful day and would love some peace and quiet you know, to unwind and release the days tension and all that but i cant. Theres my meal to prepare and some laundry to be done before i can afford that.",
-    sent: true,
-    time: '11:45',
-    liked: true,
-  },
-  {
-    id: 3,
-    date: 'January 24, 2926',
-    text: '',
-    sent: false,
-    time: '',
-    liked: false,
-  },
-  {
-    id: 4,
-    text: "I had a really stressful day and would love some peace and quiet you know, to unwind and release the days tension and all that but i cant. Theres my meal to prepare and some laundry to be done before i can afford that.",
-    sent: false,
-    time: '12:01',
-    liked: true,
-  },
+// Icebreaker prompts
+const ICEBREAKERS = [
+  "What's the best trip you've ever been on?",
+  "What are you watching right now?",
+  "If you could have dinner with anyone, who?",
+  "What's your love language?",
+  "Pineapple on pizza, yes or no?",
+  "What's the most spontaneous thing you've done?",
+];
+
+// Realistic conversation per chat ID
+const CHAT_MESSAGES: Record<number, Message[]> = {
+  1: [
+    { id: 1, image: require('../../assets/images/opuehbckgdimg2.png'), isVideo: true, sent: false, time: '11:42', liked: false },
+    { id: 2, text: "Omg you look so good in this! Where was this?", sent: true, time: '11:43', liked: false },
+    { id: 3, text: "Aww thanks! It was at a friend's wedding in Calabar last month", sent: false, time: '11:44', liked: true },
+    { id: 4, text: "I had a really stressful day and would love some peace and quiet you know, to unwind and release the days tension and all that but i cant. Theres my meal to prepare and some laundry to be done before i can afford that.", sent: true, time: '11:45', liked: true },
+    { id: 5, date: 'Today', text: '', sent: false, time: '', liked: false },
+    { id: 6, text: "Aww sorry about that. You know what helps? Good music and jollof rice. I could share my playlist if you want", sent: false, time: '12:01', liked: true },
+    { id: 7, text: "Lol you had me at jollof rice. Please share!", sent: true, time: '12:03', liked: false },
+    { id: 8, text: "Haha I knew that would work. Sending it now", sent: false, time: '12:04', liked: false },
+  ],
+  2: [
+    { id: 1, text: "Hey! I noticed you watch anime too. What's your top 3?", sent: false, time: '09:30', liked: false },
+    { id: 2, text: "Oh you're speaking my language now! Attack on Titan, Jujutsu Kaisen, and Death Note. You?", sent: true, time: '09:35', liked: true },
+    { id: 3, text: "Great taste! Mine is Naruto, Demon Slayer and Spy x Family", sent: false, time: '09:37', liked: false },
+    { id: 4, text: "Spy x Family is so wholesome. Anya is the best character in all of anime lol", sent: true, time: '09:40', liked: false },
+    { id: 5, date: 'Today', text: '', sent: false, time: '', liked: false },
+    { id: 6, text: "Haha that's so funny! What kind of anime do you watch? Like are you more into shonen or slice of life?", sent: false, time: '10:23', liked: false },
+  ],
+  3: [
+    { id: 1, text: "Hi there! Love your profile. The photography is really cool", sent: false, time: 'Yesterday', liked: false },
+    { id: 2, text: "Thank you! I've been getting into it recently. Do you take photos too?", sent: true, time: 'Yesterday', liked: false },
+    { id: 3, text: "A little bit! Mostly on my phone though. Would love to learn proper photography", sent: false, time: 'Yesterday', liked: true },
+    { id: 4, text: "Would love to grab coffee sometime if you're up for it", sent: false, time: '09:15', liked: false },
+  ],
+  4: [
+    { id: 1, text: "Your music taste though! I saw you had Burna Boy on your profile", sent: true, time: 'Yesterday', liked: false },
+    { id: 2, text: "Yesss! Last Last is literally my anthem. What other artists do you listen to?", sent: false, time: 'Yesterday', liked: false },
+    { id: 3, text: "Wizkid, Tems, Rema, some Asake too. Basically anything afrobeats", sent: true, time: 'Yesterday', liked: true },
+    { id: 4, text: "Your taste in music is actually elite ngl", sent: false, time: 'Yesterday', liked: false },
+  ],
+  // Chat 5 is a new match - empty conversation, icebreakers will show
+  5: [],
+};
+
+// Simulated replies for when user sends a message
+const SIMULATED_REPLIES = [
+  "Haha that's so sweet of you to say",
+  "Omg really? Tell me more!",
+  "I love that! We have so much in common",
+  "Lol you're funny. I like that",
+  "That's actually a great point",
+  "Aww you're making me blush",
+  "No way! That's exactly how I feel too",
+  "Interesting... I never thought about it like that",
 ];
 
 interface ChatConversationProps {
@@ -74,6 +99,7 @@ interface ChatConversationProps {
       photo: any;
       age: number;
       location: string;
+      isNewMatch?: boolean;
     };
   };
   navigation: any;
@@ -81,25 +107,50 @@ interface ChatConversationProps {
 
 const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
-  const { name, photo, age, location } = route.params;
+  const { chatId, name, photo, age, location, isNewMatch } = route.params;
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>(CHAT_MESSAGES[chatId] || []);
+  const [showIcebreakers, setShowIcebreakers] = useState(messages.length === 0);
   const flatListRef = useRef<FlatList>(null);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
+  const scrollToEnd = useCallback(() => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, []);
+
+  const sendMessage = useCallback((text: string) => {
+    if (!text.trim()) return;
     const newMsg: Message = {
       id: Date.now(),
-      text: message.trim(),
+      text: text.trim(),
       sent: true,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       liked: false,
     };
     setMessages((prev) => [...prev, newMsg]);
     setMessage('');
+    setShowIcebreakers(false);
+    scrollToEnd();
+
+    // Simulate a reply after a short delay
     setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+      const reply: Message = {
+        id: Date.now() + 1,
+        text: SIMULATED_REPLIES[Math.floor(Math.random() * SIMULATED_REPLIES.length)],
+        sent: false,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        liked: false,
+      };
+      setMessages((prev) => [...prev, reply]);
+      scrollToEnd();
+    }, 1500 + Math.random() * 2000);
+  }, [scrollToEnd]);
+
+  const handleSend = () => sendMessage(message);
+
+  const handleIcebreaker = (prompt: string) => {
+    sendMessage(prompt);
   };
 
   const toggleLike = (msgId: number) => {
@@ -109,7 +160,6 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
   };
 
   const renderMessage = ({ item }: { item: Message }) => {
-    // Date separator
     if (item.date) {
       return (
         <View style={styles.dateSeparator}>
@@ -120,7 +170,6 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
 
     const isSent = item.sent;
 
-    // Image/Video message
     if (item.image) {
       return (
         <View style={[styles.messageBubbleRow, isSent ? styles.sentRow : styles.receivedRow]}>
@@ -136,7 +185,6 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
       );
     }
 
-    // Text message
     return (
       <View style={[styles.messageBubbleRow, isSent ? styles.sentRow : styles.receivedRow]}>
         <View style={[styles.textBubble, isSent ? styles.sentBubble : styles.receivedBubble]}>
@@ -155,6 +203,37 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
             />
           </TouchableOpacity>
         </View>
+      </View>
+    );
+  };
+
+  const renderIcebreakers = () => {
+    if (!showIcebreakers) return null;
+    return (
+      <View style={styles.icebreakersSection}>
+        <View style={styles.icebreakersHeader}>
+          <Icon name="sparkles" size={18} color="#FF007B" />
+          <Text style={styles.icebreakersTitle}>Break the ice</Text>
+        </View>
+        <Text style={styles.icebreakersSubtitle}>
+          Not sure what to say? Try one of these
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.icebreakersRow}
+        >
+          {ICEBREAKERS.map((prompt, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.icebreakerChip}
+              activeOpacity={0.7}
+              onPress={() => handleIcebreaker(prompt)}
+            >
+              <Text style={styles.icebreakerText}>{prompt}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
     );
   };
@@ -200,8 +279,21 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
         renderItem={renderMessage}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.messagesList}
+        contentContainerStyle={[
+          styles.messagesList,
+          messages.length === 0 && styles.emptyMessages,
+        ]}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        ListHeaderComponent={renderIcebreakers}
+        ListEmptyComponent={
+          !showIcebreakers ? null : (
+            <View style={styles.newMatchBanner}>
+              <Image source={photo} style={styles.newMatchPhoto} />
+              <Text style={styles.newMatchText}>You matched with {name}!</Text>
+              <Text style={styles.newMatchHint}>Send a message to get started</Text>
+            </View>
+          )
+        }
       />
 
       {/* Input Bar */}
@@ -298,6 +390,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingBottom: 8,
   },
+  emptyMessages: {
+    flexGrow: 1,
+  },
   messageBubbleRow: {
     marginBottom: 12,
     maxWidth: width * 0.78,
@@ -386,6 +481,68 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.Regular,
     fontSize: 12,
     color: '#666',
+  },
+  // Icebreakers
+  icebreakersSection: {
+    marginBottom: 20,
+  },
+  icebreakersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  icebreakersTitle: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 15,
+    color: '#FFF',
+  },
+  icebreakersSubtitle: {
+    fontFamily: FONTS.Regular,
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 14,
+  },
+  icebreakersRow: {
+    gap: 10,
+  },
+  icebreakerChip: {
+    backgroundColor: 'rgba(255, 0, 123, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 0, 123, 0.25)',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    maxWidth: width * 0.65,
+  },
+  icebreakerText: {
+    fontFamily: FONTS.Medium,
+    fontSize: 13,
+    color: '#FF69B4',
+  },
+  // New match banner
+  newMatchBanner: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  newMatchPhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: '#FF007B',
+    marginBottom: 16,
+  },
+  newMatchText: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 16,
+    color: '#FFF',
+    marginBottom: 6,
+  },
+  newMatchHint: {
+    fontFamily: FONTS.Regular,
+    fontSize: 13,
+    color: '#888',
   },
   // Input bar
   inputBar: {

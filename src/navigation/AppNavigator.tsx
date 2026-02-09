@@ -101,6 +101,7 @@ export type RootStackParamList = {
     photo: any;
     age: number;
     location: string;
+    isNewMatch?: boolean;
   };
 };
 

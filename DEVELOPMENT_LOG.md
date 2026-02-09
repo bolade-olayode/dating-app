@@ -2,9 +2,9 @@
 
 **Project:** Opueh Dating App
 **Started:** January 29, 2026
-**Last Updated:** February 1, 2026
+**Last Updated:** February 9, 2026
 **Developer:** Olayode Bolade
-**Status:** Alpha Development (v0.1.0)
+**Status:** Alpha Development (v0.2.0)
 
 ---
 
@@ -455,7 +455,113 @@ Step 9 (Bio)         → 100%
 
 ---
 
-## 📊 CURRENT STATUS (February 1, 2026)
+### **Session 10: February 9, 2026 - Discovery, Matching, Wallet & Chat**
+
+**What We Built:**
+
+**1. Discovery Screen Enhancements** (`DiscoveryScreen.tsx`)
+- Fixed PanResponder stale closure bug (only 2 profiles showing on swipe)
+- Added profile randomization on mount using `Math.random()` shuffle
+- Added card opacity fade animation to fix transition glitch between profiles
+- Added tap-to-view profile detection within PanResponder (`dx < 10 && dy < 10`)
+- Fixed wrong profile on tap (another stale closure - used `currentIndexRef` instead of `currentProfile`)
+- Added coin-aware swiping: 10 free swipes, then 3 coins per swipe
+- Added "Out of Coins" modal with Top Up navigation
+- Added swipe status indicator ("X free swipes left" / "3 coins per swipe")
+- Added CoinBalance compact variant in header
+- Match trigger: "It's a Match!" screen triggers every 3rd like
+- Fixed keyboard type not switching between Phone/Email tabs on RegisterScreen (`key={activeTab}`)
+
+**2. Wallet System**
+- `CoinBalance.tsx` - Reusable component (compact pill + banner card variants, low-balance pulse animation)
+- `WalletScreen.tsx` - Token packages list (Super like 5, Profile boost 20, See who likes you 15, Priority messages 10, Super comment 8), features list, Flare gradient
+- `TopUpScreen.tsx` - 6 token packages in grid layout (₦999 to ₦49,999), "Best Value" badge, selected state, purchase button
+- Replaced Notifications tab with Wallet tab in TabNavigator
+
+**3. Match Screen** (`MatchScreen.tsx`)
+- Light/white background with pink gradient (contrast from dark app)
+- Two portrait-shaped photos (rounded rectangles, better for faces than circles) sliding in from sides
+- 5 floating hearts animation originating from mid-screen, floating upward with S-curve drift and rotation
+- "Match 100%" dark badge
+- "Its a Match!!!" title with personalized description
+- "Begin a conversation" gradient button + "Maybe later"
+- Orchestrated entrance animation sequence (fade → slide photos → pop heart → fade text)
+- `gestureEnabled: false` with opacity card transition
+
+**4. Profile Detail Screen** (`ProfileDetailScreen.tsx`)
+- Dark background, scrollable with parallax header opacity
+- Large photo (50% screen height) with gradient overlay
+- Location + name overlay on photo
+- Action row: "Say Hi 👋" button, comment circle, heart circle (pink), pass/X circle
+- Bio section with placeholder text
+- My Basics chips (emoji + label: Bisexual, Single, 155cm, 75kg, zodiac, Nigerian)
+- Interests chips (same format)
+- Premium profile view badge for paid views
+
+**5. Chat System**
+- `ChatsScreen.tsx` - Full chat list with:
+  - Flare gradient header + camera, search, 3-dot menu
+  - Horizontal scrollable active matches row with online dots
+  - Filter tabs (Active, New matches, Ended, Unread)
+  - Conversation rows with varied data (5 unique conversations)
+  - Unread badges (+N pink pills)
+  - 3-dot dropdown menu modal (Read all, Delete chats, Select chats, End chats)
+  - "New match! Say hi" preview for new matches in pink
+
+- `ChatConversationScreen.tsx` - Full conversation with:
+  - Pink-to-dark gradient header (name, age, location, search, menu)
+  - Unique realistic conversations per chat (anime talk, music bonding, photography, jollof rice)
+  - Message bubbles (sent right-aligned dark blue, received left-aligned dark gray)
+  - Image/video messages with play button overlay
+  - Heart reaction toggle on each message
+  - Date separators
+  - Icebreaker prompts: "Break the ice" section with tappable pink chips for new matches
+  - New match banner (photo + "You matched with [name]!")
+  - Simulated auto-replies after 1.5-3.5 seconds
+  - Input bar: attachment button, text field, send button (turns pink when active)
+  - KeyboardAvoidingView for iOS
+
+**6. Login Screen Rewrite** (`LoginScreen.tsx`)
+- Rewrote to match SignupScreen animated background design
+- Same MarqueeColumn background, gradient overlay, button components
+
+**7. Navigation Updates**
+- Added all new screens to AppNavigator (Match, ProfileDetail, ChatConversation, Wallet, TopUp)
+- Added route params with TypeScript types for all new screens
+- Changed `initialRouteName` to "InitializingScreen" for faster testing (TODO to change back)
+
+**Key Technical Patterns:**
+- **PanResponder stale closure**: Recurring issue solved with `useRef` for all values accessed in PanResponder callbacks (`currentIndexRef`, `swipeCountRef`, `likeCountRef`, `coinBalanceRef`)
+- **Tap detection**: `Math.abs(gesture.dx) < 10 && Math.abs(gesture.dy) < 10` within PanResponder
+- **Card opacity animation**: Parallel fade-out/fade-in prevents visual glitch during card transitions
+- **`key={activeTab}`**: Forces component remount to trigger correct keyboard type
+
+**Files Created:**
+- `src/screens/Home/MatchScreen.tsx`
+- `src/screens/Home/ProfileDetailScreen.tsx`
+- `src/screens/Home/ChatConversationScreen.tsx`
+- `src/screens/Home/WalletScreen.tsx`
+- `src/screens/Home/TopUpScreen.tsx`
+- `src/components/ui/CoinBalance.tsx`
+
+**Files Updated:**
+- `src/screens/Home/DiscoveryScreen.tsx` (major - swipe fixes, coins, match trigger, tap-to-view)
+- `src/screens/Home/ChatsScreen.tsx` (complete rewrite from placeholder)
+- `src/screens/Onboarding/LoginScreen.tsx` (complete rewrite)
+- `src/screens/Onboarding/RegisterScreen.tsx` (keyboard fix)
+- `src/navigation/AppNavigator.tsx` (5 new screens + params)
+- `src/navigation/TabNavigator.tsx` (Notifications → Wallet tab)
+
+**Bugs Fixed:**
+- Swipe only showing 2 profiles (PanResponder stale closure)
+- Transition glitch between profiles (card opacity animation)
+- Keyboard not switching Phone/Email (key prop remount)
+- Wrong profile on tap (stale closure in handleViewProfile)
+- Face cropping in match photos (circles → portrait rectangles)
+
+---
+
+## CURRENT STATUS (February 9, 2026)
 
 ### **✅ Fully Complete**
 
@@ -467,10 +573,10 @@ Step 9 (Bio)         → 100%
 - [x] Mock API service layer (Auth + Photo)
 - [x] Onboarding flow configuration (9 steps)
 
-**Components (10 total):**
-- [x] Button (production-ready)
-- [x] Input (production-ready)
-- [x] OTPInput (6-digit, auto-focus)
+**Components (12 total):**
+- [x] Button (production-ready, 5 variants, 3 sizes)
+- [x] Input (production-ready, validation, error states)
+- [x] OTPInput (6-digit, auto-focus, paste support)
 - [x] OnboardingProgressBar (animated, 9-step)
 - [x] MarqueeColumn (animated backgrounds)
 - [x] CountryPickerModal (searchable)
@@ -478,20 +584,40 @@ Step 9 (Bio)         → 100%
 - [x] Interest chips (multi-select)
 - [x] Photo grid with upload
 - [x] Bio prompts with character counters
+- [x] CoinBalance (compact pill + banner card, low-balance pulse)
+- [x] Flare (gradient background effect)
 
-**Screens (12 total):**
-- [x] Welcome Screen
-- [x] Signup Screen (phone/email toggle, social login)
-- [x] Login Screen (password, social login)
-- [x] OTP Verification (with mock API, expiration)
-- [x] Name Input (with validation)
-- [x] Date of Birth (18+ validation)
-- [x] Gender Selection (Male/Female)
-- [x] Looking For (Men/Women/Everyone)
+**Onboarding Screens (12 total):**
+- [x] Welcome Screen (hero image, CTA buttons)
+- [x] Signup Screen (phone/email toggle, social login, animated background)
+- [x] Login Screen (animated background, matching signup design)
+- [x] OTP Verification (with mock API, expiration, resend)
+- [x] Name Input (with validation, character limits)
+- [x] Date of Birth (18+ validation, age display)
+- [x] Gender Selection (Male/Female cards)
+- [x] Looking For (Men/Women/Everyone options)
 - [x] Relationship Goals (5 options)
 - [x] Interests Selection (min 5, max 10)
 - [x] Photo Upload (min 3, max 6, multi-select)
-- [x] Bio Screen (bio + 3 prompts)
+- [x] Bio Screen (bio + 3 prompts, skip option)
+
+**Home/Core Screens (10 total):**
+- [x] Initializing Screen (loading/transition)
+- [x] Nearby Matches Screen
+- [x] Discovery Screen (swipe cards, coin-aware, tap-to-view)
+- [x] Profile Detail Screen (full photo, bio, basics, interests, action buttons)
+- [x] Match Screen (portrait photos, floating hearts, orchestrated animations)
+- [x] Chats Screen (active matches, filter tabs, conversation list, dropdown menu)
+- [x] Chat Conversation Screen (message bubbles, media, hearts, icebreakers, simulated replies)
+- [x] Wallet Screen (token packages, premium features)
+- [x] Top Up Screen (token purchase grid, Naira pricing)
+- [x] Explore Screen (placeholder)
+- [x] Profile Screen (placeholder)
+
+**Navigation:**
+- [x] Stack Navigator (20+ screens)
+- [x] Bottom Tab Navigator (Home, Explore, Chats, Wallet, Me)
+- [x] Match screen with opacity transition + gesture disabled
 
 **Services:**
 - [x] Mock Authentication (sendOTP, verifyOTP, resendOTP, login)
@@ -512,17 +638,18 @@ Step 9 (Bio)         → 100%
 ### **🚧 Next Up**
 
 **Screens to Build:**
-- [ ] Home/Discovery Feed (swipe cards)
-- [ ] Profile View Screen
-- [ ] Match Screen (celebration animation)
-- [ ] Chat/Messages Screen
+- [ ] Profile/Me Screen (full implementation)
+- [ ] Explore Screen (full implementation)
 - [ ] Settings Screen
+- [ ] Edit Profile Screen
 
 **Features to Add:**
+- [ ] Backend API integration
+- [ ] Real-time messaging (Socket.io)
+- [ ] Push notifications
 - [ ] Draft save on back button
 - [ ] Photo reordering (drag-and-drop)
 - [ ] Profile completion percentage
-- [ ] Real API integration
 
 ---
 
@@ -606,15 +733,40 @@ Step 9 (Bio)         → 100%
 **Solution:** Standardized to footer pattern for scrollable screens
 **Time Lost:** 15 minutes
 
+### **Issue 8: PanResponder Stale Closure (Swipe)**
+**Problem:** Only 2 profiles showing on swipe - PanResponder captured stale state values
+**Solution:** Use `useRef` for all values accessed inside PanResponder callbacks (`currentIndexRef`, `swipeCountRef`, `likeCountRef`, `coinBalanceRef`)
+**Time Lost:** 45 minutes
+
+### **Issue 9: Tap Shows Wrong Profile**
+**Problem:** Tapping card to view profile opened the wrong profile details
+**Solution:** Another stale closure - used `currentIndexRef.current` instead of `currentProfile` state in the tap handler
+**Time Lost:** 30 minutes
+
+### **Issue 10: Keyboard Type Not Switching**
+**Problem:** On RegisterScreen, switching between Phone/Email tabs didn't change keyboard type
+**Solution:** Added `key={activeTab}` to force TextInput remount, triggering correct keyboard type
+**Time Lost:** 20 minutes
+
+### **Issue 11: Face Cropping in Match Photos**
+**Problem:** Circular photo frames cropped sides of faces
+**Solution:** Switched to portrait rectangles (1:1.3 aspect ratio) with `borderRadius: photoWidth * 0.22`
+**Time Lost:** 15 minutes
+
+### **Issue 12: Missing TypeScript Style**
+**Problem:** `newMatchPreview` style referenced in JSX but not defined in StyleSheet
+**Solution:** Added the missing style definition for pink "New match! Say hi" text
+**Time Lost:** 5 minutes
+
 ---
 
 ## 📈 METRICS
 
 **Development Stats:**
-- **Total Development Hours:** ~50 hours
-- **Lines of Code:** ~12,000
-- **Components Built:** 10
-- **Screens Built:** 12
+- **Total Development Hours:** ~65 hours
+- **Lines of Code:** ~18,000+
+- **Components Built:** 12
+- **Screens Built:** 22+
 - **API Services:** 4
 - **Utils/Config Files:** 8
 
@@ -644,16 +796,17 @@ Step 9 (Bio)         → 100%
 ---
 
 **Next Session Goals:**
-1. Build Home/Discovery Feed with swipe cards
-2. Implement matching logic
-3. Add profile view screen
-4. Start chat/messaging feature
+1. Build Profile/Me Screen (full implementation)
+2. Build Explore Screen (full implementation)
+3. Add Settings Screen
+4. Start backend API integration
 
-**Estimated Time to MVP:** 4-6 weeks
-**Estimated Time to Launch:** 8-10 weeks
+**Estimated Time to MVP:** 3-4 weeks
+**Estimated Time to Launch:** 6-8 weeks
 
 ---
 
-**Last Updated:** February 1, 2026
+**Last Updated:** February 9, 2026
 **Onboarding Flow:** 100% Complete (9/9 screens)
-**Ready for:** Discovery/Matching Phase
+**Core Screens:** 100% Complete (Discovery, Chat, Wallet, Match)
+**Ready for:** Profile/Explore screens + Backend Integration

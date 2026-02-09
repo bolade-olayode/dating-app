@@ -58,12 +58,9 @@ DatingApp/
 │   │   └── feedback/       # Loader, Toast, EmptyState
 │   │
 │   ├── screens/            # App screens
-│   │   ├── Auth/           # Login, Signup
-│   │   ├── Onboarding/     # Profile setup flow
-│   │   ├── Discovery/      # Swipe feed
-│   │   ├── Matches/        # Matched users
-│   │   ├── Messages/       # Chat
-│   │   └── Profile/        # User profile
+│   │   ├── Onboarding/     # Login, Signup, Profile setup flow
+│   │   ├── Home/           # Discovery, Chats, Wallet, Profile, etc.
+│   │   └── WelcomeScreen.tsx
 │   │
 │   ├── navigation/         # Navigation configuration
 │   │   └── AppNavigator.tsx
@@ -213,15 +210,15 @@ eas submit --platform ios
 ```
 ---
 
-## 📋 Current Progress
+## Current Progress
 
-### Completed (As of Feb 2026)
+### Completed (As of Feb 9, 2026)
 
 **Foundation:**
 - [x] Project setup (Expo + TypeScript)
 - [x] Theme system (colors, typography, spacing)
 - [x] Custom fonts (EB Garamond)
-- [x] Navigation structure (Stack Navigator with 12+ routes)
+- [x] Navigation structure (Stack + Tab Navigator, 20+ routes)
 - [x] Environment configuration
 - [x] Mock API service layer (Auth + Photo services)
 - [x] Onboarding flow configuration (9-step centralized config)
@@ -233,20 +230,40 @@ eas submit --platform ios
 - [x] OnboardingProgressBar (animated, 9-step support)
 - [x] MarqueeColumn (animated background)
 - [x] CountryPickerModal (searchable)
+- [x] CoinBalance (compact + banner variants, low-balance pulse animation)
+- [x] Flare (gradient background effect)
 
-**Screens (12 total):**
+**Onboarding Screens (12):**
 - [x] Welcome Screen (hero image, CTA buttons)
 - [x] Signup Screen (phone/email, social login, animated background)
-- [x] Login Screen (email/password, social login)
+- [x] Login Screen (animated background, matching signup design)
 - [x] OTP Verification (6-digit input, timer, resend, mock API)
 - [x] Name Input (validation, character limits)
 - [x] Date of Birth Screen (date picker, 18+ validation, age display)
 - [x] Gender Selection Screen (Male/Female cards)
 - [x] Looking For Screen (Men/Women/Everyone options)
-- [x] Relationship Goals Screen (5 options: Marriage, Serious, Casual, Friends, Not Sure)
+- [x] Relationship Goals Screen (5 options)
 - [x] Interests Selection Screen (multi-select, min 5, max 10)
 - [x] Photo Upload Screen (2x3 grid, multi-select, min 3, max 6)
 - [x] Bio Screen (About Me + 3 prompts, skip option)
+
+**Home/Core Screens (10):**
+- [x] Initializing Screen (loading/transition)
+- [x] Nearby Matches Screen
+- [x] Discovery Screen (swipe cards, PanResponder, coin-aware swiping, tap-to-view)
+- [x] Profile Detail Screen (full photo, bio, basics, interests, action buttons)
+- [x] Match Screen ("It's a Match!" with animated portrait photos, floating hearts)
+- [x] Chats Screen (active matches row, filter tabs, conversation list, dropdown menu)
+- [x] Chat Conversation Screen (message bubbles, media, hearts, icebreaker prompts, simulated replies)
+- [x] Wallet Screen (token packages, premium features list)
+- [x] Top Up Screen (token purchase grid, Naira pricing)
+- [x] Explore Screen (placeholder)
+- [x] Profile Screen (placeholder)
+
+**Navigation:**
+- [x] Stack Navigator (20+ screens)
+- [x] Bottom Tab Navigator (Home, Explore, Chats, Wallet, Me)
+- [x] Match screen with opacity transition + gesture disabled
 
 **Services:**
 - [x] Mock Authentication Service (sendOTP, verifyOTP, resendOTP)
@@ -264,19 +281,19 @@ eas submit --platform ios
 
 ### In Progress
 
-- [ ] Home/Discovery Feed (swipe cards)
 - [ ] Backend API Integration
+- [ ] Profile/Me Screen (full implementation)
+- [ ] Explore Screen (full implementation)
+- [ ] Settings Screen
 
 ### Upcoming
 
-- [ ] Discovery Feed (swipe cards)
-- [ ] Matching Algorithm
-- [ ] Chat/Messaging
-- [ ] Profile View Screen
-- [ ] Settings Screen
-- [ ] Premium Features
-- [ ] Backend Integration
+- [ ] Real-time messaging (Socket.io)
 - [ ] Push Notifications
+- [ ] Photo reordering (drag-and-drop)
+- [ ] Video messages in chat
+- [ ] Profile editing
+- [ ] Advanced filters
 - [ ] Analytics
 
 ---
@@ -381,10 +398,14 @@ OTP → Name → DOB/Age → Gender → LookingFor → RelationshipGoal → Inte
 ## Known Issues
 
 - [x] ~~OTP doesn't expire~~ (10-min expiration implemented)
+- [x] ~~Swipe shows only 2 profiles~~ (PanResponder stale closure fixed with refs)
+- [x] ~~Keyboard doesn't switch Phone/Email~~ (fixed with key prop forcing remount)
+- [x] ~~Tap shows wrong profile~~ (stale closure in handleViewProfile fixed)
 - [ ] Back button doesn't save draft (implement draft service)
 - [ ] No error boundary (add global error handler)
 - [ ] Images not optimized (add compression)
 - [ ] No photo reordering (drag-and-drop planned)
+- [ ] All data is placeholder (pending backend API integration)
 
 ---
 
@@ -401,5 +422,5 @@ OTP → Name → DOB/Age → Gender → LookingFor → RelationshipGoal → Inte
 Proprietary - All Rights Reserved
 
 
-**Last Updated:** February 1, 2026  
-**Version:** 0.1.0 (Alpha)
+**Last Updated:** February 9, 2026
+**Version:** 0.2.0 (Alpha)

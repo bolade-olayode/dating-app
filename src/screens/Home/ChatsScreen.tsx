@@ -25,54 +25,69 @@ const { width } = Dimensions.get('window');
 // Placeholder active matches (online users)
 const ACTIVE_MATCHES = [
   { id: 1, name: 'Sarah', photo: require('../../assets/images/opuehbckgdimg.jpg'), online: true },
-  { id: 2, name: 'Amaka', photo: require('../../assets/images/opuehbckgdimg2.png'), online: true },
+  { id: 2, name: 'Uwem', photo: require('../../assets/images/opuehbckgdimg2.png'), online: true },
   { id: 3, name: 'Zainab', photo: require('../../assets/images/opuehbckgdimg3.png'), online: false },
   { id: 4, name: 'Chioma', photo: require('../../assets/images/opuehbckgdimg.jpg'), online: true },
   { id: 5, name: 'Blessing', photo: require('../../assets/images/opuehbckgdimg2.png'), online: true },
   { id: 6, name: 'Grace', photo: require('../../assets/images/opuehbckgdimg3.png'), online: false },
 ];
 
-// Placeholder conversations
+// Placeholder conversations with varied data
 const CONVERSATIONS = [
   {
     id: 1,
-    name: 'Mathilda Edison',
-    photo: require('../../assets/images/opuehbckgdimg.jpg'),
-    lastMessage: "Heya! Loved your profile. Where  you from?",
+    name: 'Uwem Kelly',
+    photo: require('../../assets/images/opuehbckgdimg2.png'),
+    lastMessage: "I had a really stressful day and would love some peace...",
     time: '11:56',
-    unread: 11,
+    unread: 3,
+    age: 35,
+    location: 'Ontario, Russia',
+    isNewMatch: false,
   },
   {
     id: 2,
-    name: 'Mathilda Edison',
-    photo: require('../../assets/images/opuehbckgdimg2.png'),
-    lastMessage: "Heya! Loved your profile. Where  you from?",
-    time: '11:56',
-    unread: 11,
+    name: 'Amara Obi',
+    photo: require('../../assets/images/opuehbckgdimg3.png'),
+    lastMessage: "Haha that's so funny! What kind of anime do you watch?",
+    time: '10:23',
+    unread: 7,
+    age: 28,
+    location: 'Lagos, Nigeria',
+    isNewMatch: false,
   },
   {
     id: 3,
-    name: 'Mathilda Edison',
-    photo: require('../../assets/images/opuehbckgdimg3.png'),
-    lastMessage: "Heya! Loved your profile. Where  you from?",
-    time: '11:56',
-    unread: 11,
+    name: 'Zainab Musa',
+    photo: require('../../assets/images/opuehbckgdimg.jpg'),
+    lastMessage: "Would love to grab coffee sometime if you're up for it",
+    time: '09:15',
+    unread: 0,
+    age: 26,
+    location: 'Abuja, Nigeria',
+    isNewMatch: false,
   },
   {
     id: 4,
-    name: 'Mathilda Edison',
-    photo: require('../../assets/images/opuehbckgdimg.jpg'),
-    lastMessage: "Heya! Loved your profile. Where  you from?",
-    time: '11:56',
+    name: 'Blessing Eze',
+    photo: require('../../assets/images/opuehbckgdimg2.png'),
+    lastMessage: "Your taste in music is actually elite ngl",
+    time: 'Yesterday',
     unread: 11,
+    age: 24,
+    location: 'Port Harcourt, Nigeria',
+    isNewMatch: false,
   },
   {
     id: 5,
-    name: 'Mathilda Edison',
-    photo: require('../../assets/images/opuehbckgdimg2.png'),
-    lastMessage: "Heya! Loved your profile. Where  you from?",
-    time: '11:56',
-    unread: 11,
+    name: 'Chioma Nwankwo',
+    photo: require('../../assets/images/opuehbckgdimg3.png'),
+    lastMessage: "",
+    time: 'Yesterday',
+    unread: 0,
+    age: 30,
+    location: 'Enugu, Nigeria',
+    isNewMatch: true,
   },
 ];
 
@@ -108,14 +123,17 @@ const ChatsScreen: React.FC = () => {
         chatId: item.id,
         name: item.name,
         photo: item.photo,
-        age: 35,
-        location: 'Ontario, Russia',
+        age: item.age,
+        location: item.location,
+        isNewMatch: item.isNewMatch,
       })}
     >
       <Image source={item.photo} style={styles.conversationAvatar} />
       <View style={styles.conversationInfo}>
         <Text style={styles.conversationName} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.conversationPreview} numberOfLines={1}>{item.lastMessage}</Text>
+        <Text style={[styles.conversationPreview, item.isNewMatch && styles.newMatchPreview]} numberOfLines={1}>
+          {item.isNewMatch ? 'New match! Say hi' : item.lastMessage}
+        </Text>
       </View>
       <View style={styles.conversationMeta}>
         <Text style={styles.conversationTime}>{item.time}</Text>
@@ -356,6 +374,10 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.Regular,
     fontSize: 13,
     color: '#888',
+  },
+  newMatchPreview: {
+    color: '#FF007B',
+    fontFamily: FONTS.Medium,
   },
   conversationMeta: {
     alignItems: 'flex-end',
