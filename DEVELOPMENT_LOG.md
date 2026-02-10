@@ -1,4 +1,4 @@
-# 📊 OPUEH DEVELOPMENT PROGRESS LOG
+# DATING-APP DEVELOPMENT PROGRESS LOG
 
 **Project:** Opueh Dating App
 **Started:** January 29, 2026
@@ -8,7 +8,7 @@
 
 ---
 
-## 🎯 PROJECT OVERVIEW
+## PROJECT OVERVIEW
 
 **Goal:** Build a values-driven dating app for intentional relationships (African market focus)
 
@@ -25,7 +25,7 @@
 
 ---
 
-## 📅 DEVELOPMENT TIMELINE
+## DEVELOPMENT TIMELINE
 
 ### **Session 1: January 29, 2026 - Project Setup**
 
