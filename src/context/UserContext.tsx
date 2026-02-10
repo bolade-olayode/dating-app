@@ -21,14 +21,17 @@ export interface UserProfile {
   name: string;
   email?: string;
   phoneNumber?: string;
-  dateOfBirth: string;
-  age: number;
+  dateOfBirth?: string;
+  age?: number;
   gender: string;
   lookingFor: string;
   relationshipGoal: string;
   interests: string[];
   photos: string[];
   bio?: string;
+  weight?: string;
+  height?: string;
+  education?: string;
   prompts?: Array<{ question: string; answer: string }>;
   location?: string;
   verified: boolean;
@@ -220,7 +223,20 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const updateProfile = useCallback((data: Partial<UserProfile>) => {
-    setProfileState(prev => prev ? { ...prev, ...data } : null);
+    setProfileState(prev => {
+      if (prev) return { ...prev, ...data };
+      // Create a new profile from partial data with sensible defaults
+      return {
+        name: '',
+        gender: '',
+        lookingFor: '',
+        relationshipGoal: '',
+        interests: [],
+        photos: [],
+        verified: false,
+        ...data,
+      } as UserProfile;
+    });
   }, []);
 
   const clearProfile = useCallback(async () => {

@@ -23,7 +23,7 @@ import DiscoveryScreen from '@screens/Home/DiscoveryScreen';
 import ExploreScreen from '@screens/Home/ExploreScreen';
 import ChatsScreen from '@screens/Home/ChatsScreen';
 import WalletScreen from '@screens/Home/WalletScreen';
-import ProfileScreen from '@screens/Home/ProfileScreen';
+import MeScreen from '@screens/Home/MeScreen';
 
 export type TabParamList = {
   Discovery: undefined;
@@ -154,7 +154,7 @@ const TabNavigator = () => {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={MeScreen}
         options={{
           tabBarLabel: 'Me',
           tabBarIcon: ({ focused, color, size }) => (

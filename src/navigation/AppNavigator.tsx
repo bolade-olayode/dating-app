@@ -27,6 +27,12 @@ import TopUpScreen from '@screens/Home/TopUpScreen';
 import MatchScreen from '@screens/Home/MatchScreen';
 import ProfileDetailScreen from '@screens/Home/ProfileDetailScreen';
 import ChatConversationScreen from '@screens/Home/ChatConversationScreen';
+import ProfileViewScreen from '@screens/Home/ProfileViewScreen';
+import EditProfileScreen from '@screens/Home/EditProfileScreen';
+import DiscoverySettingsScreen from '@screens/Home/DiscoverySettingsScreen';
+import PrivacySafetyScreen from '@screens/Home/PrivacySafetyScreen';
+import ProfilePerformanceScreen from '@screens/Home/ProfilePerformanceScreen';
+import AccountActionsScreen from '@screens/Home/AccountActionsScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -103,6 +109,15 @@ export type RootStackParamList = {
     location: string;
     isNewMatch?: boolean;
   };
+  ProfileView: undefined;
+  EditProfile: undefined;
+  AccountSetup: {
+    completion?: any;
+  };
+  DiscoverySettings: undefined;
+  PrivacySafety: undefined;
+  ProfilePerformance: undefined;
+  AccountActions: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -143,6 +158,12 @@ const AppNavigator = () => {
           <Stack.Screen name="TopUp" component={TopUpScreen} />
           <Stack.Screen name="ProfileDetail" component={ProfileDetailScreen} />
           <Stack.Screen name="ChatConversation" component={ChatConversationScreen} />
+          <Stack.Screen name="ProfileView" component={ProfileViewScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen name="DiscoverySettings" component={DiscoverySettingsScreen} />
+          <Stack.Screen name="PrivacySafety" component={PrivacySafetyScreen} />
+          <Stack.Screen name="ProfilePerformance" component={ProfilePerformanceScreen} />
+          <Stack.Screen name="AccountActions" component={AccountActionsScreen} />
           <Stack.Screen
             name="Match"
             component={MatchScreen}
