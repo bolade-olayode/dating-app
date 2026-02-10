@@ -31,6 +31,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import CoinBalance from '@components/ui/CoinBalance';
+import { useUser } from '@context/UserContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -163,19 +164,19 @@ import { useNavigation } from '@react-navigation/native';
 
 const DiscoveryScreen = () => {
   const navigation = useNavigation<any>();
+  const { coinBalance, spendCoins, swipeCount, incrementSwipeCount, freeSwipesRemaining, addMatch } = useUser();
+
   // Shuffle profiles on mount to show random order
   const [profiles] = useState(() => {
     const shuffled = [...MOCK_PROFILES].sort(() => Math.random() - 0.5);
-    console.log('🔀 Shuffled profiles:', shuffled.map(p => p.name).join(', '));
+    console.log('Shuffled profiles:', shuffled.map(p => p.name).join(', '));
     return shuffled;
   });
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'forYou' | 'nearby'>('forYou');
-  const [swipeCount, setSwipeCount] = useState(0);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [coinBalance, setCoinBalance] = useState(20000); // Mock balance
   const [likeCount, setLikeCount] = useState(0);
   const currentProfile = profiles[currentIndex];
 
@@ -195,7 +196,20 @@ const DiscoveryScreen = () => {
     likeCountRef.current = newLikeCount;
 
     if (newLikeCount % 3 === 0) {
-      // It's a match! Navigate after animation completes
+      // Add match to global state
+      addMatch({
+        id: Date.now(),
+        profile: {
+          id: likedProfile.id,
+          name: likedProfile.name,
+          age: likedProfile.age,
+          photo: likedProfile.photo,
+          location: likedProfile.location,
+        },
+        matchedAt: new Date().toISOString(),
+      });
+
+      // Navigate to match screen after animation completes
       setTimeout(() => {
         navigation.navigate('Match', {
           matchedProfile: {
@@ -260,21 +274,17 @@ const DiscoveryScreen = () => {
   const FREE_SWIPE_LIMIT = 10;
   const SWIPE_COST = 3;
 
-  const isFreeSwipesRemaining = () => swipeCount < FREE_SWIPE_LIMIT;
-
   const checkSwipeLimit = () => {
-    const newCount = swipeCount + 1;
-    setSwipeCount(newCount);
+    incrementSwipeCount();
+    const newCount = swipeCountRef.current + 1;
 
     // Free swipes still available
     if (newCount <= FREE_SWIPE_LIMIT) {
       return false;
     }
 
-    // Paid swipes - check coin balance
-    if (coinBalance >= SWIPE_COST) {
-      setCoinBalance(prev => prev - SWIPE_COST);
-      console.log(`💰 Deducted ${SWIPE_COST} coins. Balance: ${coinBalance - SWIPE_COST}`);
+    // Paid swipes - try to deduct coins
+    if (spendCoins(SWIPE_COST, 'swipe')) {
       return false;
     }
 
@@ -381,13 +391,10 @@ const DiscoveryScreen = () => {
 
   // Helper: consume a swipe (increment count, deduct coins if needed)
   const consumeSwipeRef = () => {
-    const newCount = swipeCountRef.current + 1;
-    setSwipeCount(newCount);
+    incrementSwipeCount();
 
-    if (newCount > FREE_SWIPE_LIMIT) {
-      const newBalance = coinBalanceRef.current - SWIPE_COST;
-      setCoinBalance(newBalance);
-      console.log(`💰 Deducted ${SWIPE_COST} coins. Balance: ${newBalance}`);
+    if (swipeCountRef.current + 1 > FREE_SWIPE_LIMIT) {
+      spendCoins(SWIPE_COST, 'swipe');
     }
   };
 
@@ -535,9 +542,9 @@ const DiscoveryScreen = () => {
       {/* Swipe Status Indicator */}
       {swipeCount > 0 && (
         <View style={styles.swipeStatus}>
-          {isFreeSwipesRemaining() ? (
+          {freeSwipesRemaining > 0 ? (
             <Text style={styles.swipeStatusText}>
-              {FREE_SWIPE_LIMIT - swipeCount} free swipes left
+              {freeSwipesRemaining} free swipes left
             </Text>
           ) : (
             <View style={styles.swipeStatusPaid}>

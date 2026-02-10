@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from '@context/ThemeContext';
+import { UserProvider } from '@context/UserContext';
 import { QueryProvider } from '@services/api-new/QueryProvider';
 import { FONT_FILES } from '@config/fonts';
 import AppNavigator from '@navigation/AppNavigator';
@@ -26,9 +27,11 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryProvider>
-        <ThemeProvider>
-          <AppNavigator />
-        </ThemeProvider>
+        <UserProvider>
+          <ThemeProvider>
+            <AppNavigator />
+          </ThemeProvider>
+        </UserProvider>
       </QueryProvider>
     </GestureHandlerRootView>
   );

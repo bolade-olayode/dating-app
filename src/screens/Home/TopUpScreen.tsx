@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
+import { useUser } from '@context/UserContext';
 
 const TOKEN_PACKAGES = [
   { id: 1, tokens: 100, price: '₦999', popular: false },
@@ -26,6 +27,7 @@ const TOKEN_PACKAGES = [
 
 const TopUpScreen: React.FC<any> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { addCoins } = useUser();
   const [selectedPackage, setSelectedPackage] = useState<number | null>(3); // Default to popular
 
   const formatTokens = (num: number) => num.toLocaleString();
@@ -112,8 +114,9 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
           onPress={() => {
             const pkg = TOKEN_PACKAGES.find((p) => p.id === selectedPackage);
             if (pkg) {
-              console.log(`Purchasing ${pkg.tokens} tokens for ${pkg.price}`);
-              // TODO: Integrate payment processing
+              // TODO: Integrate payment gateway before adding coins
+              addCoins(pkg.tokens);
+              console.log(`Purchased ${pkg.tokens} tokens for ${pkg.price}`);
               navigation.goBack();
             }
           }}

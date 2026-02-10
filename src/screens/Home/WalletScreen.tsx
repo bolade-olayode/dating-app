@@ -1,6 +1,6 @@
 // src/screens/Home/WalletScreen.tsx
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import CoinBalance from '@components/ui/CoinBalance';
+import { useUser } from '@context/UserContext';
 
 // Premium token packages with placeholder costs
 const TOKEN_PACKAGES = [
@@ -65,7 +66,7 @@ const FEATURES = [
 const WalletScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const [balance] = useState(20000); // Mock balance - placeholder
+  const { coinBalance } = useUser();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
@@ -83,7 +84,7 @@ const WalletScreen: React.FC = () => {
       >
         {/* Balance Banner */}
         <CoinBalance
-          balance={balance}
+          balance={coinBalance}
           variant="banner"
           onBuyPress={() => navigation.navigate('TopUp')}
         />

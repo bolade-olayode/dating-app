@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
+import { useUser } from '@context/UserContext';
 
 const { width } = Dimensions.get('window');
 
@@ -103,8 +104,25 @@ const MENU_OPTIONS = [
 const ChatsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { matches } = useUser();
   const [activeFilter, setActiveFilter] = useState('Active');
   const [menuVisible, setMenuVisible] = useState(false);
+
+  // Merge real matches from context with mock conversations
+  const matchConversations = matches.map(match => ({
+    id: match.id,
+    name: match.profile.name,
+    photo: match.profile.photo,
+    lastMessage: '',
+    time: new Date(match.matchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    unread: 0,
+    age: match.profile.age,
+    location: match.profile.location,
+    isNewMatch: true,
+  }));
+
+  // Real matches first, then mock data
+  const allConversations = [...matchConversations, ...CONVERSATIONS];
 
   const renderActiveMatch = ({ item }: { item: typeof ACTIVE_MATCHES[0] }) => (
     <TouchableOpacity style={styles.activeMatchItem} activeOpacity={0.8}>
@@ -213,7 +231,7 @@ const ChatsScreen: React.FC = () => {
 
       {/* Conversation List */}
       <FlatList
-        data={CONVERSATIONS}
+        data={allConversations}
         renderItem={renderConversation}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
