@@ -1,33 +1,14 @@
 // src/services/api/realAuthService.ts
 
-/**
- * REAL AUTHENTICATION SERVICE
- * 
- * This file will contain actual API calls to the backend.
- * Currently a placeholder - implement when backend is ready.
- * 
- * IMPLEMENTATION CHECKLIST (When Backend is Ready):
- * [ ] Install axios: npm install axios
- * [ ] Get API base URL from backend team
- * [ ] Get API endpoints documentation
- * [ ] Get authentication header format (Bearer token, etc.)
- * [ ] Implement error handling for each endpoint
- * [ ] Test with real backend in staging environment
- * [ ] Update ENV.API_BASE_URL in environment.ts
- * [ ] Switch to realAuthService in authService.ts
- */
-
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ENV, devLog, errorLog } from '@config/environment';
 import { AuthResponse } from './mockAuthService';
+import { STORAGE_KEYS } from '@utils/constant';
 
-/**
- * CREATE AXIOS INSTANCE
- * 
- * This configures axios with default settings for all API calls.
- * Includes base URL, timeout, and default headers.
- */
-const apiClient = axios.create({
+// ─── Axios Instance ──────────────────────────────────────────
+
+export const apiClient = axios.create({
   baseURL: ENV.API_BASE_URL,
   timeout: ENV.TIMEOUTS.API_REQUEST,
   headers: {
@@ -35,152 +16,186 @@ const apiClient = axios.create({
   },
 });
 
-/**
- * REQUEST INTERCEPTOR
- * 
- * Runs before every API request.
- * Add authentication tokens, log requests in dev mode, etc.
- */
+// ─── Request Interceptor (attach Bearer token) ──────────────
+
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     devLog('🌐 API Request:', config.method?.toUpperCase(), config.url);
-    
-    // TODO: Add authentication token to headers
-    // const token = await AsyncStorage.getItem('auth_token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
-    
+
+    try {
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (e) {
+      // Silently fail — token will be missing, API will return 401
+    }
+
     return config;
   },
   (error) => {
     errorLog('Request Error:', error);
     return Promise.reject(error);
-  }
+  },
 );
 
-/**
- * RESPONSE INTERCEPTOR
- * 
- * Runs after every API response.
- * Handle errors, refresh tokens, log responses, etc.
- */
+// ─── Response Interceptor ────────────────────────────────────
+
 apiClient.interceptors.response.use(
   (response) => {
     devLog('✅ API Response:', response.status, response.config.url);
     return response;
   },
   (error) => {
-    errorLog('❌ API Error:', error.response?.status, error.message);
-    
-    // TODO: Handle specific error codes
-    // if (error.response?.status === 401) {
-    //   // Unauthorized - redirect to login
-    // }
-    // if (error.response?.status === 500) {
-    //   // Server error - show user-friendly message
-    // }
-    
+    const status = error.response?.status;
+    const message = error.response?.data?.message || error.message;
+    errorLog('❌ API Error:', status, message);
     return Promise.reject(error);
-  }
+  },
 );
 
-/**
- * REAL: Send OTP
- * 
- * TODO: Implement when backend endpoint is ready
- * Expected endpoint: POST /auth/send-otp
- * Expected body: { phoneOrEmail: string }
- */
-const sendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
+// ─── Send OTP ────────────────────────────────────────────────
+// mode = 'login'  → POST /api/auth/login/init
+// mode = 'signup' → POST /api/onboarding/init (requires both email + phone)
+
+const sendOTP = async (
+  phoneOrEmail: string,
+  mode: 'login' | 'signup' = 'login',
+  extra?: { email?: string; phone?: string },
+): Promise<AuthResponse> => {
   try {
-    const response = await apiClient.post('/auth/send-otp', {
-      phoneOrEmail,
-    });
+    let url: string;
+    let body: Record<string, string>;
+
+    if (mode === 'signup') {
+      // Signup requires both email and phone
+      url = '/api/onboarding/init';
+      body = {
+        email: extra?.email || (phoneOrEmail.includes('@') ? phoneOrEmail : ''),
+        phone: extra?.phone || (!phoneOrEmail.includes('@') ? phoneOrEmail : ''),
+      };
+    } else {
+      // Login uses either phone or email
+      url = '/api/auth/login/init';
+      const isEmail = phoneOrEmail.includes('@');
+      body = isEmail ? { email: phoneOrEmail } : { phone: phoneOrEmail };
+    }
+
+    const response = await apiClient.post(url, body);
 
     return {
       success: true,
-      message: response.data.message || 'OTP sent successfully',
-      expiresAt: response.data.expiresAt,
+      message: response.data?.message || 'OTP sent successfully',
+      expiresAt: response.data?.expiresAt,
     };
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || 'Failed to send OTP',
+      message: error.response?.data?.message || 'Failed to send OTP. Please try again.',
     };
   }
 };
 
-/**
- * REAL: Verify OTP
- *
- * TODO: Implement when backend endpoint is ready
- * Expected endpoint: POST /auth/verify-otp
- * Expected body: { phoneOrEmail: string, code: string }
- */
-const verifyOTP = async (code: string, phoneOrEmail?: string): Promise<AuthResponse> => {
+// ─── Verify OTP ──────────────────────────────────────────────
+// mode = 'login'  → POST /api/auth/login/verify
+// mode = 'signup' → POST /api/onboarding/verify
+
+const verifyOTP = async (
+  code: string,
+  phoneOrEmail?: string,
+  mode: 'login' | 'signup' = 'login',
+): Promise<AuthResponse> => {
   try {
-    const response = await apiClient.post('/auth/verify-otp', {
-      code,
-      phoneOrEmail,
-    });
+    let url: string;
+    let body: Record<string, string>;
+
+    const isEmail = phoneOrEmail?.includes('@');
+
+    if (mode === 'signup') {
+      url = '/api/onboarding/verify';
+      body = {
+        otp: code,
+        ...(isEmail ? { email: phoneOrEmail! } : { phone: phoneOrEmail! }),
+      };
+    } else {
+      url = '/api/auth/login/verify';
+      body = {
+        otp: code,
+        ...(isEmail ? { email: phoneOrEmail! } : { phone: phoneOrEmail! }),
+      };
+    }
+
+    const response = await apiClient.post(url, body);
+
+    const token = response.data?.token || response.data?.accessToken;
+    const user = response.data?.user;
+
+    // Persist token
+    if (token) {
+      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+    }
 
     return {
       success: true,
       message: 'OTP verified successfully',
-      token: response.data.token,
-      user: response.data.user,
-      expiresAt: response.data.expiresAt,
+      token,
+      user: user
+        ? { id: user.id || user._id, phone: user.phone, email: user.email }
+        : undefined,
     };
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || 'Invalid OTP',
+      message: error.response?.data?.message || 'Invalid OTP. Please try again.',
     };
   }
 };
 
-/**
- * REAL: Resend OTP
- * 
- * TODO: Implement when backend endpoint is ready
- */
-const resendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
+// ─── Resend OTP ──────────────────────────────────────────────
+// Re-uses sendOTP under the hood
+
+const resendOTP = async (
+  phoneOrEmail: string,
+  mode: 'login' | 'signup' = 'login',
+  extra?: { email?: string; phone?: string },
+): Promise<AuthResponse> => {
+  return sendOTP(phoneOrEmail, mode, extra);
+};
+
+// ─── Get Current User ────────────────────────────────────────
+
+const getMe = async (): Promise<AuthResponse> => {
   try {
-    const response = await apiClient.post('/auth/resend-otp', {
-      phoneOrEmail,
-    });
+    const response = await apiClient.get('/api/auth/me');
+    const user = response.data?.user || response.data;
 
     return {
       success: true,
-      message: response.data.message || 'OTP resent successfully',
-      expiresAt: response.data.expiresAt,
+      message: 'User fetched successfully',
+      user: {
+        id: user.id || user._id,
+        phone: user.phone,
+        email: user.email,
+      },
     };
   } catch (error: any) {
     return {
       success: false,
-      message: error.response?.data?.message || 'Failed to resend OTP',
+      message: error.response?.data?.message || 'Failed to fetch user profile',
     };
   }
 };
 
-/**
- * REAL: Login
- * 
- * TODO: Implement when backend endpoint is ready
- */
+// ─── Login (legacy — not used by OTP flow) ───────────────────
+
 const login = async (email: string, password: string): Promise<AuthResponse> => {
   try {
-    const response = await apiClient.post('/auth/login', {
-      email,
-      password,
-    });
-    
+    const response = await apiClient.post('/api/auth/login', { email, password });
     return {
       success: true,
       message: 'Login successful',
-      token: response.data.token,
-      user: response.data.user,
+      token: response.data?.token,
+      user: response.data?.user,
     };
   } catch (error: any) {
     return {
@@ -190,15 +205,11 @@ const login = async (email: string, password: string): Promise<AuthResponse> => 
   }
 };
 
-/**
- * REAL: Logout
- * 
- * TODO: Implement when backend endpoint is ready
- */
+// ─── Logout ──────────────────────────────────────────────────
+
 const logout = async (): Promise<AuthResponse> => {
   try {
-    await apiClient.post('/auth/logout');
-    
+    await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     return {
       success: true,
       message: 'Logged out successfully',
@@ -211,16 +222,13 @@ const logout = async (): Promise<AuthResponse> => {
   }
 };
 
-/**
- * EXPORT: Real Authentication Service
- * 
- * Currently contains placeholder implementations.
- * Replace function bodies when backend endpoints are ready.
- */
+// ─── Export ──────────────────────────────────────────────────
+
 export const realAuthService = {
   sendOTP,
   verifyOTP,
   resendOTP,
+  getMe,
   login,
   logout,
 };

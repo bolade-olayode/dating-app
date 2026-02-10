@@ -32,6 +32,7 @@ interface Props {
       phoneNumber?: string;
       email?: string;
       expiresAt?: number;
+      mode?: 'login' | 'signup';
     };
   };
 }
@@ -42,6 +43,7 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   // Get phone number or email from params
   const phoneNumber = route.params?.phoneNumber;
   const email = route.params?.email;
+  const mode = route.params?.mode || 'login';
   const isPhoneMode = !!phoneNumber;
   const contact = isPhoneMode ? phoneNumber : email;
   const type = isPhoneMode ? 'phone' : 'email';
@@ -117,12 +119,23 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
     setLoading(true);
 
     try {
-      devLog('Verifying OTP:', otpCode, 'for:', contact);
-      const result = await authService.verifyOTP(otpCode, contact);
+      devLog('Verifying OTP:', otpCode, 'for:', contact, 'mode:', mode);
+      const result = await authService.verifyOTP(otpCode, contact, mode);
 
       if (result.success) {
         devLog('OTP Verified successfully!', result);
-        navigation.replace('NameInput');
+
+        if (mode === 'login') {
+          // Login: fetch profile and go to HomeTabs
+          if (result.token) {
+            const meResult = await (authService as any).getMe?.();
+            devLog('getMe result:', meResult);
+          }
+          navigation.reset({ index: 0, routes: [{ name: 'HomeTabs' }] });
+        } else {
+          // Signup: continue onboarding
+          navigation.replace('NameInput');
+        }
       } else {
         Alert.alert('Verification Failed', result.message);
       }

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(npx expo start)"
+      "Bash(npx expo start)",
+      "WebFetch(domain:meetpie-backend.onrender.com)"
     ]
   }
 }

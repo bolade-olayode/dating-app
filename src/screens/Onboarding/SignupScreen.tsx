@@ -68,7 +68,7 @@ const SignupScreen: React.FC<any> = ({ navigation }) => {
           <PrimaryButton
             text="Use Phone or Email"
             variant={1}
-            onPress={() => navigation.navigate('Register')}
+            onPress={() => navigation.navigate('Register', { mode: 'signup' })}
           />
         </View>
       </View>

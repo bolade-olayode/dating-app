@@ -21,9 +21,9 @@ export const ENV = {
   isDevelopment: __DEV__,
   
   // API Base URLs (switches automatically based on environment)
-  API_BASE_URL: __DEV__ 
-    ? 'http://localhost:5000/api/v1'  // Local development server
-    : 'https://api.opueh.com/v1',      // Production API
+  API_BASE_URL: __DEV__
+    ? 'https://meetpie-backend.onrender.com'  // Development (Render)
+    : 'https://meetpie-backend.onrender.com',  // Production API
   
   // Test credentials (ONLY available in development)
   TEST_OTP: '12345',
@@ -32,7 +32,7 @@ export const ENV = {
   
   // Feature flags (control what's enabled in different environments)
   FEATURES: {
-    USE_MOCK_API: __DEV__,           // Use mock API in development
+    USE_MOCK_API: false,              // Set to true to use mock API (no backend needed)
     ENABLE_DEBUG_LOGS: __DEV__,      // Show console logs in development
     SKIP_ONBOARDING: false,          // Set to true to skip onboarding during dev (testing)
     ENABLE_ERROR_OVERLAY: __DEV__,   // Show error details in development

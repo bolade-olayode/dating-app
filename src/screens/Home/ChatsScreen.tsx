@@ -236,6 +236,7 @@ const ChatsScreen: React.FC = () => {
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.conversationList}
+        style={styles.conversationFlatList}
       />
 
       {/* Menu Modal */}
@@ -361,6 +362,10 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.SemiBold,
   },
   // Conversation List
+  conversationFlatList: {
+    flex: 1,
+    marginTop: 16,
+  },
   conversationList: {
     paddingHorizontal: 20,
     paddingBottom: 120,

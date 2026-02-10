@@ -21,6 +21,7 @@ import Icon from "react-native-vector-icons/Ionicons";
 import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
 import { MockPhotoService } from '../../services/api/mockPhotoService';
+import { onboardingService } from '@services/api/onboardingService';
 
 // Components
 import Flare from "@components/ui/Flare";
@@ -118,20 +119,33 @@ const PhotoUploadScreen: React.FC<Props> = ({ navigation, route }) => {
         setPhotos(prev => prev.filter(p => p.id !== id));
     };
 
-    const handleContinue = () => {
-        const uploadedCount = photos.filter(p => !p.isUploading && !p.error).length;
+    const handleContinue = async () => {
+        const uploadedPhotos = photos.filter(p => !p.isUploading && !p.error);
 
-        if (uploadedCount < MIN_PHOTOS) {
+        if (uploadedPhotos.length < MIN_PHOTOS) {
             Alert.alert('Photos Required', `Please upload at least ${MIN_PHOTOS} photos to continue.`);
             return;
         }
 
         setMainLoading(true);
-        setTimeout(() => {
-            setMainLoading(false);
-            // Onboarding Complete! Navigate to Initializing Screen
+        try {
+            // Send photo URIs to API (these would be Cloudinary URLs in production)
+            const photoUrls = uploadedPhotos.map(p => p.uri);
+            const result = await onboardingService.uploadPhotos(photoUrls);
+
+            if (!result.success) {
+                Alert.alert('Error', result.message);
+                setMainLoading(false);
+                return;
+            }
+
+            // Onboarding complete!
             navigation.replace('InitializingScreen');
-        }, 500);
+        } catch (err) {
+            Alert.alert('Error', 'Something went wrong. Please try again.');
+        } finally {
+            setMainLoading(false);
+        }
     };
 
     // Render a single slot based on index (0-3)

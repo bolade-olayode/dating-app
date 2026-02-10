@@ -33,18 +33,22 @@ import DiscoverySettingsScreen from '@screens/Home/DiscoverySettingsScreen';
 import PrivacySafetyScreen from '@screens/Home/PrivacySafetyScreen';
 import ProfilePerformanceScreen from '@screens/Home/ProfilePerformanceScreen';
 import AccountActionsScreen from '@screens/Home/AccountActionsScreen';
+import ExploreCategoryScreen from '@screens/Home/ExploreCategoryScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
   Welcome: undefined;
   Signup: undefined;
-  Register: undefined;
+  Register: {
+    mode: 'login' | 'signup';
+  };
   Login: undefined;
   Verification: {
     phoneNumber?: string;
     email?: string;
     expiresAt?: number;
-  } | undefined;
+    mode: 'login' | 'signup';
+  };
   NameInput: undefined;
   DateOfBirthInput: {
     name: string;
@@ -118,6 +122,12 @@ export type RootStackParamList = {
   PrivacySafety: undefined;
   ProfilePerformance: undefined;
   AccountActions: undefined;
+  ExploreCategory: {
+    categoryId: string;
+    categoryTitle: string;
+    memberCount: string;
+    type: 'interest' | 'relationship';
+  };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -131,8 +141,7 @@ const AppNavigator = () => {
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
         <Stack.Navigator
-          // TODO: Change back to "Welcome" when APIs are ready
-          initialRouteName="InitializingScreen"
+          initialRouteName="Welcome"
           screenOptions={{
             headerShown: false,
             cardStyle: { backgroundColor: theme.colors.background },
@@ -164,6 +173,7 @@ const AppNavigator = () => {
           <Stack.Screen name="PrivacySafety" component={PrivacySafetyScreen} />
           <Stack.Screen name="ProfilePerformance" component={ProfilePerformanceScreen} />
           <Stack.Screen name="AccountActions" component={AccountActionsScreen} />
+          <Stack.Screen name="ExploreCategory" component={ExploreCategoryScreen} />
           <Stack.Screen
             name="Match"
             component={MatchScreen}

@@ -20,7 +20,8 @@ import ProgressIndicator from "@components/ui/ProgressIndicator";
 // Config & Data
 import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
-import { INTEREST_CATEGORIES, PROFILE_REQUIREMENTS } from '../../utils/constant';
+import { INTEREST_CATEGORIES, PROFILE_REQUIREMENTS, InterestCategory } from '../../utils/constant';
+import { onboardingService } from '@services/api/onboardingService';
 
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -44,6 +45,7 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
     // State
     const [selected, setSelected] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const [categories, setCategories] = useState<InterestCategory[]>(INTEREST_CATEGORIES);
 
     // Limits
     const MAX_SELECTION = PROFILE_REQUIREMENTS.MAX_INTERESTS; // 15
@@ -57,6 +59,19 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
             NavigationBar.setBackgroundColorAsync("#000000");
             NavigationBar.setButtonStyleAsync("light");
         }
+
+        // Fetch interests from API, fall back to local constants
+        const fetchInterests = async () => {
+            try {
+                const result = await onboardingService.getInterests();
+                if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
+                    setCategories(result.data);
+                }
+            } catch (err) {
+                // Silently fall back to local INTEREST_CATEGORIES
+            }
+        };
+        fetchInterests();
     }, []);
 
     const toggleItem = (id: string) => {
@@ -69,15 +84,22 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
         }
     };
 
-    const handleContinue = (isSkip = false) => {
+    const handleContinue = async (isSkip = false) => {
         setLoading(true);
-        
-        // If skipping, send empty array or existing selection? 
-        // Reference implies skip is allowed, so we won't validate min length if skipped.
+
         const interestsToSend = isSkip ? [] : selected;
 
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            // Save interests to API (skip sends empty array)
+            if (interestsToSend.length > 0) {
+                const result = await onboardingService.saveInterests(interestsToSend);
+                if (!result.success) {
+                    Alert.alert('Error', result.message);
+                    setLoading(false);
+                    return;
+                }
+            }
+
             navigation.navigate('PhotoUpload', {
                 name,
                 dateOfBirth,
@@ -87,7 +109,11 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 relationshipGoal,
                 interests: interestsToSend,
             });
-        }, 500);
+        } catch (err) {
+            Alert.alert('Error', 'Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -110,7 +136,7 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    {INTEREST_CATEGORIES.map((category) => (
+                    {categories.map((category) => (
                         <View key={category.title} style={styles.categorySection}>
                             <Text style={styles.categoryTitle}>{category.title}</Text>
                             <View style={styles.itemsWrapper}>

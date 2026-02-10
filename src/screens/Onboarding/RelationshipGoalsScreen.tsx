@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     Platform,
     ScrollView,
+    Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +25,7 @@ import { PrimaryButton } from "@components/ui/Buttons";
 import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
 import { RELATIONSHIP_GOALS } from '../../utils/constant';
+import { onboardingService } from '@services/api/onboardingService';
 
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -56,12 +58,26 @@ const RelationshipGoalsScreen: React.FC<Props> = ({ navigation, route }) => {
         }
     }, []);
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
         if (!goal) return;
 
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            // Batch all profile details into one API call
+            const result = await onboardingService.updateDetails({
+                name,
+                dateOfBirth,
+                gender,
+                lookingFor,
+                relationshipGoal: goal,
+            });
+
+            if (!result.success) {
+                Alert.alert('Error', result.message);
+                setLoading(false);
+                return;
+            }
+
             navigation.navigate('InterestsSelection', {
                 name,
                 dateOfBirth,
@@ -70,7 +86,11 @@ const RelationshipGoalsScreen: React.FC<Props> = ({ navigation, route }) => {
                 lookingFor,
                 relationshipGoal: goal,
             });
-        }, 500);
+        } catch (err) {
+            Alert.alert('Error', 'Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

@@ -183,10 +183,28 @@ const logout = async (): Promise<AuthResponse> => {
   };
 };
 
+/**
+ * MOCK: Get current user
+ */
+const getMe = async (): Promise<AuthResponse> => {
+  devLog('👤 Mock API: Getting current user');
+  await new Promise(resolve => setTimeout(resolve, 500));
+  return {
+    success: true,
+    message: 'User fetched successfully',
+    user: {
+      id: 'mock_user_123',
+      phone: '+2348012345678',
+      email: 'test@example.com',
+    },
+  };
+};
+
 export const mockAuthService = {
   sendOTP,
   verifyOTP,
   resendOTP,
+  getMe,
   login,
   logout,
 };
