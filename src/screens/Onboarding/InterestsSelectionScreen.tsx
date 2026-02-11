@@ -22,6 +22,7 @@ import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
 import { INTEREST_CATEGORIES, PROFILE_REQUIREMENTS, InterestCategory } from '../../utils/constant';
 import { onboardingService } from '@services/api/onboardingService';
+import { devLog } from '@config/environment';
 
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -64,11 +65,37 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
         const fetchInterests = async () => {
             try {
                 const result = await onboardingService.getInterests();
-                if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
-                    setCategories(result.data);
+                devLog('🎯 Interests API result keys:', result.success ? Object.keys(result.data || {}) : 'failed');
+                if (result.success && result.data && typeof result.data === 'object') {
+                    // Backend returns { "General": [...], "Food": [...], ... }
+                    // Convert object-keyed format to our array-of-categories format
+                    const dataObj = result.data;
+                    const categoryKeys = Object.keys(dataObj).filter(
+                        k => Array.isArray(dataObj[k]) && dataObj[k].length > 0
+                    );
+
+                    if (categoryKeys.length > 0) {
+                        const mapped = categoryKeys.map(key => ({
+                            title: key,
+                            items: dataObj[key].map((item: any) => {
+                                // Name includes emoji e.g. "Travel ✈️" — split into label + emoji
+                                const name: string = item.name || '';
+                                const emojiMatch = name.match(/([\p{Emoji_Presentation}\p{Extended_Pictographic}])/u);
+                                const emoji = emojiMatch ? emojiMatch[0] : '';
+                                const label = emoji ? name.replace(emoji, '').trim() : name;
+                                return {
+                                    id: item._id,
+                                    label,
+                                    emoji,
+                                };
+                            }),
+                        }));
+                        devLog('🎯 Mapped', mapped.length, 'categories from API');
+                        setCategories(mapped);
+                    }
                 }
             } catch (err) {
-                // Silently fall back to local INTEREST_CATEGORIES
+                devLog('⚠️ Interests fetch failed, using local fallback');
             }
         };
         fetchInterests();
@@ -90,16 +117,19 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
         const interestsToSend = isSkip ? [] : selected;
 
         try {
-            // Save interests to API (skip sends empty array)
+            // Attempt to save interests to API; continue even if it fails
             if (interestsToSend.length > 0) {
                 const result = await onboardingService.saveInterests(interestsToSend);
-                if (!result.success) {
-                    Alert.alert('Error', result.message);
-                    setLoading(false);
-                    return;
+                if (result.success) {
+                    devLog('✅ Interests saved to backend:', interestsToSend.length, 'items');
+                } else {
+                    devLog('⚠️ saveInterests failed, continuing anyway:', result.message);
                 }
             }
-
+        } catch (err) {
+            devLog('⚠️ saveInterests error, continuing anyway:', err);
+        } finally {
+            setLoading(false);
             navigation.navigate('PhotoUpload', {
                 name,
                 dateOfBirth,
@@ -109,10 +139,6 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 relationshipGoal,
                 interests: interestsToSend,
             });
-        } catch (err) {
-            Alert.alert('Error', 'Something went wrong. Please try again.');
-        } finally {
-            setLoading(false);
         }
     };
 

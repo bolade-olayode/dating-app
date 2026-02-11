@@ -104,6 +104,7 @@ const verifyOTP = async (
   code: string,
   phoneOrEmail?: string,
   mode: 'login' | 'signup' = 'login',
+  extra?: { email?: string; phone?: string },
 ): Promise<AuthResponse> => {
   try {
     let url: string;
@@ -113,26 +114,37 @@ const verifyOTP = async (
 
     if (mode === 'signup') {
       url = '/api/onboarding/verify';
+      // Swagger spec: { email, phone, code }
       body = {
-        otp: code,
-        ...(isEmail ? { email: phoneOrEmail! } : { phone: phoneOrEmail! }),
+        code: code,
+        email: isEmail ? phoneOrEmail! : (extra?.email || ''),
+        phone: !isEmail ? phoneOrEmail! : (extra?.phone || ''),
       };
+      // Remove empty strings so we don't send blank fields
+      Object.keys(body).forEach(k => { if (!body[k]) delete body[k]; });
     } else {
       url = '/api/auth/login/verify';
       body = {
-        otp: code,
+        code: code,
         ...(isEmail ? { email: phoneOrEmail! } : { phone: phoneOrEmail! }),
       };
     }
 
+    devLog('🔐 Verify OTP request:', url, JSON.stringify(body));
     const response = await apiClient.post(url, body);
+    devLog('🔐 Verify OTP response:', JSON.stringify(response.data));
 
-    const token = response.data?.token || response.data?.accessToken;
-    const user = response.data?.user;
+    // Backend wraps response in { status, message, data: { token, user } }
+    const payload = response.data?.data || response.data;
+    const token = payload?.token || payload?.accessToken;
+    const user = payload?.user;
 
     // Persist token
     if (token) {
       await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+      devLog('🔐 Token saved to storage:', token.substring(0, 20) + '...');
+    } else {
+      devLog('⚠️ No token found in response! Response data:', JSON.stringify(response.data));
     }
 
     return {
@@ -144,6 +156,7 @@ const verifyOTP = async (
         : undefined,
     };
   } catch (error: any) {
+    errorLog('Verify OTP full error:', JSON.stringify(error.response?.data));
     return {
       success: false,
       message: error.response?.data?.message || 'Invalid OTP. Please try again.',
@@ -167,7 +180,8 @@ const resendOTP = async (
 const getMe = async (): Promise<AuthResponse> => {
   try {
     const response = await apiClient.get('/api/auth/me');
-    const user = response.data?.user || response.data;
+    const payload = response.data?.data || response.data;
+    const user = payload?.user || payload;
 
     return {
       success: true,
@@ -191,11 +205,12 @@ const getMe = async (): Promise<AuthResponse> => {
 const login = async (email: string, password: string): Promise<AuthResponse> => {
   try {
     const response = await apiClient.post('/api/auth/login', { email, password });
+    const lPayload = response.data?.data || response.data;
     return {
       success: true,
       message: 'Login successful',
-      token: response.data?.token,
-      user: response.data?.user,
+      token: lPayload?.token,
+      user: lPayload?.user,
     };
   } catch (error: any) {
     return {

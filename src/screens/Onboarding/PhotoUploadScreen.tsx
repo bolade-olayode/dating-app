@@ -22,6 +22,7 @@ import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
 import { MockPhotoService } from '../../services/api/mockPhotoService';
 import { onboardingService } from '@services/api/onboardingService';
+import { devLog } from '@config/environment';
 
 // Components
 import Flare from "@components/ui/Flare";
@@ -129,22 +130,19 @@ const PhotoUploadScreen: React.FC<Props> = ({ navigation, route }) => {
 
         setMainLoading(true);
         try {
-            // Send photo URIs to API (these would be Cloudinary URLs in production)
+            // Attempt to upload photos to API; continue even if it fails
             const photoUrls = uploadedPhotos.map(p => p.uri);
             const result = await onboardingService.uploadPhotos(photoUrls);
 
             if (!result.success) {
-                Alert.alert('Error', result.message);
-                setMainLoading(false);
-                return;
+                devLog('⚠️ uploadPhotos failed, continuing anyway:', result.message);
             }
-
-            // Onboarding complete!
-            navigation.replace('InitializingScreen');
         } catch (err) {
-            Alert.alert('Error', 'Something went wrong. Please try again.');
+            devLog('⚠️ uploadPhotos error, continuing anyway:', err);
         } finally {
             setMainLoading(false);
+            // Onboarding complete!
+            navigation.replace('InitializingScreen');
         }
     };
 

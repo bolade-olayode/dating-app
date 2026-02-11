@@ -48,7 +48,7 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const contact = isPhoneMode ? phoneNumber : email;
   const type = isPhoneMode ? 'phone' : 'email';
 
-  const [otp, setOtp] = useState(['', '', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<Array<TextInput | null>>([]);
   const [timer, setTimer] = useState(30);
   const [focusedInput, setFocusedInput] = useState<number | null>(null);
@@ -69,18 +69,18 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
     // Handle paste
     if (text.length > 1) {
       const sanitized = text.replace(/[^0-9]/g, '');
-      const pastedData = sanitized.slice(0, 5).split('');
+      const pastedData = sanitized.slice(0, 6).split('');
       const newOtp = [...otp];
       pastedData.forEach((char, i) => {
-        if (index + i < 5) newOtp[index + i] = char;
+        if (index + i < 6) newOtp[index + i] = char;
       });
       setOtp(newOtp);
 
-      const nextIndex = Math.min(index + pastedData.length - 1, 4);
-      if (nextIndex === 4 && pastedData.length >= 5) {
+      const nextIndex = Math.min(index + pastedData.length - 1, 5);
+      if (nextIndex === 5 && pastedData.length >= 6) {
         Keyboard.dismiss();
       } else {
-        inputRefs.current[Math.min(nextIndex + 1, 4)]?.focus();
+        inputRefs.current[Math.min(nextIndex + 1, 5)]?.focus();
       }
       return;
     }
@@ -90,9 +90,9 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
     newOtp[index] = char;
     setOtp(newOtp);
 
-    if (char && index < 4) {
+    if (char && index < 5) {
       inputRefs.current[index + 1]?.focus();
-    } else if (char && index === 4) {
+    } else if (char && index === 5) {
       Keyboard.dismiss();
     }
   };
@@ -114,13 +114,17 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleContinue = async () => {
     const otpCode = otp.join('');
-    if (otpCode.length < 5) return;
+    if (otpCode.length < 6) return;
 
     setLoading(true);
 
     try {
-      devLog('Verifying OTP:', otpCode, 'for:', contact, 'mode:', mode);
-      const result = await authService.verifyOTP(otpCode, contact, mode);
+      // For signup, OTP is sent to email — use email as the identifier for verify
+      // Also pass the phone number as extra so backend gets both identifiers
+      const verifyContact = (mode === 'signup' && email) ? email : contact;
+      const extra = mode === 'signup' ? { email, phone: phoneNumber } : undefined;
+      devLog('Verifying OTP:', otpCode, 'for:', verifyContact, 'mode:', mode, 'extra:', extra);
+      const result = await authService.verifyOTP(otpCode, verifyContact, mode, extra);
 
       if (result.success) {
         devLog('OTP Verified successfully!', result);
@@ -311,7 +315,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   otpInput: {
-    width: width / 7,
+    width: width / 8.5,
     height: 60,
     borderRadius: 12,
     backgroundColor: '#1A1A1A',

@@ -37,7 +37,7 @@ const mockOTPStorage = new Map<string, OTPData>();
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
 // MAGIC CODES: These will ALWAYS verify successfully (for testing)
-const MAGIC_TEST_CODES = ['12345', '00000', '11111'];
+const MAGIC_TEST_CODES = ['123456', '000000', '111111'];
 
 /**
  * MOCK: Send OTP to phone number or email
@@ -51,7 +51,7 @@ const sendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
   // Store OTP with expiration time
   const now = Date.now();
   const otpData: OTPData = {
-    code: '12345', // Default 5-digit code
+    code: '123456', // Default 6-digit code
     sentAt: now,
     expiresAt: now + OTP_EXPIRY_MS,
   };
@@ -70,7 +70,7 @@ const sendOTP = async (phoneOrEmail: string): Promise<AuthResponse> => {
  * MOCK: Verify OTP code
  * UPDATED: Includes "Magic Code" bypass so testing never gets stuck.
  */
-const verifyOTP = async (code: string, phoneOrEmail?: string): Promise<AuthResponse> => {
+const verifyOTP = async (code: string, phoneOrEmail?: string, _mode?: 'login' | 'signup', _extra?: { email?: string; phone?: string }): Promise<AuthResponse> => {
   devLog('🔐 Mock API: Verifying OTP:', code);
 
   // Simulate network delay

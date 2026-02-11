@@ -173,35 +173,35 @@ export interface RelationshipGoal {
 }
 
 export const RELATIONSHIP_GOALS: RelationshipGoal[] = [
-  { 
-    id: 'marriage', 
-    label: 'Marriage', 
-    description: 'Looking for a life partner', 
-    icon: 'diamond-outline' // Ionicons name
+  {
+    id: 'Get married',
+    label: 'Get Married',
+    description: 'Looking for a life partner',
+    icon: 'diamond-outline',
   },
-  { 
-    id: 'serious', 
-    label: 'Relationship', 
-    description: 'Looking for something serious', 
-    icon: 'heart-outline' 
+  {
+    id: 'Find a relationship',
+    label: 'Find a Relationship',
+    description: 'Looking for something serious',
+    icon: 'heart-outline',
   },
-  { 
-    id: 'casual', 
-    label: 'Something Casual', 
-    description: 'Just here to have fun', 
-    icon: 'wine-outline' 
+  {
+    id: 'Chat and meet friends',
+    label: 'Chat & Meet Friends',
+    description: 'Expanding my social circle',
+    icon: 'people-outline',
   },
-  { 
-    id: 'friends', 
-    label: 'New Friends', 
-    description: 'Expanding my social circle', 
-    icon: 'people-outline' 
+  {
+    id: 'Learn other cultures',
+    label: 'Learn Other Cultures',
+    description: 'Discover and connect across cultures',
+    icon: 'globe-outline',
   },
-  { 
-    id: 'unsure', 
-    label: 'Not sure yet', 
-    description: 'Still figuring it out', 
-    icon: 'help-circle-outline' 
+  {
+    id: 'Travel the world',
+    label: 'Travel the World',
+    description: 'Find travel companions',
+    icon: 'airplane-outline',
   },
 ];
 

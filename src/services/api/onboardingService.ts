@@ -38,8 +38,23 @@ const updateDetails = async (
   details: OnboardingDetailsPayload,
 ): Promise<OnboardingResponse> => {
   try {
-    devLog('📝 Onboarding: Updating details', details);
-    const response = await apiClient.patch('/api/onboarding/details', details);
+    // Map frontend field names → backend API field names
+    // Also map frontend values → backend enum values
+    const lookingForMap: Record<string, string> = { men: 'male', women: 'female', both: 'both' };
+    const apiBody: Record<string, any> = {
+      fullname: details.name,
+      dob: details.dateOfBirth,
+      gender: details.gender,
+      interestedIn: details.lookingFor ? (lookingForMap[details.lookingFor] || details.lookingFor) : undefined,
+      goal: details.relationshipGoal,
+      lat: 6.5244,
+      long: 3.3792,
+    };
+    // Remove undefined fields
+    Object.keys(apiBody).forEach(k => { if (apiBody[k] === undefined) delete apiBody[k]; });
+
+    devLog('📝 Onboarding: Updating details', apiBody);
+    const response = await apiClient.patch('/api/onboarding/details', apiBody);
 
     return {
       success: true,
@@ -66,7 +81,7 @@ const getInterests = async (): Promise<OnboardingResponse> => {
     return {
       success: true,
       message: 'Interests fetched successfully',
-      data: response.data?.categories || response.data,
+      data: response.data?.data?.categories || response.data?.data || response.data?.categories || response.data,
     };
   } catch (error: any) {
     errorLog('Onboarding getInterests error:', error.response?.data || error.message);

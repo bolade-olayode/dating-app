@@ -26,6 +26,7 @@ import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
 import { RELATIONSHIP_GOALS } from '../../utils/constant';
 import { onboardingService } from '@services/api/onboardingService';
+import { devLog } from '@config/environment';
 
 // Navigation
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -63,7 +64,8 @@ const RelationshipGoalsScreen: React.FC<Props> = ({ navigation, route }) => {
 
         setLoading(true);
         try {
-            // Batch all profile details into one API call
+            // Attempt to save profile details to API
+            // Continue onboarding even if API fails (data flows via nav params)
             const result = await onboardingService.updateDetails({
                 name,
                 dateOfBirth,
@@ -73,11 +75,12 @@ const RelationshipGoalsScreen: React.FC<Props> = ({ navigation, route }) => {
             });
 
             if (!result.success) {
-                Alert.alert('Error', result.message);
-                setLoading(false);
-                return;
+                devLog('⚠️ updateDetails failed, continuing anyway:', result.message);
             }
-
+        } catch (err) {
+            devLog('⚠️ updateDetails error, continuing anyway:', err);
+        } finally {
+            setLoading(false);
             navigation.navigate('InterestsSelection', {
                 name,
                 dateOfBirth,
@@ -86,10 +89,6 @@ const RelationshipGoalsScreen: React.FC<Props> = ({ navigation, route }) => {
                 lookingFor,
                 relationshipGoal: goal,
             });
-        } catch (err) {
-            Alert.alert('Error', 'Something went wrong. Please try again.');
-        } finally {
-            setLoading(false);
         }
     };
 
