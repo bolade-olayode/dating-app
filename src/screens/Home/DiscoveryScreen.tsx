@@ -35,14 +35,14 @@ import { useUser } from '@context/UserContext';
 
 const { width, height } = Dimensions.get('window');
 
-// Exact Figma dimensions
-const CARD_CONTAINER_WIDTH = 393; // Increased width
-const CARD_CONTAINER_HEIGHT = 620; // Increased slightly
-const CARD_WIDTH = 373; // Increased width
-const CARD_HEIGHT = 600; // Increased slightly
-const TOP_SPACING = 126;
-const BOTTOM_SPACING = 49;
-const SIDE_SPACING = 23;
+// Responsive dimensions — scale from Figma 393px base
+const SIDE_SPACING = Math.round(width * 0.058);  // ~23px on 393px
+const CARD_CONTAINER_WIDTH = width - SIDE_SPACING * 2;
+const CARD_WIDTH = CARD_CONTAINER_WIDTH - 20;     // 10px padding each side
+const CARD_HEIGHT = Math.min(Math.round(height * 0.68), CARD_WIDTH * 1.6); // ~4:5 aspect, capped
+const CARD_CONTAINER_HEIGHT = CARD_HEIGHT + 20;
+const TOP_SPACING = Math.round(height * 0.065);   // Minimal gap above header row
+const BOTTOM_SPACING = Math.round(height * 0.055); // ~49px on 900px height
 
 // Mock profile data for testing (10 profiles)
 const MOCK_PROFILES = [

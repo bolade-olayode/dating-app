@@ -57,43 +57,61 @@ apiClient.interceptors.response.use(
 // ─── Send OTP ────────────────────────────────────────────────
 // mode = 'login'  → POST /api/auth/login/init
 // mode = 'signup' → POST /api/onboarding/init (requires both email + phone)
+// Retries up to 3 times on network/timeout errors (backend cold-starts on Render)
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1500;
 
 const sendOTP = async (
   phoneOrEmail: string,
   mode: 'login' | 'signup' = 'login',
   extra?: { email?: string; phone?: string },
 ): Promise<AuthResponse> => {
-  try {
-    let url: string;
-    let body: Record<string, string>;
+  let url: string;
+  let body: Record<string, string>;
 
-    if (mode === 'signup') {
-      // Signup requires both email and phone
-      url = '/api/onboarding/init';
-      body = {
-        email: extra?.email || (phoneOrEmail.includes('@') ? phoneOrEmail : ''),
-        phone: extra?.phone || (!phoneOrEmail.includes('@') ? phoneOrEmail : ''),
-      };
-    } else {
-      // Login uses either phone or email
-      url = '/api/auth/login/init';
-      const isEmail = phoneOrEmail.includes('@');
-      body = isEmail ? { email: phoneOrEmail } : { phone: phoneOrEmail };
-    }
-
-    const response = await apiClient.post(url, body);
-
-    return {
-      success: true,
-      message: response.data?.message || 'OTP sent successfully',
-      expiresAt: response.data?.expiresAt,
+  if (mode === 'signup') {
+    url = '/api/onboarding/init';
+    body = {
+      email: extra?.email || (phoneOrEmail.includes('@') ? phoneOrEmail : ''),
+      phone: extra?.phone || (!phoneOrEmail.includes('@') ? phoneOrEmail : ''),
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      message: error.response?.data?.message || 'Failed to send OTP. Please try again.',
-    };
+  } else {
+    url = '/api/auth/login/init';
+    const isEmail = phoneOrEmail.includes('@');
+    body = isEmail ? { email: phoneOrEmail } : { phone: phoneOrEmail };
   }
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      devLog(`📤 sendOTP attempt ${attempt}/${MAX_RETRIES}:`, url);
+      const response = await apiClient.post(url, body);
+
+      return {
+        success: true,
+        message: response.data?.message || 'OTP sent successfully',
+        expiresAt: response.data?.expiresAt,
+      };
+    } catch (error: any) {
+      const status = error.response?.status;
+      const isNetworkOrTimeout = !status || status >= 500 || error.code === 'ECONNABORTED';
+
+      // Only retry on network/timeout/5xx errors, not on 4xx (bad request, etc.)
+      if (isNetworkOrTimeout && attempt < MAX_RETRIES) {
+        devLog(`⏳ sendOTP attempt ${attempt} failed (${error.code || status || 'network'}), retrying in ${RETRY_DELAY_MS}ms...`);
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        continue;
+      }
+
+      errorLog(`sendOTP failed after ${attempt} attempt(s):`, error.response?.data?.message || error.message);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to send OTP. Please try again.',
+      };
+    }
+  }
+
+  return { success: false, message: 'Failed to send OTP. Please try again.' };
 };
 
 // ─── Verify OTP ──────────────────────────────────────────────

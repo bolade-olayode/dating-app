@@ -13,11 +13,19 @@
       "bundleIdentifier": "com.opueh.app"
     },
     "android": {
-      "package": "com.opueh.app"
+      "package": "com.opueh.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-image-picker",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ed6d4780-0314-499d-b3e7-7c5dd29d8a88"
+      }
+    }
   }
 }
