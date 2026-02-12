@@ -20,7 +20,7 @@ import Icon from "react-native-vector-icons/Ionicons";
 // Config & Data
 import { FONTS } from "@config/fonts";
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
-import { MockPhotoService } from '../../services/api/mockPhotoService';
+import { uploadToCloudinary } from '../../services/api/cloudinaryService';
 import { onboardingService } from '@services/api/onboardingService';
 import { devLog } from '@config/environment';
 
@@ -102,14 +102,15 @@ const PhotoUploadScreen: React.FC<Props> = ({ navigation, route }) => {
                 // Add to state immediately
                 setPhotos(prev => [...prev, newPhoto]);
 
-                // Simulate Upload
+                // Upload to Cloudinary
                 try {
-                    await MockPhotoService.uploadPhoto(localUri);
-                    setPhotos(prev => prev.map(p => 
-                        p.id === tempId ? { ...p, isUploading: false } : p
+                    const cloudinaryUrl = await uploadToCloudinary(localUri);
+                    setPhotos(prev => prev.map(p =>
+                        p.id === tempId ? { ...p, uri: cloudinaryUrl, isUploading: false } : p
                     ));
                 } catch (error) {
-                    Alert.alert('Upload Failed', 'Could not upload one of the photos.');
+                    devLog('⚠️ Cloudinary upload failed:', error);
+                    Alert.alert('Upload Failed', 'Could not upload one of the photos. Please try again.');
                     setPhotos(prev => prev.filter(p => p.id !== tempId));
                 }
             }

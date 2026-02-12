@@ -54,19 +54,46 @@ apiClient.interceptors.response.use(
   },
 );
 
+// ─── Wake Up Backend (Render cold-start workaround) ─────────
+// Sends a lightweight ping to wake the server before the real request.
+// The ping has a long timeout (60s) since cold-starts can take 30-50s.
+
+let isServerAwake = false;
+
+const ensureServerAwake = async (): Promise<void> => {
+  if (isServerAwake) return;
+
+  try {
+    devLog('🏓 Pinging backend to wake it up...');
+    await axios.get(`${ENV.API_BASE_URL}/api/onboarding/interests`, { timeout: 60000 });
+    isServerAwake = true;
+    devLog('✅ Backend is awake');
+  } catch (err: any) {
+    // Even a 401/404 means the server is responding — it's awake
+    if (err.response?.status) {
+      isServerAwake = true;
+      devLog('✅ Backend is awake (responded with', err.response.status, ')');
+    } else {
+      devLog('⚠️ Backend wake-up ping failed, proceeding anyway');
+    }
+  }
+};
+
 // ─── Send OTP ────────────────────────────────────────────────
 // mode = 'login'  → POST /api/auth/login/init
 // mode = 'signup' → POST /api/onboarding/init (requires both email + phone)
-// Retries up to 3 times on network/timeout errors (backend cold-starts on Render)
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 1500;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 2000;
 
 const sendOTP = async (
   phoneOrEmail: string,
   mode: 'login' | 'signup' = 'login',
   extra?: { email?: string; phone?: string },
 ): Promise<AuthResponse> => {
+  // Wake up the backend first (handles Render cold-start)
+  await ensureServerAwake();
+
   let url: string;
   let body: Record<string, string>;
 
@@ -96,7 +123,6 @@ const sendOTP = async (
       const status = error.response?.status;
       const isNetworkOrTimeout = !status || status >= 500 || error.code === 'ECONNABORTED';
 
-      // Only retry on network/timeout/5xx errors, not on 4xx (bad request, etc.)
       if (isNetworkOrTimeout && attempt < MAX_RETRIES) {
         devLog(`⏳ sendOTP attempt ${attempt} failed (${error.code || status || 'network'}), retrying in ${RETRY_DELAY_MS}ms...`);
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS));

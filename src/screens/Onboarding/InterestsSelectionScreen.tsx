@@ -7,6 +7,7 @@ import {
     Platform,
     ScrollView,
     Alert,
+    ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -46,7 +47,8 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
     // State
     const [selected, setSelected] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
-    const [categories, setCategories] = useState<InterestCategory[]>(INTEREST_CATEGORIES);
+    const [fetchingInterests, setFetchingInterests] = useState(true);
+    const [categories, setCategories] = useState<InterestCategory[]>([]);
 
     // Limits
     const MAX_SELECTION = PROFILE_REQUIREMENTS.MAX_INTERESTS; // 15
@@ -67,8 +69,6 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 const result = await onboardingService.getInterests();
                 devLog('🎯 Interests API result keys:', result.success ? Object.keys(result.data || {}) : 'failed');
                 if (result.success && result.data && typeof result.data === 'object') {
-                    // Backend returns { "General": [...], "Food": [...], ... }
-                    // Convert object-keyed format to our array-of-categories format
                     const dataObj = result.data;
                     const categoryKeys = Object.keys(dataObj).filter(
                         k => Array.isArray(dataObj[k]) && dataObj[k].length > 0
@@ -78,7 +78,6 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                         const mapped = categoryKeys.map(key => ({
                             title: key,
                             items: dataObj[key].map((item: any) => {
-                                // Name includes emoji e.g. "Travel ✈️" — split into label + emoji
                                 const name: string = item.name || '';
                                 const emojiMatch = name.match(/([\p{Emoji_Presentation}\p{Extended_Pictographic}])/u);
                                 const emoji = emojiMatch ? emojiMatch[0] : '';
@@ -92,10 +91,17 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                         }));
                         devLog('🎯 Mapped', mapped.length, 'categories from API');
                         setCategories(mapped);
+                        setFetchingInterests(false);
+                        return;
                     }
                 }
+                // API succeeded but returned empty/unexpected data — use local fallback
+                setCategories(INTEREST_CATEGORIES);
             } catch (err) {
                 devLog('⚠️ Interests fetch failed, using local fallback');
+                setCategories(INTEREST_CATEGORIES);
+            } finally {
+                setFetchingInterests(false);
             }
         };
         fetchInterests();
@@ -157,6 +163,12 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                 </View>
 
                 {/* Categories List */}
+                {fetchingInterests ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#FF007B" />
+                        <Text style={styles.loadingText}>Loading interests...</Text>
+                    </View>
+                ) : (
                 <ScrollView
                     style={styles.scrollContainer}
                     contentContainerStyle={styles.scrollContent}
@@ -200,6 +212,7 @@ const InterestsSelectionScreen: React.FC<Props> = ({ navigation, route }) => {
                         </View>
                     ))}
                 </ScrollView>
+                )}
 
                 {/* Progress Indicator */}
                 <View style={{ paddingVertical: 20 }}>
@@ -259,6 +272,17 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: "#666",
         lineHeight: 22,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    loadingText: {
+        fontFamily: FONTS.Body,
+        fontSize: 14,
+        color: "#666",
+        marginTop: 12,
     },
     scrollContainer: {
         flex: 1,

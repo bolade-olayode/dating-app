@@ -38,6 +38,12 @@ export const ENV = {
     ENABLE_ERROR_OVERLAY: __DEV__,   // Show error details in development
   },
   
+  // Cloudinary (unsigned upload — swap keys for production)
+  CLOUDINARY: {
+    CLOUD_NAME: 'djfq0kez7',
+    UPLOAD_PRESET: 'meetpie',
+  },
+
   // Timeouts and delays (milliseconds)
   TIMEOUTS: {
     API_REQUEST: 30000,     // 30 seconds
