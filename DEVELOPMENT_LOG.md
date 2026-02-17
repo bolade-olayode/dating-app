@@ -1,10 +1,10 @@
-# DATING-APP DEVELOPMENT PROGRESS LOG
+# MEETPIE (OPUEH) DEVELOPMENT PROGRESS LOG
 
-**Project:** Opueh Dating App
+**Project:** MeetPie Dating App
 **Started:** January 29, 2026
-**Last Updated:** February 9, 2026
+**Last Updated:** February 11, 2026
 **Developer:** Olayode Bolade
-**Status:** Alpha Development (v0.2.0)
+**Status:** Alpha Development (v0.3.0)
 
 ---
 
@@ -14,14 +14,15 @@
 
 **Stack:**
 - Frontend: React Native (Expo SDK 52) + TypeScript
-- Backend: Node.js + MongoDB (Planned)
-- Design: Custom theme system, EB Garamond font
+- Backend: Node.js + Express + MongoDB (Live on Render)
+- Design: Custom dark theme, Sora font family
+- Image Storage: Cloudinary (unsigned upload)
 
 **Timeline:**
 - Week 1-2: Foundation & Auth Flow ✅
-- Week 3-4: Profile Creation ✅ (Complete!)
-- Week 5-7: Core Features (Discovery, Matching)
-- Week 8-12: Polish & Launch Prep
+- Week 3-4: Profile Creation & Core Screens ✅
+- Week 5-6: Backend API Integration ✅ (Auth + Onboarding)
+- Week 7+: Discovery/Explore/Messaging API, Payments, Admin Dashboard
 
 ---
 
@@ -561,223 +562,478 @@ Step 9 (Bio)         → 100%
 
 ---
 
-## CURRENT STATUS (February 9, 2026)
+### **Session 11: February 9-10, 2026 - Profile, Explore, Settings & UserContext**
 
-### **✅ Fully Complete**
+**What We Built:**
+
+**1. UserContext — Global State Management** (`UserContext.tsx`)
+- Full global state: coins, profile, matches, auth token
+- Persists coin balance to AsyncStorage
+- AppState listener flushes data when app goes to background
+- Functions: `addCoins`, `spendCoins`, `addMatch`, `login`, `logout`, `updateProfile`
+- Wrapped entire App.tsx with `<UserProvider>`
+
+**2. Profile/Me Screen** (`MeScreen.tsx` — full implementation)
+- Reads from UserContext with mock fallback via `useMemo`
+- Profile completion bar based on filled fields
+- Photo carousel header
+- Stats row (matches, views, likes)
+- Quick action buttons (Edit Profile, Settings, etc.)
+
+**3. Edit Profile Screen** (`EditProfileScreen.tsx`)
+- Reads from UserContext + `@utils/constant` for options
+- Editable fields: bio, photos, interests, basics (height, weight, education)
+- Uses same constants as onboarding for consistency
+
+**4. Explore Screen** (`ExploreScreen.tsx` — full implementation)
+- Two sections: "Explore by Interest" and "Explore by Relationship"
+- Interest cards: full-width tall cards with rotating background images
+- Relationship cards: bento grid layout (1 hero + 4 smaller)
+- Uses `INTEREST_CATEGORIES` and `INTENT_LABELS` from constants
+- Generates random member counts
+
+**5. Explore Category Screen** (`ExploreCategoryScreen.tsx`)
+- Header with back button, category title, member count, search icon
+- Top Profiles: horizontal scroll of first 5 profiles
+- Profile Grid: 2-column layout with heart icon, online indicator, zodiac signs
+- 8 mock profiles with diverse names/locations
+
+**6. Settings Screens Suite**
+- `DiscoverySettingsScreen.tsx` — age range, distance, gender preference
+- `PrivacySafetyScreen.tsx` — block list, report, account visibility
+- `ProfilePerformanceScreen.tsx` — boost options with coin costs
+- `AccountActionsScreen.tsx` — logout, delete account, deactivate
+
+**7. Profile View Screen** (`ProfileViewScreen.tsx`)
+- Full scrollable profile view for the Me tab
+
+**Key Decisions:**
+- UserContext as single source of truth for user data across all screens
+- Wallet tab reads `coinBalance` from context (not local state)
+- Profile completion calculated dynamically from filled fields
+
+**Files Created:**
+- `src/context/UserContext.tsx`
+- `src/screens/Home/ExploreScreen.tsx` (full rewrite from placeholder)
+- `src/screens/Home/ExploreCategoryScreen.tsx`
+- `src/screens/Home/ProfileViewScreen.tsx`
+- `src/screens/Home/EditProfileScreen.tsx`
+- `src/screens/Home/DiscoverySettingsScreen.tsx`
+- `src/screens/Home/PrivacySafetyScreen.tsx`
+- `src/screens/Home/ProfilePerformanceScreen.tsx`
+- `src/screens/Home/AccountActionsScreen.tsx`
+
+**Files Updated:**
+- `App.tsx` (wrapped with `<UserProvider>`)
+- `src/navigation/AppNavigator.tsx` (9 new screens + route params)
+- `src/screens/Home/WalletScreen.tsx` (reads from context)
+
+---
+
+### **Session 12: February 10-11, 2026 - Real API Integration, Intro Slideshow & Revenue**
+
+**What We Built:**
+
+**1. Real Auth Service** (`realAuthService.ts` — full implementation)
+- `sendOTP(phoneOrEmail, mode, extra)` — routes to `/api/auth/login/init` or `/api/onboarding/init`
+- `verifyOTP(code, contact, mode)` — routes to `/api/auth/login/verify` or `/api/onboarding/verify`
+- `getMe(token)` — `GET /api/auth/me` with Bearer token
+- Axios client with auth token interceptor (reads from AsyncStorage)
+- Backend wake-up ping for Render cold-starts (`ensureServerAwake()`)
+- Retry logic: 2 attempts with 2s delay for network/500 errors
+- Environment switched to `USE_MOCK_API: false`
+
+**2. Onboarding Service** (`onboardingService.ts` — NEW)
+- `updateDetails(data)` → `PATCH /api/onboarding/details` (name, DOB, gender, lookingFor, relationshipGoal)
+- `getInterests()` → `GET /api/onboarding/interests` (categories from backend)
+- `saveInterests(ids)` → `PATCH /api/onboarding/interests`
+- `uploadPhotos(urls)` → `PATCH /api/onboarding/photos` (Cloudinary URLs, finalizes onboarding)
+- Uses shared `apiClient` from realAuthService (inherits auth interceptor)
+
+**3. Cloudinary Service** (`cloudinaryService.ts` — NEW)
+- Unsigned upload via REST API (no SDK dependency)
+- Uses `FormData` with local `file://` URIs (React Native native support)
+- Returns `secure_url` from Cloudinary response
+- Config: `CLOUD_NAME` and `UPLOAD_PRESET` in environment.ts
+
+**4. Register Screen Dual-Mode** (`RegisterScreen.tsx` — modified)
+- Reads `mode` from route params (`'login'` or `'signup'`)
+- **Signup mode:** Shows BOTH phone + email fields (API requires both)
+- **Login mode:** Keeps existing tab UI (phone OR email)
+- Calls `authService.sendOTP()` with appropriate mode
+
+**5. OTP Verification — Real API** (`OTPVerificationScreen.tsx` — modified)
+- Calls `authService.verifyOTP()` with mode param
+- On signup success: stores token, navigates to NameInput (continue onboarding)
+- On login success: stores token, calls getMe, navigates to HomeTabs
+
+**6. Onboarding Screens Wired to API**
+- `RelationshipGoalsScreen.tsx` — batch `PATCH /api/onboarding/details` with all accumulated params before navigating
+- `InterestsSelectionScreen.tsx` — fetches interests from API on mount, falls back to local constants; saves via API
+- `PhotoUploadScreen.tsx` — uploads to Cloudinary first, sends URLs to `onboardingService.uploadPhotos()`
+
+**7. Interest Screen Loading Fix**
+- Changed `useState<InterestCategory[]>(INTEREST_CATEGORIES)` → `useState<InterestCategory[]>([])`
+- Added `fetchingInterests` loading state with ActivityIndicator
+- Prevents local data flash before API data loads
+
+**8. Intro Slideshow** (NEW SCREEN)
+- `IntroSlideshowScreen.tsx` — 4-slide horizontal FlatList with paging
+- Full-screen ImageBackground per slide with pink gradient overlay
+- Slides: "Effortless Discovery", "Your Curated Circle", "Soft, Intentional Love", "Bespoke Access"
+- `HeartProgressBar.tsx` — custom progress component with heart icons on pill-shaped track
+- Skip button (bottom-left), gradient arrow button (bottom-right)
+- Saves `HAS_SEEN_INTRO` to AsyncStorage on finish/skip
+- AppNavigator dynamically checks AsyncStorage for initial route
+
+**9. Token Pricing & Revenue Plan**
+Updated all coin packages and feature costs across 6 files to match new revenue model:
+- `TopUpScreen.tsx` — 6 packages: Starter ₦2K → Odogwu ₦100K (with bonus coins)
+- `WalletScreen.tsx` — Feature costs: See Who Likes You 25, Super Like 50, Boost 50, Priority Message 80, Visitors 100, Spotlight 200
+- `DiscoveryScreen.tsx` — Swipe cost 3→5 coins, Swipe Pass mention (120 coins/24hr)
+- `ProfilePerformanceScreen.tsx` — Boost costs: 50, 80, 200 coins
+- `UserContext.tsx` — Default balance 20000→0 (users start with 0 coins)
+- `constant.ts` — SWIPE_LIMITS: FREE_MALE 10, FREE_FEMALE 15, SWIPE_PASS_COST 120, PER_SWIPE_COST 5
+
+**10. EAS Build Configuration**
+- `eas.json` configured with development, preview, and production profiles
+- Android APK build profile ready
+- iOS ad-hoc internal distribution configured
+- EAS project ID linked: `ed6d4780-0314-499d-b3e7-7c5dd29d8a88`
+
+**Files Created:**
+- `src/services/api/onboardingService.ts`
+- `src/services/api/cloudinaryService.ts`
+- `src/screens/IntroSlideshow/IntroSlideshowScreen.tsx`
+- `src/components/ui/HeartProgressBar.tsx`
+
+**Files Updated:**
+- `src/services/api/realAuthService.ts` (full implementation)
+- `src/config/environment.ts` (API URL, USE_MOCK_API: false, Cloudinary config)
+- `src/screens/Onboarding/RegisterScreen.tsx` (dual-mode)
+- `src/screens/Onboarding/OTPVerificationScreen.tsx` (real API)
+- `src/screens/Onboarding/RelationshipGoalsScreen.tsx` (batch API call)
+- `src/screens/Onboarding/InterestsSelectionScreen.tsx` (API fetch + save)
+- `src/screens/Onboarding/PhotoUploadScreen.tsx` (Cloudinary + API)
+- `src/screens/Home/TopUpScreen.tsx` (new packages)
+- `src/screens/Home/WalletScreen.tsx` (new feature costs)
+- `src/screens/Home/DiscoveryScreen.tsx` (swipe cost update)
+- `src/screens/Home/ProfilePerformanceScreen.tsx` (boost cost update)
+- `src/context/UserContext.tsx` (default balance 0)
+- `src/utils/constant.ts` (HAS_SEEN_INTRO key, SWIPE_LIMITS update)
+- `src/navigation/AppNavigator.tsx` (IntroSlideshow route, dynamic initial route)
+
+**Bugs Fixed:**
+- OTP 500 errors on first attempt (Render cold-start → added wake-up ping with 60s timeout)
+- sendOTP network failures (added retry logic: 2 attempts, 2s delay)
+- Interest screen local data flash (empty initial state + loading spinner)
+- Missing styles after adding loading state to InterestsSelectionScreen
+- Missing packageLabel/bonusText styles in TopUpScreen
+
+---
+
+## CURRENT STATUS (February 11, 2026)
+
+### ✅ Fully Complete
 
 **Foundation:**
-- [x] Project architecture
-- [x] Theme system (60+ tokens)
-- [x] Custom fonts (EB Garamond)
-- [x] Environment config
+- [x] Project architecture (Expo SDK 52 + TypeScript)
+- [x] Theme system (60+ design tokens)
+- [x] Custom fonts (Sora — 8 weights, semantic aliases)
+- [x] Environment config with feature flags
 - [x] Mock API service layer (Auth + Photo)
-- [x] Onboarding flow configuration (9 steps)
+- [x] Real API service layer (Auth + Onboarding — live backend)
+- [x] Cloudinary image upload service (unsigned, no SDK)
+- [x] Onboarding flow configuration (centralized step management)
+- [x] UserContext (global state: coins, profile, auth, matches)
+- [x] EAS Build configured (Android APK + iOS ad-hoc)
 
-**Components (12 total):**
-- [x] Button (production-ready, 5 variants, 3 sizes)
-- [x] Input (production-ready, validation, error states)
+**Components (15 total):**
+- [x] Button (5 variants, 3 sizes, loading states)
+- [x] Input (validation, error states, password toggle)
 - [x] OTPInput (6-digit, auto-focus, paste support)
 - [x] OnboardingProgressBar (animated, 9-step)
-- [x] MarqueeColumn (animated backgrounds)
+- [x] ProgressIndicator (step dots for onboarding)
+- [x] MarqueeColumn (animated scrolling backgrounds)
 - [x] CountryPickerModal (searchable)
-- [x] Date Picker integration
-- [x] Interest chips (multi-select)
-- [x] Photo grid with upload
-- [x] Bio prompts with character counters
 - [x] CoinBalance (compact pill + banner card, low-balance pulse)
 - [x] Flare (gradient background effect)
+- [x] HeartProgressBar (heart icons on pill track — intro slideshow)
+- [x] Date Picker integration
+- [x] Interest chips (multi-select with gradient active state)
+- [x] Photo grid with upload + Cloudinary
+- [x] Bio prompts with character counters
+- [x] Profile completion bar
 
-**Onboarding Screens (12 total):**
+**Screens Built (25+ total):**
+
+*Intro:*
+- [x] Intro Slideshow (4 slides, HeartProgressBar, skip/next, AsyncStorage persistence)
+
+*Onboarding (12 screens):*
 - [x] Welcome Screen (hero image, CTA buttons)
 - [x] Signup Screen (phone/email toggle, social login, animated background)
 - [x] Login Screen (animated background, matching signup design)
-- [x] OTP Verification (with mock API, expiration, resend)
-- [x] Name Input (with validation, character limits)
+- [x] Register Screen (dual-mode: both fields for signup, tabs for login)
+- [x] OTP Verification (real API, countdown, resend, mode-aware routing)
+- [x] Name Input (validation, character limits)
 - [x] Date of Birth (18+ validation, age display)
 - [x] Gender Selection (Male/Female cards)
 - [x] Looking For (Men/Women/Everyone options)
-- [x] Relationship Goals (5 options)
-- [x] Interests Selection (min 5, max 10)
-- [x] Photo Upload (min 3, max 6, multi-select)
-- [x] Bio Screen (bio + 3 prompts, skip option)
+- [x] Relationship Goals (5 options, batch API save)
+- [x] Interests Selection (API fetch with local fallback, API save)
+- [x] Photo Upload (Cloudinary upload → API finalize)
 
-**Home/Core Screens (10 total):**
+*Home/Core (15 screens):*
 - [x] Initializing Screen (loading/transition)
 - [x] Nearby Matches Screen
-- [x] Discovery Screen (swipe cards, coin-aware, tap-to-view)
+- [x] Discovery Screen (swipe cards, coin-aware, tap-to-view, match trigger)
 - [x] Profile Detail Screen (full photo, bio, basics, interests, action buttons)
 - [x] Match Screen (portrait photos, floating hearts, orchestrated animations)
 - [x] Chats Screen (active matches, filter tabs, conversation list, dropdown menu)
 - [x] Chat Conversation Screen (message bubbles, media, hearts, icebreakers, simulated replies)
-- [x] Wallet Screen (token packages, premium features)
-- [x] Top Up Screen (token purchase grid, Naira pricing)
-- [x] Explore Screen (placeholder)
-- [x] Profile Screen (placeholder)
+- [x] Wallet Screen (feature costs, premium features list)
+- [x] Top Up Screen (6 coin packages with bonuses, Naira pricing)
+- [x] Explore Screen (browse by interest + relationship type, bento grid)
+- [x] Explore Category Screen (profile grid, top profiles, search)
+- [x] Profile View Screen (full scrollable profile)
+- [x] Edit Profile Screen (bio, photos, interests, basics editing)
+- [x] Discovery Settings Screen (age range, distance, preferences)
+- [x] Privacy & Safety Screen (block, report, visibility)
+- [x] Profile Performance Screen (boost options: 50, 80, 200 coins)
+- [x] Account Actions Screen (logout, delete, deactivate)
 
 **Navigation:**
-- [x] Stack Navigator (20+ screens)
+- [x] Stack Navigator (25+ screens)
 - [x] Bottom Tab Navigator (Home, Explore, Chats, Wallet, Me)
 - [x] Match screen with opacity transition + gesture disabled
+- [x] Dynamic initial route (IntroSlideshow vs Welcome based on AsyncStorage)
 
-**Services:**
-- [x] Mock Authentication (sendOTP, verifyOTP, resendOTP, login)
-- [x] Mock Photo Service (upload with simulated failures)
-- [x] Theme Context Provider
-- [x] Font Loading Hook
-- [x] Country Codes Data (10 countries)
+**Services (7 total):**
+- [x] Mock Authentication (sendOTP, verifyOTP, resendOTP)
+- [x] Real Authentication (sendOTP, verifyOTP, getMe — live backend)
+- [x] Auth Service auto-switcher (mock ↔ real via feature flag)
+- [x] Onboarding Service (details, interests, photos — live backend)
+- [x] Cloudinary Service (unsigned image upload)
+- [x] Mock Photo Service (upload simulation with 10% failure rate)
+- [x] Theme Context Provider + Font Loading Hook
 
-**Utils & Config:**
-- [x] Bio Prompts (12 prompts, 3 defaults)
-- [x] Constants (Gender, LookingFor, RelationshipGoals, Interests)
-- [x] Validators (email, phone, password, age)
-- [x] Formatters (phone, date, distance, currency)
-- [x] Onboarding Flow Config (9-step management)
-
----
-
-### **🚧 Next Up**
-
-**Screens to Build:**
-- [ ] Profile/Me Screen (full implementation)
-- [ ] Explore Screen (full implementation)
-- [ ] Settings Screen
-- [ ] Edit Profile Screen
-
-**Features to Add:**
-- [ ] Backend API integration
-- [ ] Real-time messaging (Socket.io)
-- [ ] Push notifications
-- [ ] Draft save on back button
-- [ ] Photo reordering (drag-and-drop)
-- [ ] Profile completion percentage
+**API Integration (Live):**
+- [x] `POST /api/onboarding/init` — send signup OTP
+- [x] `POST /api/onboarding/verify` — verify signup OTP → JWT
+- [x] `PATCH /api/onboarding/details` — save profile details
+- [x] `GET /api/onboarding/interests` — fetch interest categories
+- [x] `PATCH /api/onboarding/interests` — save selected interests
+- [x] `PATCH /api/onboarding/photos` — upload photos, finalize onboarding
+- [x] `POST /api/auth/login/init` — send login OTP
+- [x] `POST /api/auth/login/verify` — verify login OTP → JWT
+- [x] `GET /api/auth/me` — get current user profile
 
 ---
 
-## 🎓 KEY LEARNINGS & BEST PRACTICES
+## REMAINING REQUIREMENTS
 
-### **1. Theme System is Essential**
+### Back-End: Discovery & Matching
+| Endpoint | Description |
+|---|---|
+| `GET /api/discovery/recommendations` | Get recommended profiles (filtered by preferences, location, already-swiped) |
+| `POST /api/discovery/swipe` | Record a swipe (like/reject) |
+| `POST /api/discovery/undo` | Undo last swipe |
+| Matching algorithm | When two users swipe right → create match |
+| Swiping algorithm | Scoring/ranking by compatibility, activity, location |
+| `GET /api/matches` | Get list of matched users |
+
+### Back-End: Explore & Red Room
+| Endpoint | Description |
+|---|---|
+| `GET /api/explore/categories` | Get all explore categories with member counts |
+| `GET /api/explore/categories/:id/profiles` | Get paginated profiles in a category |
+| `GET /api/explore/trending` | Get trending/featured profiles |
+| `POST /api/explore/like` | Like a profile from Explore |
+| `GET /api/explore/redroom` | Get Red Room content/profiles (premium-gated) |
+| `POST /api/explore/redroom/access` | Unlock Red Room access (coin spend) |
+
+### Back-End: Messaging
+| Endpoint | Description |
+|---|---|
+| `GET /api/messages/conversations` | Get all conversations |
+| `GET /api/messages/:conversationId` | Get messages (paginated) |
+| `POST /api/messages/:conversationId` | Send a message |
+| WebSocket server | Real-time messaging + typing indicators + match notifications |
+
+### Back-End: User Profile & Settings
+| Endpoint | Description |
+|---|---|
+| `PATCH /api/user/profile` | Update profile (post-onboarding edits) |
+| `POST /api/user/verify` | Profile verification (selfie check) |
+| `GET /api/user/settings` | Get discovery preferences |
+| `PATCH /api/user/settings` | Save discovery preferences |
+
+### Back-End: Safety & Moderation
+| Endpoint | Description |
+|---|---|
+| `POST /api/safety/report` | Report a user |
+| `POST /api/safety/block` | Block a user |
+| `DELETE /api/safety/block/:userId` | Unblock a user |
+| `GET /api/safety/blocked` | Get blocked users list |
+
+### Back-End: Notifications
+| Endpoint | Description |
+|---|---|
+| `GET /api/notifications` | Get notifications list |
+| `PATCH /api/notifications/:id/read` | Mark notification as read |
+| Push notification service | FCM/APNs integration |
+
+### Back-End: Wallet & Payments
+| Endpoint | Description |
+|---|---|
+| `GET /api/wallet/balance` | Get coin balance |
+| `POST /api/wallet/purchase` | Purchase coins (Paystack/Stripe) |
+| `POST /api/wallet/spend` | Spend coins (unlock feature) |
+| `GET /api/wallet/transactions` | Transaction history |
+
+### Back-End: Admin Dashboard (subdomain: admin.meetpie.com)
+| Feature | Description |
+|---|---|
+| Admin auth | Login with role-based access (super admin, moderator, support) |
+| User management | View, search, suspend, ban users |
+| Content moderation | Review reports, flagged photos, approve verifications |
+| Analytics dashboard | Signups, DAU/MAU, retention, revenue charts |
+| Interest/category management | CRUD for interests & Explore categories |
+| Coin & transaction management | Purchases, refunds, revenue breakdown |
+| Push notification console | Send targeted announcements |
+| App config | Feature flags, pricing tiers, swipe limits (editable live) |
+| Red Room management | Content, access rules, pricing |
+| Support tickets | View and respond to user reports |
+
+### Front-End: Remaining
+| Task | Status |
+|---|---|
+| Session restore on startup (token → getMe → HomeTabs) | Not started |
+| Login flow completion (existing users → profile fetch → Home) | Partially done |
+| Wire Discovery screen to real API | Not started |
+| Wire Explore screen to real API (categories + profiles) | Not started |
+| Wire ExploreCategoryScreen to fetch real profiles | Not started |
+| Red Room UI + coin-gated access | Not started |
+| Wire real messaging (WebSocket/Socket.io client) | Not started |
+| Wire matches list to real API | Not started |
+| Wire EditProfile to save to backend | Not started |
+| Wire report/block functionality | UI exists, no backend |
+| Wire discovery filters (age, distance, interests) | UI exists, no logic |
+| Wire wallet to real payments (Paystack/Stripe SDK) | Not started |
+| Wire notifications screen | Stub ("Coming Soon") |
+| Push notifications (FCM/APNs via Expo) | Not started |
+| Real-time chat UI (WebSocket client) | Not started |
+| Geolocation — real lat/long for profile & nearby | Hardcoded to Lagos |
+| Profile verification flow (selfie capture + submit) | Not started |
+| Image caching & optimization | Not started |
+| Deep linking (match notifications → chat) | Not started |
+| Logout flow (confirm → clear context → Welcome) | Function exists, no UI wiring |
+| Token refresh / expiry handling (401 → redirect to login) | Not started |
+| Onboarding resume (quit mid-flow → resume on reopen) | Not started |
+| Offline handling (no internet banner/modal) | Not started |
+| OTP rate-limit UI ("try again in X seconds") | Not started |
+| Error boundaries & crash reporting (Sentry) | Not started |
+| Analytics (Mixpanel/Amplitude) | Not started |
+| App Store / Play Store assets (screenshots, descriptions) | Not started |
+
+---
+
+## KEY LEARNINGS & BEST PRACTICES
+
+### 1. Theme System is Essential
 - Changed primary color once, entire app updated
 - Consistent spacing/typography across all screens
 - Easy to maintain and scale
 
-### **2. Mock API Service Pattern**
+### 2. Mock → Real API Service Pattern
 - Frontend development doesn't wait for backend
-- Realistic testing with delays and errors
-- One-line switch to production
-- Applicable to all API calls (not just auth)
+- Auto-switching via `USE_MOCK_API` feature flag
+- One-line toggle, zero component changes
+- Smooth transition when backend went live
 
-### **3. Progress Indicators Matter**
+### 3. Progress Indicators Matter
 - Users complete onboarding 30% more with progress bar
 - Shows professionalism and good UX
 - Easy to implement, huge impact
 
-### **4. Centralized Configuration**
+### 4. Centralized Configuration
 - `onboardingFlow.ts` for step management
 - `constant.ts` for options/data
 - `bioPrompts.ts` for prompts
 - Single source of truth, easy updates
 
-### **5. Component Reusability**
-- Button component used in 12+ screens
-- Input component used in 10+ places
-- OnboardingProgressBar in all 9 onboarding screens
-- CountryPicker reusable for location settings
+### 5. Backend Cold-Start Handling (Render)
+- Free tier Render instances sleep after inactivity
+- First request can take 30-50 seconds (cold start)
+- Solution: `ensureServerAwake()` ping before real API calls
+- Even a 401/404 response means the server is awake
 
-### **6. TypeScript Pays Off**
+### 6. Cloudinary Unsigned Upload — No SDK Needed
+- Simple `POST` with `FormData` to Cloudinary REST API
+- React Native's `fetch` handles `file://` URIs natively
+- Returns `secure_url` — send to backend
+- Avoids heavy SDK dependency
+
+### 7. TypeScript Pays Off
 - Caught 15+ bugs before runtime
 - Better autocomplete in IDE
 - Easier refactoring
-- Route params fully typed
+- Route params fully typed with `RootStackParamList`
 
-### **7. Data Accumulation Pattern**
-- Each screen passes accumulated data to next
-- Final screen has complete profile object
-- Easy to debug and trace data flow
+### 8. Data Accumulation Pattern
+- Each onboarding screen passes accumulated data to next via nav params
+- Batch API call at RelationshipGoals (not per-screen) reduces requests
+- Final screen (Photos) has complete profile + finalizes onboarding
 
 ---
 
-## 🐛 ISSUES ENCOUNTERED & SOLUTIONS
+## ISSUES ENCOUNTERED & SOLUTIONS
 
-### **Issue 1: Import Path Resolution**
-**Problem:** `import { styles } from './Component.styles'` not working
-**Solution:** Use inline styles during development, separate later
-**Time Lost:** 2 hours
+### Issue 1-12: (See Sessions 1-10 above)
 
-### **Issue 2: Font Loading on Windows**
-**Problem:** Case-sensitive filenames (`UseFonts.ts` vs `useFonts.ts`)
-**Solution:** Always use consistent PascalCase, check actual filesystem
+### Issue 13: Render Backend Cold-Start (500 Errors)
+**Problem:** First OTP request returned 500 because Render free-tier server was asleep
+**Solution:** Added `ensureServerAwake()` that pings a lightweight endpoint with 60s timeout before real API calls. Server marked awake on any response (including 401/404).
 **Time Lost:** 1 hour
 
-### **Issue 3: OTP Testing Without Backend**
-**Problem:** Can't test OTP flow without SMS service
-**Solution:** Mock API service with test codes (`123456`, `000000`)
-**Time Saved:** Infinite (no backend dependency)
-
-### **Issue 4: OTPInput Infinite Loop**
-**Problem:** useEffect causing infinite re-renders
-**Solution:** Use useRef for timer references instead of state
+### Issue 14: sendOTP Network Failures
+**Problem:** Intermittent network errors on first attempt even after wake-up
+**Solution:** Added retry logic: `MAX_RETRIES = 2`, `RETRY_DELAY_MS = 2000`. Only retries on network errors or 500s, not on 4xx client errors.
 **Time Lost:** 30 minutes
 
-### **Issue 5: Back Navigation After OTP**
-**Problem:** User could go back to OTP screen after verification
-**Solution:** Use `navigation.replace()` instead of `navigate()`
+### Issue 15: Interest Screen Local Data Flash
+**Problem:** Local `INTEREST_CATEGORIES` briefly visible before API data loads
+**Solution:** Changed initial state from populated array to empty `[]`, added `fetchingInterests` boolean with `ActivityIndicator` loading spinner.
 **Time Lost:** 15 minutes
 
-### **Issue 6: Photo Disabled Logic**
-**Problem:** Only first empty slot was tappable
-**Solution:** Changed `disabled={index > photos.length}` to `disabled={photos.length >= MAX_PHOTOS}`
-**Time Lost:** 20 minutes
-
-### **Issue 7: Progress Bar Inconsistency**
-**Problem:** Progress bar at top (BioScreen) vs footer (other screens)
-**Solution:** Standardized to footer pattern for scrollable screens
-**Time Lost:** 15 minutes
-
-### **Issue 8: PanResponder Stale Closure (Swipe)**
-**Problem:** Only 2 profiles showing on swipe - PanResponder captured stale state values
-**Solution:** Use `useRef` for all values accessed inside PanResponder callbacks (`currentIndexRef`, `swipeCountRef`, `likeCountRef`, `coinBalanceRef`)
-**Time Lost:** 45 minutes
-
-### **Issue 9: Tap Shows Wrong Profile**
-**Problem:** Tapping card to view profile opened the wrong profile details
-**Solution:** Another stale closure - used `currentIndexRef.current` instead of `currentProfile` state in the tap handler
-**Time Lost:** 30 minutes
-
-### **Issue 10: Keyboard Type Not Switching**
-**Problem:** On RegisterScreen, switching between Phone/Email tabs didn't change keyboard type
-**Solution:** Added `key={activeTab}` to force TextInput remount, triggering correct keyboard type
-**Time Lost:** 20 minutes
-
-### **Issue 11: Face Cropping in Match Photos**
-**Problem:** Circular photo frames cropped sides of faces
-**Solution:** Switched to portrait rectangles (1:1.3 aspect ratio) with `borderRadius: photoWidth * 0.22`
-**Time Lost:** 15 minutes
-
-### **Issue 12: Missing TypeScript Style**
-**Problem:** `newMatchPreview` style referenced in JSX but not defined in StyleSheet
-**Solution:** Added the missing style definition for pink "New match! Say hi" text
-**Time Lost:** 5 minutes
+### Issue 16: Missing Styles After UI Updates
+**Problem:** Added JSX referencing `loadingContainer`, `packageLabel`, `bonusText` styles that didn't exist yet
+**Solution:** Always add styles immediately when adding new JSX elements. Check StyleSheet after every render change.
+**Time Lost:** 10 minutes
 
 ---
 
-## 📈 METRICS
+## METRICS
 
 **Development Stats:**
-- **Total Development Hours:** ~65 hours
-- **Lines of Code:** ~18,000+
-- **Components Built:** 12
-- **Screens Built:** 22+
-- **API Services:** 4
-- **Utils/Config Files:** 8
+- **Total Development Hours:** ~85 hours
+- **Lines of Code:** ~25,000+
+- **Components Built:** 15
+- **Screens Built:** 28+
+- **API Services:** 7
+- **API Endpoints Wired:** 9
+- **Utils/Config Files:** 10
 
 **Code Quality:**
 - TypeScript coverage: 100%
 - Component reusability: 70%
 - Theme system adoption: 100%
+- Real API integration: Auth + Onboarding complete
 
 ---
 
-## 🔮 FUTURE ENHANCEMENTS
+## FUTURE ENHANCEMENTS
 
 **Phase 2 (After MVP):**
 - [ ] Video prompts (like Hinge)
@@ -792,21 +1048,12 @@ Step 9 (Bio)         → 100%
 - [ ] Advanced verification (ID, selfie)
 - [ ] Date planning tools
 - [ ] Relationship coaching
+- [ ] Red Room premium content
 
 ---
 
-**Next Session Goals:**
-1. Build Profile/Me Screen (full implementation)
-2. Build Explore Screen (full implementation)
-3. Add Settings Screen
-4. Start backend API integration
-
-**Estimated Time to MVP:** 3-4 weeks
-**Estimated Time to Launch:** 6-8 weeks
-
----
-
-**Last Updated:** February 9, 2026
-**Onboarding Flow:** 100% Complete (9/9 screens)
-**Core Screens:** 100% Complete (Discovery, Chat, Wallet, Match)
-**Ready for:** Profile/Explore screens + Backend Integration
+**Last Updated:** February 11, 2026
+**Onboarding Flow:** 100% Complete (wired to real API)
+**Auth Flow:** Login + Signup wired to real backend
+**Core Screens:** 28+ screens built
+**Ready for:** Discovery/Explore/Messaging API + Payments + Admin Dashboard
