@@ -1,4 +1,4 @@
-# MeetPie (Opueh) Dating App
+# MeetPie Dating App
 
 > A values-driven dating app for intentional relationships, focused on the African market.
 
@@ -136,37 +136,6 @@ OpuehApp/
 
 ### Remaining Backend Endpoints
 See `DEVELOPMENT_LOG.md` for the full requirements list covering Discovery, Explore, Messaging, Wallet/Payments, Safety, Notifications, and Admin Dashboard.
-
----
-
-## Monetization (Coin Economy)
-
-### Token Packages
-| Package | Coins | Bonus | Price |
-|---|---|---|---|
-| Starter | 150 | - | ₦2,000 |
-| Silver | 450 | +50 | ₦5,000 |
-| Gold | 1,000 | +200 | ₦10,000 |
-| Platinum | 2,300 | +500 | ₦20,000 |
-| Elite | 6,500 | +700 | ₦50,000 |
-| Odogwu | 10,000 | +1,000 | ₦100,000 |
-
-### Feature Costs
-- Extra swipe: 5 coins
-- Swipe Pass (24hr unlimited): 120 coins
-- Super Like: 50 coins
-- Profile Boost: 50 coins
-- Priority Message: 80 coins
-- Rewind: 30 coins
-- Read Receipts: 40 coins
-- See Who Likes You: 25 coins
-- Profile Visitors: 100 coins
-- Spotlight: 200 coins
-- Verified Badge: 250 coins
-
-### Swipe Limits
-- Free men: 10 swipes/day
-- Free women: 15 swipes/day
 
 ---
 
