@@ -84,10 +84,10 @@ export const INTEREST_CATEGORIES: InterestCategory[] = [
 ];
 
 export const SWIPE_LIMITS = {
-  FREE_MALE: 5,
-  FREE_FEMALE: 20,
-  PREMIUM_MALE: 8,
-  PREMIUM_FEMALE: 25,
+  FREE_MALE: 10,
+  FREE_FEMALE: 15,
+  SWIPE_PASS_COST: 120, // 24hr unlimited swipes
+  PER_SWIPE_COST: 5,    // Per extra swipe after free limit
 } as const;
 
 export interface ReportReason {
@@ -270,6 +270,7 @@ export const STORAGE_KEYS = {
   USER_DATA: '@opueh_user_data',
   ONBOARDING_COMPLETE: '@opueh_onboarding_complete',
   DEVICE_TOKEN: '@opueh_device_token',
+  HAS_SEEN_INTRO: '@opueh_has_seen_intro',
 } as const;
 
 export default {

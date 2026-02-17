@@ -17,50 +17,58 @@ import Flare from '@components/ui/Flare';
 import CoinBalance from '@components/ui/CoinBalance';
 import { useUser } from '@context/UserContext';
 
-// Premium token packages with placeholder costs
+// Premium features with coin costs (from revenue plan)
 const TOKEN_PACKAGES = [
   {
     id: 1,
-    name: 'Super like',
-    description: 'Stand out with a super like',
-    icon: 'heart-outline',
-    cost: 5,
+    name: 'See who likes you',
+    description: 'View your secret admirers',
+    icon: 'eye-outline',
+    cost: 25,
   },
   {
     id: 2,
-    name: 'Profile boost',
-    description: '30min profile visibility boost',
-    icon: 'person-outline',
-    cost: 20,
+    name: 'Super Like',
+    description: 'Send a bold signal of interest',
+    icon: 'heart-outline',
+    cost: 50,
   },
   {
     id: 3,
-    name: 'See who likes you',
-    description: 'View your admirers',
-    icon: 'star-outline',
-    cost: 15,
+    name: 'Profile Boost',
+    description: '30min visibility boost in your area',
+    icon: 'rocket-outline',
+    cost: 50,
   },
   {
     id: 4,
-    name: 'Priority messages',
+    name: 'Priority Message',
     description: 'Your message appears first',
     icon: 'sparkles-outline',
-    cost: 10,
+    cost: 80,
   },
   {
     id: 5,
-    name: 'Super comment',
-    description: 'Your comments get the most visibility',
-    icon: 'chatbubble-outline',
-    cost: 8,
+    name: 'Profile Visitors',
+    description: 'See who viewed your profile',
+    icon: 'people-outline',
+    cost: 100,
+  },
+  {
+    id: 6,
+    name: 'Spotlight',
+    description: 'Featured in Explore for 1 hour',
+    icon: 'flashlight-outline',
+    cost: 200,
   },
 ];
 
-// What you can do items
+// Additional purchasable features
 const FEATURES = [
-  { id: 1, title: 'Unlimited swipes', description: 'Swipe without limits', icon: 'infinite-outline' },
-  { id: 2, title: 'Undo last swipe', description: 'Take back accidental passes', icon: 'arrow-undo-outline' },
-  { id: 3, title: 'Verified badge', description: 'Get a blue checkmark', icon: 'checkmark-circle-outline' },
+  { id: 1, title: 'Swipe Pass (24hrs)', description: 'Unlimited swipes for a full day — 120 coins', icon: 'infinite-outline' },
+  { id: 2, title: 'Rewind', description: 'Undo your last swipe — 30 coins', icon: 'arrow-undo-outline' },
+  { id: 3, title: 'Read Receipts', description: 'Know when messages are read — 40 coins', icon: 'checkmark-done-outline' },
+  { id: 4, title: 'Verified Badge', description: 'Get verified — 250 coins (one-time)', icon: 'checkmark-circle-outline' },
 ];
 
 const WalletScreen: React.FC = () => {

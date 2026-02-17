@@ -17,12 +17,12 @@ import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
 
 const TOKEN_PACKAGES = [
-  { id: 1, tokens: 100, price: '₦999', popular: false },
-  { id: 2, tokens: 500, price: '₦1,999', popular: false },
-  { id: 3, tokens: 1500, price: '₦4,999', popular: true },
-  { id: 4, tokens: 5000, price: '₦12,999', popular: false },
-  { id: 5, tokens: 15000, price: '₦24,999', popular: false },
-  { id: 6, tokens: 50000, price: '₦49,999', popular: false },
+  { id: 1, tokens: 150, bonus: 0, price: '₦2,000', label: 'Starter', popular: false },
+  { id: 2, tokens: 450, bonus: 50, price: '₦5,000', label: 'Silver', popular: false },
+  { id: 3, tokens: 1000, bonus: 200, price: '₦10,000', label: 'Gold', popular: true },
+  { id: 4, tokens: 2300, bonus: 500, price: '₦20,000', label: 'Platinum', popular: false },
+  { id: 5, tokens: 6500, bonus: 700, price: '₦50,000', label: 'Elite', popular: false },
+  { id: 6, tokens: 10000, bonus: 1000, price: '₦100,000', label: 'Odogwu', popular: false },
 ];
 
 const TopUpScreen: React.FC<any> = ({ navigation }) => {
@@ -81,10 +81,14 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
                 </View>
               )}
 
+              <Text style={styles.packageLabel}>{pkg.label}</Text>
               <Text style={styles.packageTokens}>
                 {formatTokens(pkg.tokens)}
               </Text>
-              <Text style={styles.packageTokenLabel}>tokens</Text>
+              <Text style={styles.packageTokenLabel}>coins</Text>
+              {pkg.bonus > 0 && (
+                <Text style={styles.bonusText}>+{formatTokens(pkg.bonus)} bonus</Text>
+              )}
               <Text style={styles.packagePrice}>{pkg.price}</Text>
             </TouchableOpacity>
           ))}
@@ -115,8 +119,8 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
             const pkg = TOKEN_PACKAGES.find((p) => p.id === selectedPackage);
             if (pkg) {
               // TODO: Integrate payment gateway before adding coins
-              addCoins(pkg.tokens);
-              console.log(`Purchased ${pkg.tokens} tokens for ${pkg.price}`);
+              addCoins(pkg.tokens + pkg.bonus);
+              console.log(`Purchased ${pkg.tokens}+${pkg.bonus} coins for ${pkg.price}`);
               navigation.goBack();
             }
           }}
@@ -223,17 +227,31 @@ const styles = StyleSheet.create({
     color: '#FFF',
     letterSpacing: 1,
   },
+  packageLabel: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 11,
+    color: '#999',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
   packageTokens: {
     fontFamily: FONTS.Bold,
     fontSize: 24,
     color: '#FFF',
-    marginTop: 4,
+    marginTop: 2,
   },
   packageTokenLabel: {
     fontFamily: FONTS.Regular,
     fontSize: 12,
     color: '#888',
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  bonusText: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 11,
+    color: '#00FF7F',
+    marginBottom: 4,
   },
   packagePrice: {
     fontFamily: FONTS.SemiBold,

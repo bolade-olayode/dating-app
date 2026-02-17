@@ -1,12 +1,15 @@
 // src/navigation/AppNavigator.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTheme } from '@context/ThemeContext';
-import { StatusBar } from 'react-native';
+import { StatusBar, View, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '@utils/constant';
 
 // Import Screens
+import IntroSlideshowScreen from '@screens/IntroSlideshow/IntroSlideshowScreen';
 import WelcomeScreen from '@screens/WelcomeScreen';
 import SignupScreen from '@screens/Onboarding/SignupScreen';
 import LoginScreen from '@screens/Onboarding/LoginScreen';
@@ -37,6 +40,7 @@ import ExploreCategoryScreen from '@screens/Home/ExploreCategoryScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
+  IntroSlideshow: undefined;
   Welcome: undefined;
   Signup: undefined;
   Register: {
@@ -134,6 +138,31 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
   const theme = useTheme();
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
+
+  useEffect(() => {
+    const checkIntroSeen = async () => {
+      try {
+        // DEV ONLY: Remove this line to stop showing intro every time
+        await AsyncStorage.removeItem(STORAGE_KEYS.HAS_SEEN_INTRO);
+
+        const hasSeen = await AsyncStorage.getItem(STORAGE_KEYS.HAS_SEEN_INTRO);
+        setInitialRoute(hasSeen ? 'Welcome' : 'IntroSlideshow');
+      } catch {
+        setInitialRoute('IntroSlideshow');
+      }
+    };
+    checkIntroSeen();
+  }, []);
+
+  // Show a brief loading screen while checking AsyncStorage
+  if (!initialRoute) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#FF007B" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -141,13 +170,14 @@ const AppNavigator = () => {
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
         <Stack.Navigator
-          initialRouteName="Welcome"
+          initialRouteName={initialRoute}
           screenOptions={{
             headerShown: false,
             cardStyle: { backgroundColor: theme.colors.background },
             gestureEnabled: true,
           }}
         >
+          <Stack.Screen name="IntroSlideshow" component={IntroSlideshowScreen} />
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />

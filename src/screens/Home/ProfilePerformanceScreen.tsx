@@ -35,25 +35,25 @@ const ProfilePerformanceScreen: React.FC = () => {
 
   const BOOST_OPTIONS = [
     {
-      id: 'priority',
-      title: 'Priority Likes',
-      subtitle: 'Your likes are seen first by matches',
-      icon: 'star-outline',
-      cost: 500,
-    },
-    {
       id: 'boost',
       title: 'Profile Boost',
       subtitle: 'Be a top profile in your area for 30 min',
       icon: 'rocket-outline',
-      cost: 1000,
+      cost: 50,
+    },
+    {
+      id: 'priority',
+      title: 'Priority Message',
+      subtitle: 'Your message appears first in their inbox',
+      icon: 'sparkles-outline',
+      cost: 80,
     },
     {
       id: 'spotlight',
       title: 'Spotlight',
       subtitle: 'Featured in the Explore tab for 1 hour',
       icon: 'flashlight-outline',
-      cost: 2500,
+      cost: 200,
     },
   ];
 

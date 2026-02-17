@@ -87,6 +87,8 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 // ─── Constants ───────────────────────────────────────────────
 
+// Revenue plan: men = 10, women = 15 free swipes/day
+// TODO: Make dynamic based on user gender from profile
 const FREE_SWIPE_LIMIT = 10;
 const PERSIST_DEBOUNCE_MS = 1000; // Save at most once per second
 const SWIPE_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -104,7 +106,7 @@ const STORAGE_KEYS = {
 
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [profile, setProfileState] = useState<UserProfile | null>(null);
-  const [coinBalance, setCoinBalanceState] = useState(20000);
+  const [coinBalance, setCoinBalanceState] = useState(0);
   const [swipeCount, setSwipeCountState] = useState(0);
   const [matches, setMatches] = useState<Match[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -311,7 +313,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       Object.values(STORAGE_KEYS).map(key => AsyncStorage.removeItem(key))
     );
     setProfileState(null);
-    setCoinBalanceState(20000);
+    setCoinBalanceState(0);
     setSwipeCountState(0);
     setMatches([]);
     setIsAuthenticated(false);

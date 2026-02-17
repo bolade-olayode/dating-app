@@ -271,8 +271,10 @@ const DiscoveryScreen = () => {
     extrapolate: 'clamp',
   });
 
+  // Revenue plan: 10 free/day (men), 15 free/day (women)
+  // TODO: Read gender from UserContext to set limit dynamically
   const FREE_SWIPE_LIMIT = 10;
-  const SWIPE_COST = 3;
+  const SWIPE_COST = 5; // Per extra swipe (or 120 coins for 24hr Swipe Pass)
 
   const checkSwipeLimit = () => {
     incrementSwipeCount();
@@ -646,7 +648,7 @@ const DiscoveryScreen = () => {
 
             <Text style={styles.modalTitle}>Out of Coins</Text>
             <Text style={styles.modalMessage}>
-              You've used all your free swipes for today. Each additional swipe costs {SWIPE_COST} coins and includes a full profile view.
+              You've used all your free swipes for today. Each extra swipe costs {SWIPE_COST} coins, or grab a Swipe Pass for 120 coins to unlock unlimited swipes for 24 hours!
             </Text>
             <Text style={styles.modalSubMessage}>
               Top up your wallet to keep swiping!
