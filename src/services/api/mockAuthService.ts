@@ -20,6 +20,7 @@ export interface AuthResponse {
     phone?: string;
     email?: string;
   };
+  profile?: Record<string, any>;
   expiresAt?: number;
 }
 
@@ -189,14 +190,40 @@ const logout = async (): Promise<AuthResponse> => {
 const getMe = async (): Promise<AuthResponse> => {
   devLog('👤 Mock API: Getting current user');
   await new Promise(resolve => setTimeout(resolve, 500));
+  const mockProfile = {
+    id: 'mock_user_123',
+    _id: 'mock_user_123',
+    name: 'Test User',
+    phone: '+2348012345678',
+    email: 'test@example.com',
+    gender: 'male',
+    lookingFor: 'women',
+    relationshipGoal: 'Find a relationship',
+    interests: ['coffee', 'football', 'concerts', 'galleries', 'swimming'],
+    photos: [],
+    verified: false,
+  };
   return {
     success: true,
     message: 'User fetched successfully',
     user: {
-      id: 'mock_user_123',
-      phone: '+2348012345678',
-      email: 'test@example.com',
+      id: mockProfile.id,
+      phone: mockProfile.phone,
+      email: mockProfile.email,
     },
+    profile: mockProfile,
+  };
+};
+
+/**
+ * MOCK: Delete account
+ */
+const deleteAccount = async (): Promise<AuthResponse> => {
+  devLog('🗑️ Mock API: Deleting account');
+  await new Promise(resolve => setTimeout(resolve, 500));
+  return {
+    success: true,
+    message: 'Account deleted successfully',
   };
 };
 
@@ -207,6 +234,7 @@ export const mockAuthService = {
   getMe,
   login,
   logout,
+  deleteAccount,
 };
 
 export default mockAuthService;

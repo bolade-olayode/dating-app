@@ -22,6 +22,7 @@ import ProgressIndicator from '@components/ui/ProgressIndicator';
 import { ONBOARDING_STEPS, TOTAL_ONBOARDING_STEPS } from '@config/onboardingFlow';
 import { authService } from '../../services/api/authService';
 import { devLog } from '@config/environment';
+import { useUser, UserProfile } from '@context/UserContext';
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +40,7 @@ interface Props {
 
 const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { login: loginUser } = useUser();
 
   // Get phone number or email from params
   const phoneNumber = route.params?.phoneNumber;
@@ -130,10 +132,33 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
         devLog('OTP Verified successfully!', result);
 
         if (mode === 'login') {
-          // Login: fetch profile and go to HomeTabs
+          // Login: fetch profile, store in context, go to HomeTabs
           if (result.token) {
-            const meResult = await (authService as any).getMe?.();
-            devLog('getMe result:', meResult);
+            try {
+              const meResult = await authService.getMe();
+              devLog('getMe result:', meResult);
+              if (meResult.success && meResult.profile) {
+                const userProfile: UserProfile = {
+                  id: meResult.profile.id || meResult.profile._id,
+                  name: meResult.profile.name || '',
+                  email: meResult.profile.email,
+                  phoneNumber: meResult.profile.phone,
+                  dateOfBirth: meResult.profile.dateOfBirth,
+                  age: meResult.profile.age,
+                  gender: meResult.profile.gender || '',
+                  lookingFor: meResult.profile.lookingFor || '',
+                  relationshipGoal: meResult.profile.relationshipGoal || '',
+                  interests: meResult.profile.interests || [],
+                  photos: meResult.profile.photos || [],
+                  bio: meResult.profile.bio,
+                  location: meResult.profile.location,
+                  verified: meResult.profile.verified || false,
+                };
+                await loginUser(result.token, userProfile);
+              }
+            } catch (e) {
+              devLog('getMe failed after login verify:', e);
+            }
           }
           navigation.reset({ index: 0, routes: [{ name: 'HomeTabs' }] });
         } else {

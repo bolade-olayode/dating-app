@@ -16,12 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/Ionicons';
-
 import { FONTS } from '@config/fonts';
 import { STORAGE_KEYS } from '@utils/constant';
-import HeartProgressBar from '@components/ui/HeartProgressBar';
-
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@navigation/AppNavigator';
 
@@ -46,28 +42,28 @@ const SLIDES: SlideData[] = [
     title: 'Effortless Discovery',
     subtitle:
       'Navigating our community is seamless. A simple gesture reveals a world of possibilities; when the interest is mutual, the conversation begins.',
-    image: require('../../assets/images/dating.jpg'),
+    image: require('../../assets/images/int1.png'),
   },
   {
     id: '2',
     title: 'Your Curated Circle',
     subtitle:
       'Beyond romance, expand your social horizon. Connect with like-minded individuals for high-level networking, shared passions, and genuine friendship.',
-    image: require('../../assets/images/fling.jpg'),
+    image: require('../../assets/images/int2.jpg'),
   },
   {
     id: '3',
     title: 'Soft, Intentional Love',
     subtitle:
       'Meet partners who align with your lifestyle, values, and vision. We prioritize depth over distance, ensuring every match is a meaningful one.',
-    image: require('../../assets/images/sport.jpg'),
+    image: require('../../assets/images/int3.png'),
   },
   {
     id: '4',
     title: 'Bespoke Access',
     subtitle:
       'Tailor your experience with our seamless token system. Unlock priority visibility, global travel modes, and advanced filters with the modern currency of connection.',
-    image: require('../../assets/images/opuehbckgdimg2.png'),
+    image: require('../../assets/images/int4.png'),
   },
 ];
 
@@ -159,30 +155,27 @@ const IntroSlideshowScreen: React.FC<Props> = ({ navigation }) => {
         })}
       />
 
-      {/* Overlay UI (progress bar + navigation) */}
+      {/* Overlay UI (navigation) */}
       <View style={[styles.overlay, { paddingTop: insets.top + 12 }]} pointerEvents="box-none">
-        {/* Heart Progress Bar */}
-        <HeartProgressBar currentStep={currentIndex} totalSteps={SLIDES.length} />
-
         {/* Spacer */}
         <View style={{ flex: 1 }} pointerEvents="none" />
 
-        {/* Footer: Skip + Next Arrow */}
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+        {/* Footer: Skip + Next */}
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 30 }]}>
           <TouchableOpacity onPress={handleSkip} style={styles.skipButton} activeOpacity={0.7}>
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleNext} activeOpacity={0.8}>
             <LinearGradient
-              colors={['#FF007B', '#C2185B']}
+              colors={['#FF007B', '#6366F1', '#00B4D8']}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.nextButton}
             >
-              <Icon name="chevron-forward" size={18} color="#fff" />
-              <Icon name="chevron-forward" size={18} color="#fff" style={{ marginLeft: -8 }} />
-              <Icon name="chevron-forward" size={18} color="#fff" style={{ marginLeft: -8 }} />
+              <Text style={styles.nextText}>
+                {currentIndex === SLIDES.length - 1 ? 'Get Started' : 'Next'}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -243,12 +236,16 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   nextButton: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 56,
     height: 56,
-    borderRadius: 28,
+    paddingHorizontal: 32,
+    borderRadius: 100,
+  },
+  nextText: {
+    fontFamily: FONTS.H3,
+    fontSize: 16,
+    color: '#fff',
   },
 });
 

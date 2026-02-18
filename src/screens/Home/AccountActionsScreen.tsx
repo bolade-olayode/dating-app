@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
+import { authService } from '@services/api/authService';
 
 const AccountActionsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -62,6 +63,11 @@ const AccountActionsScreen: React.FC = () => {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
+          try {
+            await authService.logout();
+          } catch {
+            // Continue with local logout even if API fails
+          }
           await logout();
           navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
         },
@@ -76,10 +82,21 @@ const AccountActionsScreen: React.FC = () => {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Delete Forever',
           style: 'destructive',
-          onPress: () =>
-            Alert.alert('Confirm Delete', 'Type "DELETE" to confirm. (Not implemented yet)'),
+          onPress: async () => {
+            try {
+              const result = await authService.deleteAccount();
+              if (result.success) {
+                await logout();
+                navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
+              } else {
+                Alert.alert('Error', result.message);
+              }
+            } catch {
+              Alert.alert('Error', 'Failed to delete account. Please try again.');
+            }
+          },
         },
       ],
     );

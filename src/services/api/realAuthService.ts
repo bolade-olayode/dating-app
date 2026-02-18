@@ -235,6 +235,7 @@ const getMe = async (): Promise<AuthResponse> => {
         phone: user.phone,
         email: user.email,
       },
+      profile: user,
     };
   } catch (error: any) {
     return {
@@ -268,6 +269,12 @@ const login = async (email: string, password: string): Promise<AuthResponse> => 
 
 const logout = async (): Promise<AuthResponse> => {
   try {
+    // Call backend to invalidate token
+    try {
+      await apiClient.post('/api/auth/logout');
+    } catch {
+      // Continue with local logout even if API call fails
+    }
     await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     return {
       success: true,
@@ -281,6 +288,24 @@ const logout = async (): Promise<AuthResponse> => {
   }
 };
 
+// ─── Delete Account ─────────────────────────────────────────
+
+const deleteAccount = async (): Promise<AuthResponse> => {
+  try {
+    await apiClient.delete('/api/auth/delete-account');
+    await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    return {
+      success: true,
+      message: 'Account deleted successfully',
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to delete account',
+    };
+  }
+};
+
 // ─── Export ──────────────────────────────────────────────────
 
 export const realAuthService = {
@@ -290,6 +315,7 @@ export const realAuthService = {
   getMe,
   login,
   logout,
+  deleteAccount,
 };
 
 export default realAuthService;

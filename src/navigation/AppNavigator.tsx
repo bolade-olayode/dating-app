@@ -4,9 +4,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTheme } from '@context/ThemeContext';
+import { useUser, UserProfile } from '@context/UserContext';
 import { StatusBar, View, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@utils/constant';
+import { authService } from '@services/api/authService';
+import { devLog } from '@config/environment';
 
 // Import Screens
 import IntroSlideshowScreen from '@screens/IntroSlideshow/IntroSlideshowScreen';
@@ -136,24 +139,77 @@ export type RootStackParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 
+const mapApiUserToProfile = (user: any): UserProfile => ({
+  id: user.id || user._id,
+  name: user.name || '',
+  email: user.email,
+  phoneNumber: user.phone,
+  dateOfBirth: user.dateOfBirth,
+  age: user.age,
+  gender: user.gender || '',
+  lookingFor: user.lookingFor || '',
+  relationshipGoal: user.relationshipGoal || '',
+  interests: user.interests || [],
+  photos: user.photos || [],
+  bio: user.bio,
+  location: user.location,
+  verified: user.verified || false,
+});
+
 const AppNavigator = () => {
   const theme = useTheme();
+  const { isLoading: contextLoading, isAuthenticated, profile, login: loginUser, logout: logoutUser } = useUser();
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
 
   useEffect(() => {
-    const checkIntroSeen = async () => {
-      try {
-        // DEV ONLY: Remove this line to stop showing intro every time
-        await AsyncStorage.removeItem(STORAGE_KEYS.HAS_SEEN_INTRO);
+    // Wait for UserContext to finish loading persisted data
+    if (contextLoading) return;
 
+    const initialize = async () => {
+      try {
+        // 1. Check if user has seen intro slideshow
         const hasSeen = await AsyncStorage.getItem(STORAGE_KEYS.HAS_SEEN_INTRO);
-        setInitialRoute(hasSeen ? 'Welcome' : 'IntroSlideshow');
+        if (!hasSeen) {
+          setInitialRoute('IntroSlideshow');
+          return;
+        }
+
+        // 2. Check for existing auth session
+        if (!isAuthenticated) {
+          setInitialRoute('Welcome');
+          return;
+        }
+
+        // 3. Validate token with backend and refresh profile
+        try {
+          devLog('🔄 Session restore: validating token...');
+          const result = await authService.getMe();
+
+          if (result.success && result.profile) {
+            devLog('✅ Session restore: token valid, refreshing profile');
+            const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+            if (token) {
+              await loginUser(token, mapApiUserToProfile(result.profile));
+            }
+            setInitialRoute('HomeTabs');
+          } else {
+            // Token invalid (401 or expired) — clear session
+            devLog('⚠️ Session restore: token invalid, clearing session');
+            await logoutUser();
+            setInitialRoute('Welcome');
+          }
+        } catch {
+          // Network error — use cached profile if available
+          devLog('⚠️ Session restore: network error, using cached data');
+          setInitialRoute(profile ? 'HomeTabs' : 'Welcome');
+        }
       } catch {
-        setInitialRoute('IntroSlideshow');
+        setInitialRoute('Welcome');
       }
     };
-    checkIntroSeen();
-  }, []);
+
+    initialize();
+  }, [contextLoading]);
 
   // Show a brief loading screen while checking AsyncStorage
   if (!initialRoute) {
