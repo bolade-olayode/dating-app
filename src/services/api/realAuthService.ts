@@ -54,31 +54,6 @@ apiClient.interceptors.response.use(
   },
 );
 
-// ─── Wake Up Backend (Render cold-start workaround) ─────────
-// Sends a lightweight ping to wake the server before the real request.
-// The ping has a long timeout (60s) since cold-starts can take 30-50s.
-
-let isServerAwake = false;
-
-const ensureServerAwake = async (): Promise<void> => {
-  if (isServerAwake) return;
-
-  try {
-    devLog('🏓 Pinging backend to wake it up...');
-    await axios.get(`${ENV.API_BASE_URL}/api/onboarding/interests`, { timeout: 60000 });
-    isServerAwake = true;
-    devLog('✅ Backend is awake');
-  } catch (err: any) {
-    // Even a 401/404 means the server is responding — it's awake
-    if (err.response?.status) {
-      isServerAwake = true;
-      devLog('✅ Backend is awake (responded with', err.response.status, ')');
-    } else {
-      devLog('⚠️ Backend wake-up ping failed, proceeding anyway');
-    }
-  }
-};
-
 // ─── Send OTP ────────────────────────────────────────────────
 // mode = 'login'  → POST /api/auth/login/init
 // mode = 'signup' → POST /api/onboarding/init (requires both email + phone)
@@ -91,9 +66,6 @@ const sendOTP = async (
   mode: 'login' | 'signup' = 'login',
   extra?: { email?: string; phone?: string },
 ): Promise<AuthResponse> => {
-  // Wake up the backend first (handles Render cold-start)
-  await ensureServerAwake();
-
   let url: string;
   let body: Record<string, string>;
 
@@ -108,6 +80,8 @@ const sendOTP = async (
     const isEmail = phoneOrEmail.includes('@');
     body = isEmail ? { email: phoneOrEmail } : { phone: phoneOrEmail };
   }
+
+  devLog('📦 sendOTP body:', JSON.stringify(body));
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -129,7 +103,7 @@ const sendOTP = async (
         continue;
       }
 
-      errorLog(`sendOTP failed after ${attempt} attempt(s):`, error.response?.data?.message || error.message);
+      errorLog(`sendOTP failed after ${attempt} attempt(s):`, JSON.stringify(error.response?.data) || error.message);
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to send OTP. Please try again.',
@@ -238,10 +212,17 @@ const getMe = async (): Promise<AuthResponse> => {
       profile: user,
     };
   } catch (error: any) {
-    return {
-      success: false,
-      message: error.response?.data?.message || 'Failed to fetch user profile',
-    };
+    const status = error.response?.status;
+    // Only treat 401 as definitively "token invalid"
+    // Everything else (500, 403 with DB errors, network) → throw to allow cached fallback
+    if (status === 401) {
+      return {
+        success: false,
+        message: 'Session expired',
+      };
+    }
+    // Re-throw so callers can fall back to cached data
+    throw error;
   }
 };
 
