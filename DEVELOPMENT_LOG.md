@@ -732,7 +732,99 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 
 ---
 
-## CURRENT STATUS (February 11, 2026)
+### **Session 13: February 11-12, 2026 - Session Restore, Auth Completion & UI Polish**
+
+**What We Built:**
+
+**1. Session Restore on App Startup** (`AppNavigator.tsx` — major update)
+- Full startup flow: check intro seen → check isAuthenticated → validate token with getMe → route
+- Waits for `UserContext.isLoading` to finish before initializing (prevents race conditions)
+- On successful getMe: stores refreshed profile in context → routes to HomeTabs
+- On 401 (token invalid): clears session → routes to Welcome
+- On server error (500/403/timeout): falls back to cached profile if available → HomeTabs; otherwise → Welcome
+- Added `mapApiUserToProfile()` helper to convert API response → `UserProfile` type
+
+**2. Login Flow Completion** (`OTPVerificationScreen.tsx` — modified)
+- After successful login OTP verify: calls `getMe()` to fetch full profile
+- Maps API response to `UserProfile` and stores in UserContext via `loginUser(token, profile)`
+- Login now properly populates profile data (name, interests, photos, etc.) on MeScreen
+- Signup flow unchanged: continues to NameInput after verify
+
+**3. Logout Wired to Backend** (`AccountActionsScreen.tsx` — modified)
+- Calls `authService.logout()` (POST /api/auth/logout) before clearing local state
+- Gracefully handles API failure (continues with local logout)
+- Calls `UserContext.logout()` to clear all AsyncStorage + context state
+- Resets navigation to Welcome screen
+
+**4. Delete Account Wired to Backend** (`AccountActionsScreen.tsx` — modified)
+- Confirmation alert with "Delete Forever" destructive button
+- Calls `authService.deleteAccount()` (DELETE /api/auth/delete-account)
+- On success: clears local state + navigates to Welcome
+- On failure: shows error alert, stays on screen
+
+**5. Real Auth Service Updates** (`realAuthService.ts` — modified)
+- `getMe()` now returns full `profile` object (not just id/phone/email)
+- `getMe()` only treats HTTP 401 as "token invalid" → returns `{success: false}`
+- All other errors (500, 403/DB timeout, network) → re-throws to allow cached fallback
+- `logout()` calls backend API before clearing local token
+- Added `deleteAccount()` → DELETE /api/auth/delete-account
+- Removed `ensureServerAwake()` ping (server on paid Render plan, always awake)
+- Added request body logging to sendOTP for debugging
+- Added full error response logging (`JSON.stringify(error.response?.data)`)
+
+**6. Mock Auth Service Updates** (`mockAuthService.ts` — modified)
+- Added `profile` field to `AuthResponse` type for getMe responses
+- `getMe()` returns full mock profile (name, gender, interests, photos, etc.)
+- Added `deleteAccount()` mock function
+- Enables full testing of session restore + delete account in mock mode
+
+**7. Intro Slideshow UI Polish** (`IntroSlideshowScreen.tsx` — modified)
+- Removed HeartProgressBar component (was cluttering the UI)
+- Shifted text content upward: `textContainer.paddingBottom` 100 → 140
+- Shifted footer buttons upward: `footer.paddingBottom` insets.bottom+20 → insets.bottom+30
+- Cleaner slideshow with more visual breathing room
+
+**8. Backend Fixes Documentation** (`BACKEND_FIXES.md` — NEW)
+- Comprehensive document for backend developer with 10 items
+- **P0 (Launch blockers):** MongoDB connection timeout, incorrect HTTP status codes (403 for DB errors)
+- **P1 (Should fix):** OTP delivery reliability, token expiration/refresh, rate limiting, input validation
+- **P2 (Fix soon):** API response format consistency, delete account cascade, token invalidation, CORS/security
+- Includes API endpoint status table, fix code examples, and testing checklist
+
+**Key Technical Decisions:**
+- **401 vs other errors:** Only 401 clears session; 500/403/timeout falls back to cached profile. Prevents users getting logged out when backend has temporary issues.
+- **Retry logic preserved:** sendOTP retries once on 500/network errors with 2s delay
+- **No server ping needed:** Render paid plan keeps server awake, removed unnecessary cold-start ping
+- **Mock API supports full auth lifecycle:** getMe, logout, deleteAccount all have mock implementations
+
+**Files Created:**
+- `BACKEND_FIXES.md` (comprehensive backend issues document)
+
+**Files Updated:**
+- `src/navigation/AppNavigator.tsx` (session restore logic)
+- `src/screens/Onboarding/OTPVerificationScreen.tsx` (login flow → getMe → profile store)
+- `src/screens/Home/AccountActionsScreen.tsx` (logout + delete account API wiring)
+- `src/services/api/realAuthService.ts` (getMe profile, logout, deleteAccount, error handling)
+- `src/services/api/mockAuthService.ts` (profile in getMe, deleteAccount mock)
+- `src/screens/IntroSlideshow/IntroSlideshowScreen.tsx` (removed HeartProgressBar, shifted UI up)
+
+**Bugs Fixed:**
+- Session restore incorrectly logging users out on MongoDB timeout (403 treated as auth failure → now only 401 clears session)
+- Missing profile data after login (getMe not called → now fetches and stores full profile)
+- ensureServerAwake reference error after removal (removed call site too)
+
+**Testing Results (Mock API):**
+- ✅ Signup flow: Welcome → Signup → Register → OTP → Onboarding → HomeTabs
+- ✅ Login flow: Welcome → Login → Register → OTP → HomeTabs (profile loaded)
+- ✅ Session restore: Close app → Reopen → Straight to HomeTabs
+- ✅ Session cleared after logout: Logout → Close app → Reopen → Welcome
+- ✅ Logout: Account Actions → Logout → Welcome
+- ✅ Delete account: Account Actions → Delete → Confirmation → Welcome
+- ✅ Interests fallback: API fails (mock token rejected) → local categories used
+
+---
+
+## CURRENT STATUS (February 12, 2026)
 
 ### ✅ Fully Complete
 
@@ -768,7 +860,7 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 **Screens Built (25+ total):**
 
 *Intro:*
-- [x] Intro Slideshow (4 slides, HeartProgressBar, skip/next, AsyncStorage persistence)
+- [x] Intro Slideshow (4 slides, skip/next, gradient buttons, AsyncStorage persistence)
 
 *Onboarding (12 screens):*
 - [x] Welcome Screen (hero image, CTA buttons)
@@ -807,11 +899,12 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 - [x] Stack Navigator (25+ screens)
 - [x] Bottom Tab Navigator (Home, Explore, Chats, Wallet, Me)
 - [x] Match screen with opacity transition + gesture disabled
-- [x] Dynamic initial route (IntroSlideshow vs Welcome based on AsyncStorage)
+- [x] Dynamic initial route (IntroSlideshow vs Welcome vs HomeTabs based on AsyncStorage + token)
+- [x] Session restore (token → getMe → HomeTabs, with cached fallback on server errors)
 
 **Services (7 total):**
-- [x] Mock Authentication (sendOTP, verifyOTP, resendOTP)
-- [x] Real Authentication (sendOTP, verifyOTP, getMe — live backend)
+- [x] Mock Authentication (sendOTP, verifyOTP, resendOTP, getMe, logout, deleteAccount)
+- [x] Real Authentication (sendOTP, verifyOTP, getMe, logout, deleteAccount — live backend)
 - [x] Auth Service auto-switcher (mock ↔ real via feature flag)
 - [x] Onboarding Service (details, interests, photos — live backend)
 - [x] Cloudinary Service (unsigned image upload)
@@ -827,7 +920,9 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 - [x] `PATCH /api/onboarding/photos` — upload photos, finalize onboarding
 - [x] `POST /api/auth/login/init` — send login OTP
 - [x] `POST /api/auth/login/verify` — verify login OTP → JWT
-- [x] `GET /api/auth/me` — get current user profile
+- [x] `GET /api/auth/me` — get current user profile (+ session restore)
+- [x] `POST /api/auth/logout` — logout (invalidate token)
+- [x] `DELETE /api/auth/delete-account` — delete account and data
 
 ---
 
@@ -909,8 +1004,8 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 ### Front-End: Remaining
 | Task | Status |
 |---|---|
-| Session restore on startup (token → getMe → HomeTabs) | Not started |
-| Login flow completion (existing users → profile fetch → Home) | Partially done |
+| Session restore on startup (token → getMe → HomeTabs) | ✅ Done |
+| Login flow completion (existing users → profile fetch → Home) | ✅ Done |
 | Wire Discovery screen to real API | Not started |
 | Wire Explore screen to real API (categories + profiles) | Not started |
 | Wire ExploreCategoryScreen to fetch real profiles | Not started |
@@ -928,7 +1023,7 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 | Profile verification flow (selfie capture + submit) | Not started |
 | Image caching & optimization | Not started |
 | Deep linking (match notifications → chat) | Not started |
-| Logout flow (confirm → clear context → Welcome) | Function exists, no UI wiring |
+| Logout flow (confirm → clear context → Welcome) | ✅ Done |
 | Token refresh / expiry handling (401 → redirect to login) | Not started |
 | Onboarding resume (quit mid-flow → resume on reopen) | Not started |
 | Offline handling (no internet banner/modal) | Not started |
@@ -966,8 +1061,7 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 ### 5. Backend Cold-Start Handling (Render)
 - Free tier Render instances sleep after inactivity
 - First request can take 30-50 seconds (cold start)
-- Solution: `ensureServerAwake()` ping before real API calls
-- Even a 401/404 response means the server is awake
+- **Update:** Moved to paid Render plan — server always awake, removed `ensureServerAwake()` ping
 
 ### 6. Cloudinary Unsigned Upload — No SDK Needed
 - Simple `POST` with `FormData` to Cloudinary REST API
@@ -981,7 +1075,13 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 - Easier refactoring
 - Route params fully typed with `RootStackParamList`
 
-### 8. Data Accumulation Pattern
+### 8. Graceful Auth Error Handling
+- Only HTTP 401 should clear the user's session (definitively "token invalid")
+- Other errors (500, 403 with DB timeouts, network errors) should fall back to cached data
+- Prevents users getting kicked out when the backend has temporary issues
+- Implemented in `getMe()`: 401 → `{success: false}`, everything else → re-throw for cached fallback
+
+### 9. Data Accumulation Pattern
 - Each onboarding screen passes accumulated data to next via nav params
 - Batch API call at RelationshipGoals (not per-screen) reduces requests
 - Final screen (Photos) has complete profile + finalizes onboarding
@@ -1022,7 +1122,7 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 - **Components Built:** 15
 - **Screens Built:** 28+
 - **API Services:** 7
-- **API Endpoints Wired:** 9
+- **API Endpoints Wired:** 11
 - **Utils/Config Files:** 10
 
 **Code Quality:**
@@ -1052,8 +1152,10 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 
 ---
 
-**Last Updated:** February 11, 2026
+**Last Updated:** February 12, 2026
 **Onboarding Flow:** 100% Complete (wired to real API)
-**Auth Flow:** Login + Signup wired to real backend
+**Auth Flow:** Login + Signup + Session Restore + Logout + Delete Account — all wired
 **Core Screens:** 28+ screens built
+**API Endpoints Wired:** 11 (Auth + Onboarding complete)
+**Backend Status:** OTP sending broken (500) — backend dev fixing. All other endpoints verified working.
 **Ready for:** Discovery/Explore/Messaging API + Payments + Admin Dashboard

@@ -132,16 +132,27 @@ OpuehApp/
 | `PATCH /api/onboarding/photos` | Upload Cloudinary URLs, finalize onboarding |
 | `POST /api/auth/login/init` | Send login OTP |
 | `POST /api/auth/login/verify` | Verify login OTP |
-| `GET /api/auth/me` | Get current user profile |
+| `GET /api/auth/me` | Get current user profile (+ session restore) |
+| `POST /api/auth/logout` | Logout (invalidate token) |
+| `DELETE /api/auth/delete-account` | Delete account and all user data |
 
 ### Remaining Backend Endpoints
 See `DEVELOPMENT_LOG.md` for the full requirements list covering Discovery, Explore, Messaging, Wallet/Payments, Safety, Notifications, and Admin Dashboard.
+
+### Known Backend Issues
+See `BACKEND_FIXES.md` for priority-ranked issues (MongoDB timeouts, incorrect HTTP status codes, OTP delivery failures).
 
 ---
 
 ## Authentication Flow
 
 ```
+App Launch
+    ↓
+Token exists? ──yes──→ GET /api/auth/me ──success──→ HomeTabs (session restore)
+    │                         │
+    no                     fail (401) → Welcome Screen
+    ↓
 Intro Slideshow (4 screens, first launch only)
     ↓
 Welcome Screen
@@ -158,6 +169,8 @@ Welcome Screen
 │ Photos (Cloudinary→API) → │
 │ HomeTabs                  │
 └───────────────────────────┘
+
+Logout / Delete Account → Clear token + context → Welcome Screen
 ```
 
 ---
@@ -215,7 +228,7 @@ eas build --platform ios --profile production
 
 ## Current Progress
 
-### Completed (As of Feb 11, 2026)
+### Completed (As of Feb 12, 2026)
 
 **Foundation:**
 - [x] Project setup (Expo SDK 52 + TypeScript)
@@ -231,7 +244,7 @@ eas build --platform ios --profile production
 - [x] EAS Build configured (Android APK + iOS ad-hoc)
 
 **Screens Built (25+):**
-- [x] Intro Slideshow (4 slides, HeartProgressBar, skip/next)
+- [x] Intro Slideshow (4 slides, skip/next, gradient buttons)
 - [x] Welcome, Signup, Login, Register (dual-mode: login/signup)
 - [x] OTP Verification (real API, countdown, resend)
 - [x] Name, DOB, Gender, LookingFor, RelationshipGoals (API batch save)
@@ -249,8 +262,10 @@ eas build --platform ios --profile production
 - [x] Account Actions
 
 ### In Progress / Next
-- [ ] Session restore on startup (token → getMe → HomeTabs)
-- [ ] Login flow completion (existing users)
+- [x] Session restore on startup (token → getMe → HomeTabs)
+- [x] Login flow completion (verify → getMe → store profile → HomeTabs)
+- [x] Logout wired to backend API + context clear
+- [x] Delete account wired to backend API + context clear
 - [ ] Wire Discovery, Explore, Messaging to real API
 - [ ] Real-time chat (WebSocket)
 - [ ] Payment integration (Paystack)
@@ -262,7 +277,9 @@ eas build --platform ios --profile production
 - [x] ~~PanResponder stale closure~~ (fixed with useRef)
 - [x] ~~Keyboard not switching Phone/Email~~ (fixed with key prop)
 - [x] ~~Interest screen local data flash~~ (fixed with loading state)
-- [x] ~~OTP 500 errors~~ (fixed with backend wake-up ping + retry)
+- [x] ~~OTP 500 errors~~ (retry logic, backend still has intermittent issues — see BACKEND_FIXES.md)
+- [x] ~~Session restore logging out on DB timeout~~ (fixed: only 401 clears session, other errors fall back to cached data)
+- [ ] Backend OTP sending broken (500 HTML error) — backend dev fixing
 - [ ] All Discovery/Explore/Chat data is placeholder (pending backend)
 - [ ] No error boundary (add global error handler)
 - [ ] Geolocation hardcoded to Lagos
@@ -282,5 +299,5 @@ eas build --platform ios --profile production
 
 Proprietary - All Rights Reserved
 
-**Last Updated:** February 11, 2026
-**Version:** 0.3.0 (Alpha)
+**Last Updated:** February 12, 2026
+**Version:** 0.3.1 (Alpha)
