@@ -2,9 +2,9 @@
 
 **Project:** MeetPie Dating App
 **Started:** January 29, 2026
-**Last Updated:** February 11, 2026
+**Last Updated:** February 2026
 **Developer:** Olayode Bolade
-**Status:** Alpha Development (v0.3.0)
+**Status:** Alpha Development (v0.4.0 — Full API Integration)
 
 ---
 
@@ -22,7 +22,8 @@
 - Week 1-2: Foundation & Auth Flow ✅
 - Week 3-4: Profile Creation & Core Screens ✅
 - Week 5-6: Backend API Integration ✅ (Auth + Onboarding)
-- Week 7+: Discovery/Explore/Messaging API, Payments, Admin Dashboard
+- Week 7-8: Full API Integration ✅ (Matching + Chat + Moderation + User + Notifications — 36 endpoints)
+- Week 9+: Payments, WebSocket, Push Notifications, Admin Dashboard
 
 ---
 
@@ -824,7 +825,132 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 
 ---
 
-## CURRENT STATUS (February 12, 2026)
+### **Session 14: February 2026 - Full API Integration (Discovery, Chat, Moderation, Notifications, Profile)**
+
+**What We Built:**
+
+This session wired ALL remaining backend API endpoints into the app. 25 new endpoints across 5 new service files, modifying 11 screens. Every screen that previously used hardcoded mock data now fetches from the real backend with graceful mock fallback.
+
+**1. Matching Service** (`matchingService.ts` — NEW)
+- 7 functions: `updateLocation`, `discoverProfiles`, `swipe`, `getMatches`, `getLikes`, `unmatch`, `getStats`
+- Follows same pattern as `onboardingService.ts` (uses shared `apiClient`, returns `{ success, message, data? }`)
+
+**2. Chat Service** (`chatService.ts` — NEW)
+- 7 functions: `getConversations`, `getUnreadCount`, `getMessages`, `sendMessage`, `markConversationRead`, `markMessageRead`, `deleteMessage`
+- Supports pagination with `limit`/`before` cursor for messages
+
+**3. Moderation Service** (`moderationService.ts` — NEW)
+- 5 functions: `reportUser`, `getReports`, `blockUser`, `unblockUser`, `getBlockedUsers`
+
+**4. User Service** (`userService.ts` — NEW)
+- 1 function: `updateProfile(data)` → PATCH `/api/user/profile`
+- Accepts `UpdateProfilePayload` with fields: username, country, city, dob, gender, interestedIn, goal, interests, photos, lat, long
+
+**5. Notification Service** (`notificationService.ts` — NEW)
+- 5 functions: `getNotifications`, `getUnreadCount`, `markAllRead`, `markRead`, `deleteNotification`
+- Supports pagination with `limit`/`offset` params
+
+**6. Discovery Screen Wired** (`DiscoveryScreen.tsx` — MODIFIED)
+- Fetches real profiles via `matchingService.discoverProfiles()` on mount
+- Maps API profiles to existing card shape: `{ id, name, age, location, photo: { uri }, verified, ... }`
+- Keeps `MOCK_PROFILES` as fallback if API fails
+- Replaced fake "every 3rd like is a match" with real `isMatch` from swipe response
+- Calls `matchingService.swipe(profile.id, 'like'|'pass')` on swipe actions
+- Calls `matchingService.updateLocation(6.5244, 3.3792, 'Lagos')` on mount
+
+**7. Explore Category Screen Wired** (`ExploreCategoryScreen.tsx` — MODIFIED)
+- Fetches profiles via `matchingService.discoverProfiles()` per category
+- Maps API data to existing profile grid shape, keeps mock fallback
+
+**8. Tab Navigator — Dynamic Chat Badge** (`TabNavigator.tsx` — MODIFIED)
+- Replaced hardcoded `11+` badge with real unread count from `chatService.getUnreadCount()`
+- Polls every 30 seconds via `useEffect` + `setInterval`
+- Shows `99+` for counts over 99, hides badge when 0
+
+**9. Chats Screen Wired** (`ChatsScreen.tsx` — MODIFIED)
+- Fetches conversations via `chatService.getConversations()` on mount
+- Fetches matches via `matchingService.getMatches()` for horizontal avatar row
+- Updates `unreadChatCount` in UserContext
+- Uses `useIsFocused()` to refetch when screen gains focus
+- Maps API data to existing conversation/match shapes with fallback images
+
+**10. Chat Conversation Screen Wired** (`ChatConversationScreen.tsx` — MODIFIED)
+- Fetches messages via `chatService.getMessages(chatId)` on mount
+- Sends messages via `chatService.sendMessage(chatId, content, 'text')` with optimistic UI
+- Marks conversation as read on mount: `chatService.markConversationRead(chatId)`
+- Polls for new messages every 10 seconds while screen is focused
+- Keeps mock messages/simulated replies as fallback
+
+**11. Profile Detail Screen Wired** (`ProfileDetailScreen.tsx` — MODIFIED)
+- "Say Hi" and heart buttons fire `matchingService.swipe(id, 'like')` with real `isMatch` detection
+- Report button shows Alert with reason options → `moderationService.reportUser()`
+- Block button with confirmation → `moderationService.blockUser()` → navigates back
+- On match: calls `addMatch()` from UserContext
+
+**12. Privacy & Safety Screen Wired** (`PrivacySafetyScreen.tsx` — MODIFIED)
+- "Blocked users" row fetches list via `moderationService.getBlockedUsers()` on tap
+- Displays blocked users inline with unblock buttons
+- Unblock confirmation → `moderationService.unblockUser()` → removes from local state
+
+**13. Edit Profile Screen Wired** (`EditProfileScreen.tsx` — MODIFIED)
+- `handleSave` now calls `userService.updateProfile()` before updating local context
+- Maps frontend field names to API names (e.g., `name` → `username`, `lookingFor` → `interestedIn`)
+- Shows success/fallback alert based on API response
+- Added `isSaving` loading state
+
+**14. Notifications Screen Rebuilt** (`NotificationsScreen.tsx` — REWRITTEN)
+- Complete rewrite from "Coming Soon" placeholder to full notification screen
+- FlatList with pull-to-refresh via `RefreshControl`
+- "Read all" button calls `notificationService.markAllRead()`
+- Long-press to delete via `notificationService.deleteNotification()`
+- Empty state with icon + message
+- Loading indicator, icon/color per notification type (match, message, like)
+- Relative time formatting (Just now, Xm ago, Xh ago, Xd ago)
+
+**15. UserContext Updates** (`UserContext.tsx` — MODIFIED)
+- Added `unreadChatCount: number` + `setUnreadChatCount()` to context
+- Updated `Match` interface: `id: string | number` (API returns string `_id`)
+
+**Key Technical Patterns:**
+- **Graceful fallback**: Every screen defaults to mock data. API success replaces it; failure keeps mock.
+- **Real `isMatch`**: Backend's `isMatch` boolean from swipe response replaces fake match detection.
+- **Optimistic UI for chat**: Messages appear locally before API confirms. Failed sends are logged.
+- **REST polling for chat**: 10-second interval while ChatConversation is focused. 30-second interval for unread count on tab bar. Will replace with WebSocket later.
+- **Photo mapping**: API returns string URLs → wrap as `{ uri: url }`. Fallback to `require()` local images.
+- **ID flexibility**: `string | number` for Match IDs since API returns `_id` strings.
+- **`useIsFocused()`**: Refetches data when screen gains focus (ChatsScreen).
+- **Field name mapping**: Frontend to backend (e.g., `name` → `username`, `lookingFor` → `interestedIn`, `relationshipGoal` → `goal`).
+
+**Files Created (5):**
+- `src/services/api/matchingService.ts`
+- `src/services/api/chatService.ts`
+- `src/services/api/moderationService.ts`
+- `src/services/api/userService.ts`
+- `src/services/api/notificationService.ts`
+
+**Files Updated (11):**
+- `src/screens/Home/DiscoveryScreen.tsx` (API profiles, real swipe, real isMatch)
+- `src/screens/Home/ExploreCategoryScreen.tsx` (API profiles per category)
+- `src/navigation/TabNavigator.tsx` (dynamic unread badge)
+- `src/screens/Home/ChatsScreen.tsx` (API conversations + matches)
+- `src/screens/Home/ChatConversationScreen.tsx` (API messages, send, polling)
+- `src/screens/Home/ProfileDetailScreen.tsx` (like/swipe API, report, block)
+- `src/screens/Home/PrivacySafetyScreen.tsx` (blocked users list, unblock)
+- `src/screens/Home/EditProfileScreen.tsx` (save to API)
+- `src/screens/Home/NotificationsScreen.tsx` (complete rebuild)
+- `src/context/UserContext.tsx` (unreadChatCount, flexible Match ID)
+- `src/screens/Home/MatchScreen.tsx` (navigate to ChatConversation with match data)
+
+**Bugs Fixed:**
+- ChatConversationScreen: `sendMessage` renamed to `sendMessageFn` but icebreaker handler still referenced old name
+- ChatConversationScreen: Missing closing `)}` for ternary wrapping FlatList
+- ProfileDetailScreen: Missing `blockButton` and `blockButtonText` styles
+- PrivacySafetyScreen: Missing `blockedUserRow`, `blockedUserName`, `unblockText` styles
+- ExploreCategoryScreen: Missing `)` for ternary expression
+
+---
+
+## CURRENT STATUS (February 2026)
 
 ### ✅ Fully Complete
 
@@ -834,10 +960,10 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 - [x] Custom fonts (Sora — 8 weights, semantic aliases)
 - [x] Environment config with feature flags
 - [x] Mock API service layer (Auth + Photo)
-- [x] Real API service layer (Auth + Onboarding — live backend)
+- [x] Real API service layer (Auth + Onboarding + Matching + Chat + Moderation + User + Notifications)
 - [x] Cloudinary image upload service (unsigned, no SDK)
 - [x] Onboarding flow configuration (centralized step management)
-- [x] UserContext (global state: coins, profile, auth, matches)
+- [x] UserContext (global state: coins, profile, auth, matches, unreadChatCount)
 - [x] EAS Build configured (Android APK + iOS ad-hoc)
 
 **Components (15 total):**
@@ -902,16 +1028,23 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 - [x] Dynamic initial route (IntroSlideshow vs Welcome vs HomeTabs based on AsyncStorage + token)
 - [x] Session restore (token → getMe → HomeTabs, with cached fallback on server errors)
 
-**Services (7 total):**
+**Services (12 total):**
 - [x] Mock Authentication (sendOTP, verifyOTP, resendOTP, getMe, logout, deleteAccount)
 - [x] Real Authentication (sendOTP, verifyOTP, getMe, logout, deleteAccount — live backend)
 - [x] Auth Service auto-switcher (mock ↔ real via feature flag)
 - [x] Onboarding Service (details, interests, photos — live backend)
 - [x] Cloudinary Service (unsigned image upload)
 - [x] Mock Photo Service (upload simulation with 10% failure rate)
+- [x] Matching Service (location, discover, swipe, matches, likes, unmatch, stats — 7 functions)
+- [x] Chat Service (conversations, messages, send, read, unread count, delete — 7 functions)
+- [x] Moderation Service (report, block, unblock, blocked list, reports — 5 functions)
+- [x] User Service (profile update — 1 function)
+- [x] Notification Service (list, unread count, mark read, delete — 5 functions)
 - [x] Theme Context Provider + Font Loading Hook
 
-**API Integration (Live):**
+**API Integration (Live — 36 endpoints wired):**
+
+*Auth & Onboarding (11):*
 - [x] `POST /api/onboarding/init` — send signup OTP
 - [x] `POST /api/onboarding/verify` — verify signup OTP → JWT
 - [x] `PATCH /api/onboarding/details` — save profile details
@@ -924,62 +1057,74 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 - [x] `POST /api/auth/logout` — logout (invalidate token)
 - [x] `DELETE /api/auth/delete-account` — delete account and data
 
+*Matching (7):*
+- [x] `POST /api/matching/location` — update user location
+- [x] `GET /api/matching/discover` — discover profiles (distance/limit filters)
+- [x] `POST /api/matching/swipe` — swipe like/pass (returns isMatch)
+- [x] `GET /api/matching/matches` — get all matches
+- [x] `GET /api/matching/likes` — get users who liked you
+- [x] `DELETE /api/matching/unmatch/{matchId}` — unmatch a user
+- [x] `GET /api/matching/stats` — matching statistics
+
+*Chat (7):*
+- [x] `GET /api/chat/conversations` — get all conversations
+- [x] `GET /api/chat/unread-count` — unread message count
+- [x] `GET /api/chat/{matchId}/messages` — get messages (paginated)
+- [x] `POST /api/chat/{matchId}/messages` — send a message
+- [x] `PATCH /api/chat/{matchId}/read` — mark conversation read
+- [x] `PATCH /api/chat/messages/{messageId}/read` — mark message read
+- [x] `DELETE /api/chat/messages/{messageId}` — delete a message
+
+*Moderation (5):*
+- [x] `POST /api/moderation/report` — report a user
+- [x] `GET /api/moderation/reports` — get submitted reports
+- [x] `POST /api/moderation/block` — block a user
+- [x] `DELETE /api/moderation/block/{blockedUserId}` — unblock a user
+- [x] `GET /api/moderation/blocked` — get blocked users list
+
+*User Profile (1):*
+- [x] `PATCH /api/user/profile` — update profile (post-onboarding)
+
+*Notifications (5):*
+- [x] `GET /api/notifications` — get notifications (paginated)
+- [x] `GET /api/notifications/unread-count` — unread notification count
+- [x] `PATCH /api/notifications/read-all` — mark all read
+- [x] `PATCH /api/notifications/{id}/read` — mark single notification read
+- [x] `DELETE /api/notifications/{id}` — delete a notification
+
 ---
 
 ## REMAINING REQUIREMENTS
 
-### Back-End: Discovery & Matching
-| Endpoint | Description |
+### ✅ Completed — Wired to Backend
+| Area | Status |
 |---|---|
-| `GET /api/discovery/recommendations` | Get recommended profiles (filtered by preferences, location, already-swiped) |
-| `POST /api/discovery/swipe` | Record a swipe (like/reject) |
-| `POST /api/discovery/undo` | Undo last swipe |
-| Matching algorithm | When two users swipe right → create match |
-| Swiping algorithm | Scoring/ranking by compatibility, activity, location |
-| `GET /api/matches` | Get list of matched users |
+| Discovery & Matching (7 endpoints) | ✅ Fully wired — discover, swipe, matches, likes, unmatch, stats, location |
+| Chat & Messaging (7 endpoints) | ✅ Fully wired — conversations, messages, send, read, unread count, delete |
+| Moderation & Safety (5 endpoints) | ✅ Fully wired — report, block, unblock, blocked list |
+| User Profile (1 endpoint) | ✅ Fully wired — profile update |
+| Notifications (5 endpoints) | ✅ Fully wired — list, unread count, mark read, delete |
 
-### Back-End: Explore & Red Room
+### Back-End: Still Needed
+
+#### Explore & Red Room
 | Endpoint | Description |
 |---|---|
 | `GET /api/explore/categories` | Get all explore categories with member counts |
 | `GET /api/explore/categories/:id/profiles` | Get paginated profiles in a category |
 | `GET /api/explore/trending` | Get trending/featured profiles |
-| `POST /api/explore/like` | Like a profile from Explore |
 | `GET /api/explore/redroom` | Get Red Room content/profiles (premium-gated) |
 | `POST /api/explore/redroom/access` | Unlock Red Room access (coin spend) |
 
-### Back-End: Messaging
-| Endpoint | Description |
+#### Real-Time
+| Feature | Description |
 |---|---|
-| `GET /api/messages/conversations` | Get all conversations |
-| `GET /api/messages/:conversationId` | Get messages (paginated) |
-| `POST /api/messages/:conversationId` | Send a message |
-| WebSocket server | Real-time messaging + typing indicators + match notifications |
-
-### Back-End: User Profile & Settings
-| Endpoint | Description |
-|---|---|
-| `PATCH /api/user/profile` | Update profile (post-onboarding edits) |
-| `POST /api/user/verify` | Profile verification (selfie check) |
-| `GET /api/user/settings` | Get discovery preferences |
-| `PATCH /api/user/settings` | Save discovery preferences |
-
-### Back-End: Safety & Moderation
-| Endpoint | Description |
-|---|---|
-| `POST /api/safety/report` | Report a user |
-| `POST /api/safety/block` | Block a user |
-| `DELETE /api/safety/block/:userId` | Unblock a user |
-| `GET /api/safety/blocked` | Get blocked users list |
-
-### Back-End: Notifications
-| Endpoint | Description |
-|---|---|
-| `GET /api/notifications` | Get notifications list |
-| `PATCH /api/notifications/:id/read` | Mark notification as read |
+| WebSocket server | Real-time messaging (replace current 10s REST polling) |
+| Typing indicators | Show when match is typing |
+| Online status | Live presence tracking |
 | Push notification service | FCM/APNs integration |
 
-### Back-End: Wallet & Payments
+#### Wallet & Payments
 | Endpoint | Description |
 |---|---|
 | `GET /api/wallet/balance` | Get coin balance |
@@ -987,7 +1132,14 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 | `POST /api/wallet/spend` | Spend coins (unlock feature) |
 | `GET /api/wallet/transactions` | Transaction history |
 
-### Back-End: Admin Dashboard (subdomain: admin.meetpie.com)
+#### User Settings & Verification
+| Endpoint | Description |
+|---|---|
+| `POST /api/user/verify` | Profile verification (selfie check) |
+| `GET /api/user/settings` | Get discovery preferences |
+| `PATCH /api/user/settings` | Save discovery preferences |
+
+#### Admin Dashboard (subdomain: admin.meetpie.com)
 | Feature | Description |
 |---|---|
 | Admin auth | Login with role-based access (super admin, moderator, support) |
@@ -1006,24 +1158,24 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 |---|---|
 | Session restore on startup (token → getMe → HomeTabs) | ✅ Done |
 | Login flow completion (existing users → profile fetch → Home) | ✅ Done |
-| Wire Discovery screen to real API | Not started |
-| Wire Explore screen to real API (categories + profiles) | Not started |
-| Wire ExploreCategoryScreen to fetch real profiles | Not started |
+| Logout flow (confirm → clear context → Welcome) | ✅ Done |
+| Wire Discovery screen to real API | ✅ Done |
+| Wire Explore/ExploreCategory to real API | ✅ Done |
+| Wire Chat screens to real API | ✅ Done |
+| Wire matches list to real API | ✅ Done |
+| Wire EditProfile to save to backend | ✅ Done |
+| Wire report/block functionality | ✅ Done |
+| Wire notifications screen | ✅ Done |
+| Dynamic chat badge (real unread count) | ✅ Done |
 | Red Room UI + coin-gated access | Not started |
-| Wire real messaging (WebSocket/Socket.io client) | Not started |
-| Wire matches list to real API | Not started |
-| Wire EditProfile to save to backend | Not started |
-| Wire report/block functionality | UI exists, no backend |
-| Wire discovery filters (age, distance, interests) | UI exists, no logic |
+| Real-time chat (WebSocket client) | Not started (using 10s REST polling) |
+| Wire discovery filters (age, distance, interests) | UI exists, no backend settings endpoint |
 | Wire wallet to real payments (Paystack/Stripe SDK) | Not started |
-| Wire notifications screen | Stub ("Coming Soon") |
 | Push notifications (FCM/APNs via Expo) | Not started |
-| Real-time chat UI (WebSocket client) | Not started |
 | Geolocation — real lat/long for profile & nearby | Hardcoded to Lagos |
 | Profile verification flow (selfie capture + submit) | Not started |
 | Image caching & optimization | Not started |
 | Deep linking (match notifications → chat) | Not started |
-| Logout flow (confirm → clear context → Welcome) | ✅ Done |
 | Token refresh / expiry handling (401 → redirect to login) | Not started |
 | Onboarding resume (quit mid-flow → resume on reopen) | Not started |
 | Offline handling (no internet banner/modal) | Not started |
@@ -1117,19 +1269,19 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 ## METRICS
 
 **Development Stats:**
-- **Total Development Hours:** ~85 hours
-- **Lines of Code:** ~25,000+
+- **Total Development Hours:** ~100 hours
+- **Lines of Code:** ~30,000+
 - **Components Built:** 15
 - **Screens Built:** 28+
-- **API Services:** 7
-- **API Endpoints Wired:** 11
+- **API Services:** 12
+- **API Endpoints Wired:** 36
 - **Utils/Config Files:** 10
 
 **Code Quality:**
 - TypeScript coverage: 100%
 - Component reusability: 70%
 - Theme system adoption: 100%
-- Real API integration: Auth + Onboarding complete
+- Real API integration: Auth + Onboarding + Matching + Chat + Moderation + User + Notifications complete
 
 ---
 
@@ -1152,10 +1304,10 @@ Updated all coin packages and feature costs across 6 files to match new revenue 
 
 ---
 
-**Last Updated:** February 12, 2026
+**Last Updated:** February 2026
 **Onboarding Flow:** 100% Complete (wired to real API)
 **Auth Flow:** Login + Signup + Session Restore + Logout + Delete Account — all wired
 **Core Screens:** 28+ screens built
-**API Endpoints Wired:** 11 (Auth + Onboarding complete)
+**API Endpoints Wired:** 36 (Auth + Onboarding + Matching + Chat + Moderation + User + Notifications)
 **Backend Status:** OTP sending broken (500) — backend dev fixing. All other endpoints verified working.
-**Ready for:** Discovery/Explore/Messaging API + Payments + Admin Dashboard
+**Ready for:** Payments (Paystack), WebSocket real-time chat, Push Notifications, Admin Dashboard

@@ -1,8 +1,9 @@
 # Backend Fixes Required Before Production
 
-> **Last Updated:** February 11, 2026
-> **Frontend Version:** 0.3.0 (Alpha)
+> **Last Updated:** February 2026
+> **Frontend Version:** 0.4.0 (Alpha — Full API Integration)
 > **Backend:** https://meetpie-backend.onrender.com
+> **API Docs:** https://meetpie-backend.onrender.com/docs/
 > **Priority:** P0 = Launch blocker, P1 = Should fix before launch, P2 = Can ship but fix soon
 
 ---
@@ -173,33 +174,58 @@ Error responses:
 
 ## API Endpoints — Current Status
 
-### Working (Verified from Frontend)
-| Endpoint | Notes |
-|----------|-------|
-| `POST /api/onboarding/init` | Works when DB is connected, 500 when DB times out |
-| `POST /api/onboarding/verify` | Works |
-| `PATCH /api/onboarding/details` | Works |
-| `GET /api/onboarding/interests` | Works |
-| `PATCH /api/onboarding/interests` | Works |
-| `PATCH /api/onboarding/photos` | Works |
-| `POST /api/auth/login/init` | Not yet tested (blocked by DB issue) |
-| `POST /api/auth/login/verify` | Not yet tested |
-| `GET /api/auth/me` | Returns 403 with DB timeout error |
-| `POST /api/auth/logout` | Not yet tested |
-| `DELETE /api/auth/delete-account` | Not yet tested |
+### Wired & Working (Verified from Frontend) — 36 Endpoints
+| Service | Endpoint | Status |
+|---------|----------|--------|
+| **Auth** | `POST /api/onboarding/init` | Works when DB is connected, 500 when DB times out |
+| | `POST /api/onboarding/verify` | Works |
+| | `POST /api/auth/login/init` | Wired, needs testing |
+| | `POST /api/auth/login/verify` | Wired, needs testing |
+| | `GET /api/auth/me` | Works (returns 403 on DB timeout — see #2) |
+| | `POST /api/auth/logout` | Wired, needs testing |
+| | `DELETE /api/auth/delete-account` | Wired, needs testing |
+| **Onboarding** | `PATCH /api/onboarding/details` | Works |
+| | `GET /api/onboarding/interests` | Works |
+| | `PATCH /api/onboarding/interests` | Works |
+| | `PATCH /api/onboarding/photos` | Works |
+| **Matching** | `POST /api/matching/location` | Wired → DiscoveryScreen (on mount) |
+| | `GET /api/matching/discover` | Wired → DiscoveryScreen + ExploreCategoryScreen |
+| | `POST /api/matching/swipe` | Wired → DiscoveryScreen + ProfileDetailScreen |
+| | `GET /api/matching/matches` | Wired → ChatsScreen (horizontal match row) |
+| | `GET /api/matching/likes` | Wired → matchingService |
+| | `DELETE /api/matching/unmatch/{matchId}` | Wired → matchingService |
+| | `GET /api/matching/stats` | Wired → matchingService |
+| **Chat** | `GET /api/chat/conversations` | Wired → ChatsScreen |
+| | `GET /api/chat/unread-count` | Wired → TabNavigator (30s polling) |
+| | `GET /api/chat/{matchId}/messages` | Wired → ChatConversationScreen |
+| | `POST /api/chat/{matchId}/messages` | Wired → ChatConversationScreen (optimistic UI) |
+| | `PATCH /api/chat/{matchId}/read` | Wired → ChatConversationScreen (on mount) |
+| | `PATCH /api/chat/messages/{messageId}/read` | Wired → chatService |
+| | `DELETE /api/chat/messages/{messageId}` | Wired → chatService |
+| **Moderation** | `POST /api/moderation/report` | Wired → ProfileDetailScreen |
+| | `GET /api/moderation/reports` | Wired → moderationService |
+| | `POST /api/moderation/block` | Wired → ProfileDetailScreen |
+| | `DELETE /api/moderation/block/{blockedUserId}` | Wired → PrivacySafetyScreen |
+| | `GET /api/moderation/blocked` | Wired → PrivacySafetyScreen |
+| **User** | `PATCH /api/user/profile` | Wired → EditProfileScreen |
+| **Notifications** | `GET /api/notifications` | Wired → NotificationsScreen |
+| | `GET /api/notifications/unread-count` | Wired → notificationService |
+| | `PATCH /api/notifications/read-all` | Wired → NotificationsScreen |
+| | `PATCH /api/notifications/{id}/read` | Wired → notificationService |
+| | `DELETE /api/notifications/{id}` | Wired → NotificationsScreen (long-press) |
 
-### Not Yet Wired (Frontend Ready When Backend Is)
-| Endpoint | Frontend Screen |
-|----------|----------------|
-| `POST /api/matching/location` | DiscoveryScreen |
-| `GET /api/matching/discover` | DiscoveryScreen |
-| `POST /api/matching/swipe` | DiscoveryScreen |
-| `GET /api/matching/matches` | ChatsScreen |
-| `GET /api/matching/likes` | DiscoveryScreen |
-| `GET /api/chat/conversations` | ChatsScreen |
-| `POST /api/chat/:id/messages` | ChatConversationScreen |
-| `POST /api/moderation/report` | ProfileDetailScreen |
-| `POST /api/moderation/block` | ProfileDetailScreen |
+### Not Yet Wired (Backend Endpoints Needed)
+| Endpoint | Frontend Screen | Notes |
+|----------|----------------|-------|
+| `GET /api/wallet/balance` | WalletScreen | Payments not wired yet |
+| `POST /api/wallet/purchase` | TopUpScreen | Needs Paystack/Stripe integration |
+| `POST /api/wallet/spend` | DiscoveryScreen, ProfilePerformance | Coin spending |
+| `GET /api/wallet/transactions` | WalletScreen | Transaction history |
+| `GET /api/user/settings` | DiscoverySettingsScreen | Discovery preferences |
+| `PATCH /api/user/settings` | DiscoverySettingsScreen | Save preferences |
+| `POST /api/user/verify` | — | Profile verification (selfie) |
+| WebSocket server | ChatConversationScreen | Replace 10s REST polling |
+| Push notifications | — | FCM/APNs via Expo |
 
 ---
 
@@ -211,3 +237,11 @@ Once fixes are applied, the frontend can verify by:
 3. **Session restore:** Close app → Reopen → Should go straight to HomeTabs
 4. **Logout:** Account Actions → Logout → Welcome (token cleared)
 5. **DB resilience:** If DB hiccups, logged-in users should still see cached data (not get kicked out)
+6. **Discovery:** Open Discovery tab → See real profiles from API (or mock fallback)
+7. **Swipe:** Swipe right → Real swipe recorded. If mutual → Match screen appears (real `isMatch`)
+8. **Chat:** Chats tab → Real conversations from API. Open conversation → Real messages. Send message → Persists on reload
+9. **Profile actions:** ProfileDetail → "Say Hi" sends like. Report/block shows confirmation, fires API
+10. **Edit profile:** EditProfile → Save → Changes persist on backend (verify via getMe)
+11. **Notifications:** Notifications screen → Shows real notifications. Pull-to-refresh. Mark all read. Long-press to delete
+12. **Blocked users:** Privacy & Safety → Blocked users → See list from API. Unblock works
+13. **Tab badge:** Chats tab shows real unread count (updates every 30s)

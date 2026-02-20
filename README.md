@@ -86,11 +86,16 @@ OpuehApp/
 │   │       ├── mockAuthService.ts    # Mock API (development)
 │   │       ├── realAuthService.ts    # Real API (production)
 │   │       ├── onboardingService.ts  # Onboarding API (details, interests, photos)
-│   │       └── cloudinaryService.ts  # Cloudinary unsigned upload
+│   │       ├── cloudinaryService.ts  # Cloudinary unsigned upload
+│   │       ├── matchingService.ts    # Discovery, swipes, matches, likes
+│   │       ├── chatService.ts        # Conversations, messages, read receipts
+│   │       ├── moderationService.ts  # Report, block/unblock users
+│   │       ├── userService.ts        # Profile updates (post-onboarding)
+│   │       └── notificationService.ts # Notifications, read/delete
 │   │
 │   ├── context/
 │   │   ├── ThemeContext.tsx   # Theme provider
-│   │   └── UserContext.tsx    # Global user state (coins, profile, auth)
+│   │   └── UserContext.tsx    # Global user state (coins, profile, auth, unreadChatCount)
 │   │
 │   ├── config/
 │   │   ├── environment.ts    # API URLs, feature flags, Cloudinary config
@@ -121,23 +126,48 @@ OpuehApp/
 
 ## API Integration Status
 
-### Done (Wired to Backend)
-| Endpoint | Description |
-|---|---|
-| `POST /api/onboarding/init` | Send signup OTP (email + phone) |
-| `POST /api/onboarding/verify` | Verify signup OTP, returns JWT |
-| `PATCH /api/onboarding/details` | Save profile details (name, DOB, gender, etc.) |
-| `GET /api/onboarding/interests` | Fetch interest categories from API |
-| `PATCH /api/onboarding/interests` | Save selected interests |
-| `PATCH /api/onboarding/photos` | Upload Cloudinary URLs, finalize onboarding |
-| `POST /api/auth/login/init` | Send login OTP |
-| `POST /api/auth/login/verify` | Verify login OTP |
-| `GET /api/auth/me` | Get current user profile (+ session restore) |
-| `POST /api/auth/logout` | Logout (invalidate token) |
-| `DELETE /api/auth/delete-account` | Delete account and all user data |
+### Done (Wired to Backend) — 36 Endpoints
+| Service | Endpoint | Description |
+|---|---|---|
+| **Auth** | `POST /api/onboarding/init` | Send signup OTP (email + phone) |
+| | `POST /api/onboarding/verify` | Verify signup OTP, returns JWT |
+| | `POST /api/auth/login/init` | Send login OTP |
+| | `POST /api/auth/login/verify` | Verify login OTP |
+| | `GET /api/auth/me` | Get current user profile (+ session restore) |
+| | `POST /api/auth/logout` | Logout (invalidate token) |
+| | `DELETE /api/auth/delete-account` | Delete account and all user data |
+| **Onboarding** | `PATCH /api/onboarding/details` | Save profile details (name, DOB, gender, etc.) |
+| | `GET /api/onboarding/interests` | Fetch interest categories from API |
+| | `PATCH /api/onboarding/interests` | Save selected interests |
+| | `PATCH /api/onboarding/photos` | Upload Cloudinary URLs, finalize onboarding |
+| **Matching** | `POST /api/matching/location` | Update user location (lat, long, city) |
+| | `GET /api/matching/discover` | Discover profiles (with distance/limit filters) |
+| | `POST /api/matching/swipe` | Swipe like/pass (returns `isMatch` boolean) |
+| | `GET /api/matching/matches` | Get all matches |
+| | `GET /api/matching/likes` | Get users who liked you |
+| | `DELETE /api/matching/unmatch/{matchId}` | Unmatch a user |
+| | `GET /api/matching/stats` | Get matching statistics |
+| **Chat** | `GET /api/chat/conversations` | Get all conversations |
+| | `GET /api/chat/unread-count` | Get unread message count |
+| | `GET /api/chat/{matchId}/messages` | Get messages for a conversation |
+| | `POST /api/chat/{matchId}/messages` | Send a message |
+| | `PATCH /api/chat/{matchId}/read` | Mark conversation as read |
+| | `PATCH /api/chat/messages/{messageId}/read` | Mark single message as read |
+| | `DELETE /api/chat/messages/{messageId}` | Delete a message |
+| **Moderation** | `POST /api/moderation/report` | Report a user (with reason) |
+| | `GET /api/moderation/reports` | Get submitted reports |
+| | `POST /api/moderation/block` | Block a user |
+| | `DELETE /api/moderation/block/{blockedUserId}` | Unblock a user |
+| | `GET /api/moderation/blocked` | Get blocked users list |
+| **User** | `PATCH /api/user/profile` | Update profile (post-onboarding edits) |
+| **Notifications** | `GET /api/notifications` | Get notifications (paginated) |
+| | `GET /api/notifications/unread-count` | Get unread notification count |
+| | `PATCH /api/notifications/read-all` | Mark all notifications as read |
+| | `PATCH /api/notifications/{id}/read` | Mark single notification as read |
+| | `DELETE /api/notifications/{id}` | Delete a notification |
 
 ### Remaining Backend Endpoints
-See `DEVELOPMENT_LOG.md` for the full requirements list covering Discovery, Explore, Messaging, Wallet/Payments, Safety, Notifications, and Admin Dashboard.
+See `DEVELOPMENT_LOG.md` for remaining requirements: Wallet/Payments, Admin Dashboard, WebSocket real-time chat, Push Notifications.
 
 ### Known Backend Issues
 See `BACKEND_FIXES.md` for priority-ranked issues (MongoDB timeouts, incorrect HTTP status codes, OTP delivery failures).
@@ -228,7 +258,7 @@ eas build --platform ios --profile production
 
 ## Current Progress
 
-### Completed (As of Feb 12, 2026)
+### Completed (As of Feb 2026)
 
 **Foundation:**
 - [x] Project setup (Expo SDK 52 + TypeScript)
@@ -237,11 +267,21 @@ eas build --platform ios --profile production
 - [x] Navigation structure (Stack + Tab Navigator, 25+ routes)
 - [x] Environment configuration with feature flags
 - [x] Mock API service layer (Auth + Photo)
-- [x] Real API service layer (Auth + Onboarding)
+- [x] Real API service layer (Auth + Onboarding + Matching + Chat + Moderation + User + Notifications)
 - [x] Cloudinary image upload service
 - [x] Onboarding flow config (centralized step management)
-- [x] UserContext (global state: coins, profile, auth, matches)
+- [x] UserContext (global state: coins, profile, auth, matches, unreadChatCount)
 - [x] EAS Build configured (Android APK + iOS ad-hoc)
+
+**API Services (12 total):**
+- [x] Auth Service (mock/real auto-switch)
+- [x] Onboarding Service (details, interests, photos)
+- [x] Cloudinary Service (unsigned upload)
+- [x] Matching Service (location, discover, swipe, matches, likes, unmatch, stats)
+- [x] Chat Service (conversations, messages, send, read, unread count, delete)
+- [x] Moderation Service (report, block, unblock, blocked list)
+- [x] User Service (profile update)
+- [x] Notification Service (list, unread count, mark read, delete)
 
 **Screens Built (25+):**
 - [x] Intro Slideshow (4 slides, skip/next, gradient buttons)
@@ -250,25 +290,35 @@ eas build --platform ios --profile production
 - [x] Name, DOB, Gender, LookingFor, RelationshipGoals (API batch save)
 - [x] Interests (fetches from API, local fallback)
 - [x] Photo Upload (Cloudinary upload, finalizes onboarding via API)
-- [x] Discovery (swipe cards, coin-aware, tap-to-view, match trigger)
-- [x] Profile Detail, Profile View, Edit Profile
+- [x] Discovery (real API profiles, real swipe actions, real isMatch detection)
+- [x] Profile Detail (like/swipe API, report, block)
+- [x] Profile View, Edit Profile (save to API via userService)
 - [x] Match Screen (animated portraits, floating hearts)
-- [x] Chats, Chat Conversation (bubbles, media, icebreakers, simulated replies)
+- [x] Chats (API conversations + matches, unread count)
+- [x] Chat Conversation (API messages, optimistic send, 10s polling, mark read)
 - [x] Wallet, Top Up (6 coin packages, Naira pricing)
 - [x] Explore (browse by interest + relationship type)
-- [x] Explore Category (profile grid, top profiles)
-- [x] Discovery Settings, Privacy & Safety
+- [x] Explore Category (API profile fetch per category)
+- [x] Discovery Settings
+- [x] Privacy & Safety (blocked users list from API, unblock)
 - [x] Profile Performance (boost options)
-- [x] Account Actions
+- [x] Account Actions (logout + delete account wired)
+- [x] Notifications (full screen, pull-to-refresh, mark-all-read, delete)
 
 ### In Progress / Next
 - [x] Session restore on startup (token → getMe → HomeTabs)
 - [x] Login flow completion (verify → getMe → store profile → HomeTabs)
 - [x] Logout wired to backend API + context clear
 - [x] Delete account wired to backend API + context clear
-- [ ] Wire Discovery, Explore, Messaging to real API
-- [ ] Real-time chat (WebSocket)
+- [x] Wire Discovery, Explore to real matching API
+- [x] Wire Chat screens to real chat API
+- [x] Wire Moderation (report, block) to real API
+- [x] Wire Edit Profile to real user API
+- [x] Wire Notifications screen to real API
+- [x] Dynamic chat badge on tab bar (real unread count)
+- [ ] Real-time chat (WebSocket — currently using 10s REST polling)
 - [ ] Payment integration (Paystack)
+- [ ] Push notifications (FCM/APNs via Expo)
 - [ ] Admin dashboard (subdomain)
 
 ---
@@ -279,11 +329,13 @@ eas build --platform ios --profile production
 - [x] ~~Interest screen local data flash~~ (fixed with loading state)
 - [x] ~~OTP 500 errors~~ (retry logic, backend still has intermittent issues — see BACKEND_FIXES.md)
 - [x] ~~Session restore logging out on DB timeout~~ (fixed: only 401 clears session, other errors fall back to cached data)
+- [x] ~~All Discovery/Explore/Chat data is placeholder~~ (all wired to real API with mock fallback)
 - [ ] Backend OTP sending broken (500 HTML error) — backend dev fixing
-- [ ] All Discovery/Explore/Chat data is placeholder (pending backend)
+- [ ] Chat uses REST polling (10s interval) — replace with WebSocket later
 - [ ] No error boundary (add global error handler)
-- [ ] Geolocation hardcoded to Lagos
+- [ ] Geolocation hardcoded to Lagos (calls updateLocation with static coords)
 - [ ] No offline handling
+- [ ] No push notifications yet
 
 ---
 
@@ -299,5 +351,5 @@ eas build --platform ios --profile production
 
 Proprietary - All Rights Reserved
 
-**Last Updated:** February 12, 2026
-**Version:** 0.3.1 (Alpha)
+**Last Updated:** February 2026
+**Version:** 0.4.0 (Alpha — Full API Integration)
