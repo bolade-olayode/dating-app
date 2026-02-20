@@ -23,6 +23,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
+import { userService } from '@services/api/userService';
+import { devLog } from '@config/environment';
 import {
   GENDER_OPTIONS,
   LOOKING_FOR_OPTIONS,
@@ -147,7 +149,26 @@ const EditProfileScreen: React.FC = () => {
     setPrompts(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const handleSave = () => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+
+    // Map frontend fields to backend API field names
+    const lookingForMap: Record<string, string> = { men: 'male', women: 'female', both: 'both' };
+    const apiPayload = {
+      username: name,
+      gender,
+      interestedIn: lookingFor ? (lookingForMap[lookingFor.toLowerCase()] || lookingFor) : undefined,
+      goal: relationshipGoal,
+      interests: selectedInterests,
+    };
+
+    devLog('💾 EditProfile: Saving to API', Object.keys(apiPayload));
+    const result = await userService.updateProfile(apiPayload);
+
+    // Always update local context regardless of API result
     updateProfile({
       name,
       email,
@@ -162,9 +183,18 @@ const EditProfileScreen: React.FC = () => {
       interests: selectedInterests,
       prompts,
     });
-    Alert.alert('Profile Updated', 'Your changes have been saved.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+
+    setIsSaving(false);
+
+    if (result.success) {
+      Alert.alert('Profile Updated', 'Your changes have been saved.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } else {
+      Alert.alert('Saved Locally', 'Changes saved on device but failed to sync with server. They will sync next time.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    }
   };
 
   // ─── Personal Info Tab ─────────────────────────────────

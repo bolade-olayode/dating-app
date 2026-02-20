@@ -1,6 +1,6 @@
 // src/screens/Home/ProfileDetailScreen.tsx
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,16 @@ import {
   StatusBar,
   Image,
   Animated,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
+import { useUser } from '@context/UserContext';
+import { matchingService } from '@services/api/matchingService';
+import { moderationService } from '@services/api/moderationService';
+import { devLog } from '@config/environment';
 
 const { width, height } = Dimensions.get('window');
 const PHOTO_HEIGHT = height * 0.5;
@@ -44,6 +49,70 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
   const insets = useSafeAreaInsets();
   const { profile, isPaidView } = route.params;
   const scrollY = useRef(new Animated.Value(0)).current;
+  const { addMatch } = useUser();
+  const [isLiking, setIsLiking] = useState(false);
+
+  // Like / "Say Hi" handler — fires real swipe API
+  const handleLike = async () => {
+    if (isLiking) return;
+    setIsLiking(true);
+    const profileId = String(profile.id);
+    devLog('❤️ ProfileDetail: Liking', profile.name);
+    const result = await matchingService.swipe(profileId, 'like');
+
+    if (result.success && result.data?.isMatch) {
+      addMatch({
+        id: result.data.matchId || String(Date.now()),
+        profile: {
+          id: profile.id,
+          name: profile.name,
+          age: profile.age,
+          photo: profile.photo,
+          location: profile.location,
+        },
+        matchedAt: new Date().toISOString(),
+      });
+      Alert.alert('It\'s a Match!', `You and ${profile.name} liked each other!`);
+    } else if (result.success) {
+      Alert.alert('Liked!', `You liked ${profile.name}`);
+    } else {
+      Alert.alert('Oops', result.message);
+    }
+    setIsLiking(false);
+  };
+
+  // Report user handler
+  const handleReport = () => {
+    Alert.alert('Report User', `Why are you reporting ${profile.name}?`, [
+      { text: 'Inappropriate photos', onPress: () => submitReport('inappropriate_photos') },
+      { text: 'Fake profile', onPress: () => submitReport('fake_profile') },
+      { text: 'Harassment', onPress: () => submitReport('harassment') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const submitReport = async (reason: string) => {
+    const result = await moderationService.reportUser(String(profile.id), reason);
+    Alert.alert(result.success ? 'Report Submitted' : 'Error', result.message);
+  };
+
+  // Block user handler
+  const handleBlock = () => {
+    Alert.alert('Block User', `Are you sure you want to block ${profile.name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Block', style: 'destructive', onPress: async () => {
+          const result = await moderationService.blockUser(String(profile.id));
+          if (result.success) {
+            Alert.alert('Blocked', `${profile.name} has been blocked.`);
+            navigation.goBack();
+          } else {
+            Alert.alert('Error', result.message);
+          }
+        },
+      },
+    ]);
+  };
 
   // Default bio
   const bio = profile.bio || "Confident, easy-going with great sense of humor, hardworker, watches anime, romantic, enjoys meeting people and having meaningful conversations. My love language is food.";
@@ -127,15 +196,15 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
 
         {/* Action Buttons Row */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.connectButton} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.connectButton} activeOpacity={0.8} onPress={handleLike}>
             <Text style={styles.connectText}>Say Hi 👋</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCircle} activeOpacity={0.8}>
-            <Icon name="chatbubble-outline" size={20} color="#FFF" />
+          <TouchableOpacity style={styles.actionCircle} activeOpacity={0.8} onPress={handleReport}>
+            <Icon name="flag-outline" size={20} color="#FFF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionCircle, styles.heartCircle]} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.actionCircle, styles.heartCircle]} activeOpacity={0.8} onPress={handleLike}>
             <Icon name="heart" size={20} color="#FFF" />
           </TouchableOpacity>
 
@@ -147,6 +216,12 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
             <Icon name="close" size={22} color="#FFF" />
           </TouchableOpacity>
         </View>
+
+        {/* Block user option */}
+        <TouchableOpacity style={styles.blockButton} activeOpacity={0.7} onPress={handleBlock}>
+          <Icon name="ban-outline" size={16} color="#FF4444" />
+          <Text style={styles.blockButtonText}>Block this user</Text>
+        </TouchableOpacity>
 
         {/* Bio Section */}
         <View style={styles.section}>
@@ -361,6 +436,20 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.Medium,
     fontSize: 12,
     color: '#FFD700',
+  },
+  blockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 20,
+  },
+  blockButtonText: {
+    fontFamily: FONTS.Medium,
+    fontSize: 13,
+    color: '#FF4444',
   },
 });
 

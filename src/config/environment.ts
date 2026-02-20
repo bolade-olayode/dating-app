@@ -32,7 +32,7 @@ export const ENV = {
   
   // Feature flags (control what's enabled in different environments)
   FEATURES: {
-    USE_MOCK_API: true,               // Set to true to use mock API (no backend needed)
+    USE_MOCK_API: false,              // Set to true to use mock API (no backend needed)
     ENABLE_DEBUG_LOGS: __DEV__,      // Show console logs in development
     SKIP_ONBOARDING: false,          // Set to true to skip onboarding during dev (testing)
     ENABLE_ERROR_OVERLAY: __DEV__,   // Show error details in development

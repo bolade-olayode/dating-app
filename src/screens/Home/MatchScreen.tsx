@@ -288,7 +288,14 @@ const MatchScreen: React.FC<MatchScreenProps> = ({ route, navigation }) => {
           activeOpacity={0.8}
           onPress={() => {
             navigation.goBack();
-            // TODO: Navigate to chat with matched profile
+            navigation.navigate('ChatConversation', {
+              chatId: route.params.matchedProfile?.id || Date.now(),
+              name: matchedProfile.name,
+              photo: matchedProfile.photo,
+              age: matchedProfile.age,
+              location: '',
+              isNewMatch: true,
+            });
           }}
         >
           <LinearGradient

@@ -32,6 +32,8 @@ import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import CoinBalance from '@components/ui/CoinBalance';
 import { useUser } from '@context/UserContext';
+import { matchingService } from '@services/api/matchingService';
+import { devLog } from '@config/environment';
 
 const { width, height } = Dimensions.get('window');
 
@@ -166,56 +168,52 @@ const DiscoveryScreen = () => {
   const navigation = useNavigation<any>();
   const { coinBalance, spendCoins, swipeCount, incrementSwipeCount, freeSwipesRemaining, addMatch } = useUser();
 
-  // Shuffle profiles on mount to show random order
-  const [profiles] = useState(() => {
-    const shuffled = [...MOCK_PROFILES].sort(() => Math.random() - 0.5);
-    console.log('Shuffled profiles:', shuffled.map(p => p.name).join(', '));
-    return shuffled;
+  // Profiles state — defaults to shuffled mock, replaced by API data on mount
+  const [profiles, setProfiles] = useState(() => {
+    return [...MOCK_PROFILES].sort(() => Math.random() - 0.5);
   });
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'forYou' | 'nearby'>('forYou');
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
   const currentProfile = profiles[currentIndex];
 
   // Use ref to store current index for PanResponder (avoids stale closure)
   const currentIndexRef = useRef(currentIndex);
   const swipeCountRef = useRef(swipeCount);
-  const likeCountRef = useRef(likeCount);
   const coinBalanceRef = useRef(coinBalance);
+  const profilesRef = useRef(profiles);
 
   // Mock user photo (use first profile image as placeholder for current user)
   const userPhoto = require('@assets/images/img3.jpg');
 
-  // Trigger match every 3rd like
-  const checkForMatch = (likedProfile: typeof currentProfile) => {
-    const newLikeCount = likeCountRef.current + 1;
-    setLikeCount(newLikeCount);
-    likeCountRef.current = newLikeCount;
+  // Fire real swipe API and handle match result
+  const fireSwipeApi = async (profile: typeof currentProfile, action: 'like' | 'pass') => {
+    const profileId = String(profile.id);
+    const result = await matchingService.swipe(profileId, action);
 
-    if (newLikeCount % 3 === 0) {
-      // Add match to global state
+    if (action === 'like' && result.success && result.data?.isMatch) {
+      // Real match from backend
       addMatch({
-        id: Date.now(),
+        id: result.data.matchId || String(Date.now()),
         profile: {
-          id: likedProfile.id,
-          name: likedProfile.name,
-          age: likedProfile.age,
-          photo: likedProfile.photo,
-          location: likedProfile.location,
+          id: profile.id,
+          name: profile.name,
+          age: profile.age,
+          photo: profile.photo,
+          location: profile.location,
         },
         matchedAt: new Date().toISOString(),
       });
 
-      // Navigate to match screen after animation completes
       setTimeout(() => {
         navigation.navigate('Match', {
           matchedProfile: {
-            name: likedProfile.name,
-            photo: likedProfile.photo,
-            age: likedProfile.age,
+            name: profile.name,
+            photo: profile.photo,
+            age: profile.age,
           },
           userPhoto,
         });
@@ -235,19 +233,44 @@ const DiscoveryScreen = () => {
     coinBalanceRef.current = coinBalance;
   }, [coinBalance]);
 
-  // Debug: Log initial mount
   useEffect(() => {
-    console.log('🎯 ========================================');
-    console.log('🎯 DISCOVERY SCREEN MOUNTED');
-    console.log('📊 Total profiles available:', profiles.length);
-    console.log('📋 All profile names:', profiles.map(p => `${p.id}: ${p.name}`).join(', '));
-    console.log('🎯 ========================================');
-  }, []);
+    profilesRef.current = profiles;
+  }, [profiles]);
 
-  // Debug: Log profile changes
+  // Fetch profiles from API on mount + update location
   useEffect(() => {
-    console.log('🔄 Profile changed to index', currentIndex, '-', currentProfile?.name);
-  }, [currentIndex, currentProfile]);
+    const fetchProfiles = async () => {
+      setIsLoadingProfiles(true);
+
+      // Update location (hardcoded Lagos for now)
+      matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
+
+      const result = await matchingService.discoverProfiles();
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+        const apiProfiles = result.data.map((p: any, idx: number) => ({
+          id: p._id || p.id,
+          name: p.fullname || p.name || 'Unknown',
+          age: p.age || 0,
+          location: p.city || p.location?.city || 'Nearby',
+          distance: p.distance ? `${Math.round(p.distance / 1000)} km away` : '',
+          zodiac: p.zodiac || '',
+          interest: p.goal || '',
+          verified: p.verified || false,
+          photo: p.photos?.[0]
+            ? { uri: p.photos[0] }
+            : MOCK_PROFILES[idx % MOCK_PROFILES.length].photo,
+        }));
+        devLog('✅ Discovery: Loaded', apiProfiles.length, 'profiles from API');
+        setProfiles(apiProfiles);
+        setCurrentIndex(0);
+      } else {
+        devLog('⚠️ Discovery: API returned no profiles, using mock data');
+      }
+
+      setIsLoadingProfiles(false);
+    };
+    fetchProfiles();
+  }, []);
 
   // Animation values
   const position = useRef(new Animated.ValueXY()).current;
@@ -308,10 +331,10 @@ const DiscoveryScreen = () => {
   const handleReject = () => {
     if (checkSwipeLimit()) return;
 
-    console.log('Rejected:', currentProfile.name);
+    devLog('👈 Rejected:', currentProfile.name);
+    fireSwipeApi(currentProfile, 'pass');
     setIsTransitioning(true);
 
-    // Animate card to left and fade out
     Animated.parallel([
       Animated.timing(position, {
         toValue: { x: -width * 1.5, y: 0 },
@@ -326,7 +349,6 @@ const DiscoveryScreen = () => {
     ]).start(() => {
       position.setValue({ x: 0, y: 0 });
       nextProfile();
-      // Fade in new card
       Animated.timing(cardOpacity, {
         toValue: 1,
         duration: 200,
@@ -338,11 +360,10 @@ const DiscoveryScreen = () => {
   const handleLike = () => {
     if (checkSwipeLimit()) return;
 
-    console.log('Liked:', currentProfile.name);
-    checkForMatch(currentProfile);
+    devLog('👉 Liked:', currentProfile.name);
+    fireSwipeApi(currentProfile, 'like');
     setIsTransitioning(true);
 
-    // Animate card to right and fade out
     Animated.parallel([
       Animated.timing(position, {
         toValue: { x: width * 1.5, y: 0 },
@@ -357,7 +378,6 @@ const DiscoveryScreen = () => {
     ]).start(() => {
       position.setValue({ x: 0, y: 0 });
       nextProfile();
-      // Fade in new card
       Animated.timing(cardOpacity, {
         toValue: 1,
         duration: 200,
@@ -372,14 +392,7 @@ const DiscoveryScreen = () => {
 
   const nextProfile = () => {
     const nextIndex = currentIndex < profiles.length - 1 ? currentIndex + 1 : 0;
-    console.log('🔄 =====================================');
-    console.log('🔄 NEXT PROFILE CALLED');
-    console.log('🔢 Current index:', currentIndex);
-    console.log('🔢 Next index:', nextIndex);
-    console.log('👤 Current profile:', profiles[currentIndex].name);
-    console.log('👤 Next profile:', profiles[nextIndex].name);
-    console.log('📊 Total profiles:', profiles.length);
-    console.log('🔄 =====================================');
+    devLog('🔄 Next profile:', nextIndex, '-', profiles[nextIndex]?.name);
     setCurrentIndex(nextIndex);
   };
 
@@ -418,7 +431,7 @@ const DiscoveryScreen = () => {
       }),
     ]).start(() => {
       position.setValue({ x: 0, y: 0 });
-      const nextIdx = currentIndexRef.current < profiles.length - 1 ? currentIndexRef.current + 1 : 0;
+      const nextIdx = currentIndexRef.current < profilesRef.current.length - 1 ? currentIndexRef.current + 1 : 0;
       setCurrentIndex(nextIdx);
       callback?.();
       Animated.timing(cardOpacity, {
@@ -457,9 +470,9 @@ const DiscoveryScreen = () => {
           }
 
           // Swipe right - Like
-          console.log('👉 SWIPE RIGHT - Liked:', profiles[currentIndexRef.current].name);
+          devLog('👉 SWIPE RIGHT - Liked:', profilesRef.current[currentIndexRef.current].name);
           consumeSwipeRef();
-          checkForMatch(profiles[currentIndexRef.current]);
+          fireSwipeApi(profilesRef.current[currentIndexRef.current], 'like');
           animateSwipeOut('right');
         } else if (gesture.dx < -swipeThreshold) {
           if (!canSwipeRef()) {
@@ -472,8 +485,9 @@ const DiscoveryScreen = () => {
           }
 
           // Swipe left - Reject
-          console.log('👈 SWIPE LEFT - Rejected:', profiles[currentIndexRef.current].name);
+          devLog('👈 SWIPE LEFT - Rejected:', profilesRef.current[currentIndexRef.current].name);
           consumeSwipeRef();
+          fireSwipeApi(profilesRef.current[currentIndexRef.current], 'pass');
           animateSwipeOut('left');
         } else {
           // Return to original position

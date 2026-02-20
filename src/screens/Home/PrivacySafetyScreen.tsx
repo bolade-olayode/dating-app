@@ -1,6 +1,6 @@
 // src/screens/Home/PrivacySafetyScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,15 @@ import {
   StatusBar,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
+import { moderationService } from '@services/api/moderationService';
+import { devLog } from '@config/environment';
 
 const PrivacySafetyScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -27,6 +30,40 @@ const PrivacySafetyScreen: React.FC = () => {
   const [showOnlineStatus, setShowOnlineStatus] = useState(true);
   const [showDistance, setShowDistance] = useState(true);
   const [blockContacts, setBlockContacts] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
+  const [loadingBlocked, setLoadingBlocked] = useState(false);
+
+  // Fetch blocked users from API
+  const fetchBlockedUsers = async () => {
+    setLoadingBlocked(true);
+    const result = await moderationService.getBlockedUsers();
+    if (result.success && Array.isArray(result.data)) {
+      devLog('✅ Privacy: Loaded', result.data.length, 'blocked users');
+      setBlockedUsers(result.data);
+    }
+    setLoadingBlocked(false);
+  };
+
+  const handleUnblock = async (userId: string, userName: string) => {
+    Alert.alert('Unblock User', `Unblock ${userName}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Unblock', onPress: async () => {
+          const result = await moderationService.unblockUser(userId);
+          if (result.success) {
+            setBlockedUsers(prev => prev.filter(u => (u._id || u.id) !== userId));
+            Alert.alert('Unblocked', `${userName} has been unblocked.`);
+          } else {
+            Alert.alert('Error', result.message);
+          }
+        },
+      },
+    ]);
+  };
+
+  const showBlockedUsers = () => {
+    fetchBlockedUsers();
+  };
 
   const renderToggleRow = (
     icon: string,
@@ -156,9 +193,26 @@ const PrivacySafetyScreen: React.FC = () => {
           {renderActionRow(
             'ban-outline',
             'Blocked users',
-            'Manage your blocked list',
-            () => Alert.alert('Blocked Users', 'No blocked users yet.'),
+            blockedUsers.length > 0 ? `${blockedUsers.length} blocked` : 'Manage your blocked list',
+            showBlockedUsers,
           )}
+          {/* Blocked users list (shown after fetch) */}
+          {loadingBlocked && (
+            <ActivityIndicator size="small" color="#FF007B" style={{ marginVertical: 10 }} />
+          )}
+          {blockedUsers.length > 0 && !loadingBlocked && blockedUsers.map((user: any) => (
+            <View key={user._id || user.id} style={styles.blockedUserRow}>
+              <Text style={styles.blockedUserName}>
+                {user.fullname || user.name || 'Unknown'}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleUnblock(user._id || user.id, user.fullname || user.name || 'User')}
+              >
+                <Text style={styles.unblockText}>Unblock</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
         </View>
 
         {/* Safety */}
@@ -253,6 +307,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  blockedUserRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 48,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  blockedUserName: {
+    fontFamily: FONTS.Medium,
+    fontSize: 14,
+    color: '#FFF',
+  },
+  unblockText: {
+    fontFamily: FONTS.Medium,
+    fontSize: 13,
+    color: '#FF007B',
   },
 });
 

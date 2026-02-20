@@ -1,6 +1,6 @@
 // src/screens/Home/ChatsScreen.tsx
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,17 @@ import {
   Animated,
   Modal,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
+import { chatService } from '@services/api/chatService';
+import { matchingService } from '@services/api/matchingService';
+import { devLog } from '@config/environment';
 
 const { width } = Dimensions.get('window');
 
@@ -104,11 +108,71 @@ const MENU_OPTIONS = [
 const ChatsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { matches } = useUser();
+  const isFocused = useIsFocused();
+  const { matches, setUnreadChatCount } = useUser();
   const [activeFilter, setActiveFilter] = useState('Active');
   const [menuVisible, setMenuVisible] = useState(false);
+  const [apiConversations, setApiConversations] = useState<typeof CONVERSATIONS>([]);
+  const [apiMatches, setApiMatches] = useState<typeof ACTIVE_MATCHES>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Merge real matches from context with mock conversations
+  // Fetch conversations + matches from API when screen is focused
+  useEffect(() => {
+    if (!isFocused) return;
+    const fetchData = async () => {
+      setIsLoading(true);
+
+      // Fetch conversations and matches in parallel
+      const [convResult, matchResult, unreadResult] = await Promise.all([
+        chatService.getConversations(),
+        matchingService.getMatches(),
+        chatService.getUnreadCount(),
+      ]);
+
+      // Map API conversations
+      if (convResult.success && Array.isArray(convResult.data) && convResult.data.length > 0) {
+        const mapped = convResult.data.map((c: any) => ({
+          id: c._id || c.matchId || c.id,
+          name: c.otherUser?.fullname || c.otherUser?.name || c.name || 'Unknown',
+          photo: c.otherUser?.photos?.[0] ? { uri: c.otherUser.photos[0] } : require('../../assets/images/opuehbckgdimg2.png'),
+          lastMessage: c.lastMessage?.content || c.lastMessage || '',
+          time: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+          unread: c.unreadCount || 0,
+          age: c.otherUser?.age || 0,
+          location: c.otherUser?.city || '',
+          isNewMatch: !c.lastMessage,
+        }));
+        devLog('✅ Chats: Loaded', mapped.length, 'conversations from API');
+        setApiConversations(mapped);
+      }
+
+      // Map API matches for horizontal row
+      if (matchResult.success && Array.isArray(matchResult.data) && matchResult.data.length > 0) {
+        const mapped = matchResult.data.map((m: any) => ({
+          id: m._id || m.id,
+          name: m.otherUser?.fullname || m.otherUser?.name || 'Match',
+          photo: m.otherUser?.photos?.[0] ? { uri: m.otherUser.photos[0] } : require('../../assets/images/opuehbckgdimg.jpg'),
+          online: false,
+        }));
+        devLog('✅ Chats: Loaded', mapped.length, 'matches from API');
+        setApiMatches(mapped);
+      }
+
+      // Update unread count in context
+      if (unreadResult.success && unreadResult.data != null) {
+        const count = typeof unreadResult.data === 'number' ? unreadResult.data : unreadResult.data?.count ?? 0;
+        setUnreadChatCount(count);
+      }
+
+      setIsLoading(false);
+    };
+    fetchData();
+  }, [isFocused, setUnreadChatCount]);
+
+  // Use API data when available, fallback to mock
+  const activeMatchesList = apiMatches.length > 0 ? apiMatches : ACTIVE_MATCHES;
+
+  // Merge real matches from context with API conversations, then mock fallback
   const matchConversations = matches.map(match => ({
     id: match.id,
     name: match.profile.name,
@@ -121,8 +185,9 @@ const ChatsScreen: React.FC = () => {
     isNewMatch: true,
   }));
 
-  // Real matches first, then mock data
-  const allConversations = [...matchConversations, ...CONVERSATIONS];
+  const allConversations = apiConversations.length > 0
+    ? [...matchConversations, ...apiConversations]
+    : [...matchConversations, ...CONVERSATIONS];
 
   const renderActiveMatch = ({ item }: { item: typeof ACTIVE_MATCHES[0] }) => (
     <TouchableOpacity style={styles.activeMatchItem} activeOpacity={0.8}>
@@ -191,7 +256,7 @@ const ChatsScreen: React.FC = () => {
 
       {/* Active Matches Row */}
       <FlatList
-        data={ACTIVE_MATCHES}
+        data={activeMatchesList}
         renderItem={renderActiveMatch}
         keyExtractor={(item) => item.id.toString()}
         horizontal
@@ -230,14 +295,18 @@ const ChatsScreen: React.FC = () => {
       </ScrollView>
 
       {/* Conversation List */}
-      <FlatList
-        data={allConversations}
-        renderItem={renderConversation}
-        keyExtractor={(item) => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.conversationList}
-        style={styles.conversationFlatList}
-      />
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#FF007B" style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={allConversations}
+          renderItem={renderConversation}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.conversationList}
+          style={styles.conversationFlatList}
+        />
+      )}
 
       {/* Menu Modal */}
       <Modal

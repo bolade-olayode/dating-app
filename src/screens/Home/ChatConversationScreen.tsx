@@ -1,6 +1,6 @@
 // src/screens/Home/ChatConversationScreen.tsx
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,11 +14,14 @@ import {
   Dimensions,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
+import { chatService } from '@services/api/chatService';
+import { devLog } from '@config/environment';
 
 const { width } = Dimensions.get('window');
 
@@ -111,7 +114,62 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>(CHAT_MESSAGES[chatId] || []);
   const [showIcebreakers, setShowIcebreakers] = useState(messages.length === 0);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const flatListRef = useRef<FlatList>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Fetch messages from API on mount + mark conversation as read
+  useEffect(() => {
+    const fetchMessages = async () => {
+      setIsLoadingMessages(true);
+      chatService.markConversationRead(chatId);
+
+      const result = await chatService.getMessages(chatId);
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+        const mapped: Message[] = result.data.map((m: any) => ({
+          id: m._id || m.id || Date.now(),
+          text: m.content || m.text || '',
+          image: m.type === 'image' && m.content ? { uri: m.content } : undefined,
+          sent: m.isMine ?? m.sender === 'me',
+          time: m.createdAt
+            ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '',
+          liked: false,
+        }));
+        devLog('✅ Chat: Loaded', mapped.length, 'messages from API');
+        setMessages(mapped);
+        setShowIcebreakers(mapped.length === 0);
+      } else {
+        // Keep mock messages as fallback
+        const mockMsgs = CHAT_MESSAGES[chatId] || [];
+        setShowIcebreakers(mockMsgs.length === 0);
+      }
+      setIsLoadingMessages(false);
+    };
+    fetchMessages();
+
+    // Poll for new messages every 10 seconds
+    pollingRef.current = setInterval(async () => {
+      const result = await chatService.getMessages(chatId);
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+        const mapped: Message[] = result.data.map((m: any) => ({
+          id: m._id || m.id || Date.now(),
+          text: m.content || m.text || '',
+          image: m.type === 'image' && m.content ? { uri: m.content } : undefined,
+          sent: m.isMine ?? m.sender === 'me',
+          time: m.createdAt
+            ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '',
+          liked: false,
+        }));
+        setMessages(mapped);
+      }
+    }, 10000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [chatId]);
 
   const scrollToEnd = useCallback(() => {
     setTimeout(() => {
@@ -119,7 +177,7 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
     }, 100);
   }, []);
 
-  const sendMessage = useCallback((text: string) => {
+  const sendMessageFn = useCallback((text: string) => {
     if (!text.trim()) return;
     const newMsg: Message = {
       id: Date.now(),
@@ -128,29 +186,24 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       liked: false,
     };
+    // Optimistic UI — add message locally immediately
     setMessages((prev) => [...prev, newMsg]);
     setMessage('');
     setShowIcebreakers(false);
     scrollToEnd();
 
-    // Simulate a reply after a short delay
-    setTimeout(() => {
-      const reply: Message = {
-        id: Date.now() + 1,
-        text: SIMULATED_REPLIES[Math.floor(Math.random() * SIMULATED_REPLIES.length)],
-        sent: false,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        liked: false,
-      };
-      setMessages((prev) => [...prev, reply]);
-      scrollToEnd();
-    }, 1500 + Math.random() * 2000);
-  }, [scrollToEnd]);
+    // Fire API in background
+    chatService.sendMessage(chatId, text.trim(), 'text').then((result) => {
+      if (!result.success) {
+        devLog('⚠️ Chat: Failed to send message via API, kept locally');
+      }
+    });
+  }, [scrollToEnd, chatId]);
 
-  const handleSend = () => sendMessage(message);
+  const handleSend = () => sendMessageFn(message);
 
   const handleIcebreaker = (prompt: string) => {
-    sendMessage(prompt);
+    sendMessageFn(prompt);
   };
 
   const toggleLike = (msgId: number) => {
@@ -273,6 +326,11 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
       </LinearGradient>
 
       {/* Messages */}
+      {isLoadingMessages ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#FF007B" />
+        </View>
+      ) : (
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -295,6 +353,7 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
           )
         }
       />
+      )}
 
       {/* Input Bar */}
       <KeyboardAvoidingView

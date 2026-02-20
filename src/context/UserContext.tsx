@@ -38,16 +38,16 @@ export interface UserProfile {
 }
 
 export interface Match {
-  id: number;
+  id: string | number;
   profile: {
-    id: number;
+    id: string | number;
     name: string;
     age: number;
     photo: any;
     location: string;
   };
   matchedAt: string;
-  chatId?: number;
+  chatId?: string | number;
 }
 
 interface UserContextType {
@@ -72,7 +72,11 @@ interface UserContextType {
   // Matches
   matches: Match[];
   addMatch: (match: Match) => void;
-  getMatchById: (id: number) => Match | undefined;
+  getMatchById: (id: string | number) => Match | undefined;
+
+  // Unread counts
+  unreadChatCount: number;
+  setUnreadChatCount: (count: number) => void;
 
   // Auth
   isAuthenticated: boolean;
@@ -111,6 +115,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [matches, setMatches] = useState<Match[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   // Debounce timer ref
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -295,7 +300,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   }, []);
 
-  const getMatchById = useCallback((id: number): Match | undefined => {
+  const getMatchById = useCallback((id: string | number): Match | undefined => {
     return matches.find(m => m.id === id);
   }, [matches]);
 
@@ -342,6 +347,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     logout,
     isLoading,
+    unreadChatCount,
+    setUnreadChatCount,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

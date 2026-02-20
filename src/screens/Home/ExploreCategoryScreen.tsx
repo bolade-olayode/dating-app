@@ -1,6 +1,6 @@
 // src/screens/Home/ExploreCategoryScreen.tsx
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StatusBar,
   Dimensions,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +19,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
+import { matchingService } from '@services/api/matchingService';
+import { devLog } from '@config/environment';
 
 const { width } = Dimensions.get('window');
 const PADDING = 20;
@@ -58,14 +61,38 @@ const MOCK_PROFILES: ExploreProfile[] = [
   { id: 8, name: 'Dami Adeyemo', age: 29, zodiac: 'Capricorn', location: 'Nigeria', photo: require('../../assets/images/img8.jpg'), isOnline: true },
 ];
 
-// Top profiles are just the first 5 for the horizontal scroll
-const TOP_PROFILES = MOCK_PROFILES.slice(0, 5);
-
 const ExploreCategoryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const route = useRoute<RouteProp<ExploreCategoryParams, 'ExploreCategory'>>();
   const { categoryTitle, memberCount } = route.params;
+
+  const [profiles, setProfiles] = useState<ExploreProfile[]>(MOCK_PROFILES);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      setIsLoading(true);
+      const result = await matchingService.discoverProfiles(50000, 20);
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+        const mapped: ExploreProfile[] = result.data.map((p: any, idx: number) => ({
+          id: p._id || p.id || idx,
+          name: p.fullname || p.name || 'Unknown',
+          age: p.age || 0,
+          zodiac: p.zodiac || '',
+          location: p.city || p.location?.city || '',
+          photo: p.photos?.[0]
+            ? { uri: p.photos[0] }
+            : MOCK_PROFILES[idx % MOCK_PROFILES.length].photo,
+          isOnline: false,
+        }));
+        devLog('✅ ExploreCategory: Loaded', mapped.length, 'profiles from API');
+        setProfiles(mapped);
+      }
+      setIsLoading(false);
+    };
+    fetchProfiles();
+  }, []);
 
   // ─── Profile Card ────────────────────────────────────────
 
@@ -173,13 +200,17 @@ const ExploreCategoryScreen: React.FC = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.topProfilesRow}
         >
-          {TOP_PROFILES.map(renderTopProfile)}
+          {profiles.slice(0, 5).map(renderTopProfile)}
         </ScrollView>
 
         {/* Profile Grid (2 columns) */}
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#FF007B" style={{ marginTop: 40 }} />
+        ) : (
         <View style={styles.profileGrid}>
-          {MOCK_PROFILES.map(renderProfileCard)}
+          {profiles.map(renderProfileCard)}
         </View>
+        )}
       </ScrollView>
     </View>
   );

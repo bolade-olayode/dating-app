@@ -11,12 +11,14 @@
  * 5. Me (Profile)
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform, StyleSheet, View, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
+import { useUser } from '@context/UserContext';
+import { chatService } from '@services/api/chatService';
 
 // Import tab screens
 import DiscoveryScreen from '@screens/Home/DiscoveryScreen';
@@ -36,6 +38,22 @@ export type TabParamList = {
 const Tab = createBottomTabNavigator<TabParamList>();
 
 const TabNavigator = () => {
+  const { unreadChatCount, setUnreadChatCount } = useUser();
+
+  // Poll unread count every 30 seconds
+  useEffect(() => {
+    const fetchUnread = async () => {
+      const result = await chatService.getUnreadCount();
+      if (result.success && result.data != null) {
+        const count = typeof result.data === 'number' ? result.data : result.data?.count ?? 0;
+        setUnreadChatCount(count);
+      }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [setUnreadChatCount]);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -131,9 +149,13 @@ const TabNavigator = () => {
                 color={color}
               />
               {/* Badge for unread messages */}
-              <View style={styles.badgeContainer}>
-                <Text style={styles.badgeText}>11+</Text>
-              </View>
+              {unreadChatCount > 0 && (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeText}>
+                    {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                  </Text>
+                </View>
+              )}
             </View>
           ),
         }}
