@@ -605,7 +605,7 @@ const DiscoveryScreen = () => {
           >
           {/* Interest Tag */}
           <View style={styles.interestTag}>
-            <Text style={styles.interestText}>{currentProfile.interest}</Text>
+            <Text style={styles.interestText}>{typeof currentProfile.interest === 'string' ? currentProfile.interest : ''}</Text>
           </View>
 
           {/* Profile Info Overlay - Now at bottom with action buttons */}

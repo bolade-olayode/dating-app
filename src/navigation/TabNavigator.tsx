@@ -24,14 +24,14 @@ import { chatService } from '@services/api/chatService';
 import DiscoveryScreen from '@screens/Home/DiscoveryScreen';
 import ExploreScreen from '@screens/Home/ExploreScreen';
 import ChatsScreen from '@screens/Home/ChatsScreen';
-import WalletScreen from '@screens/Home/WalletScreen';
+import NotificationsScreen from '@screens/Home/NotificationsScreen';
 import MeScreen from '@screens/Home/MeScreen';
 
 export type TabParamList = {
   Discovery: undefined;
   Explore: undefined;
   Chats: undefined;
-  Wallet: undefined;
+  Notifications: undefined;
   Profile: undefined;
 };
 
@@ -161,13 +161,13 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Wallet"
-        component={WalletScreen}
+        name="Notifications"
+        component={NotificationsScreen}
         options={{
-          tabBarLabel: 'Wallet',
-          tabBarIcon: ({ focused, color, size }) => (
+          tabBarLabel: 'Alerts',
+          tabBarIcon: ({ focused, color }) => (
             <Icon
-              name={focused ? "wallet" : "wallet-outline"}
+              name={focused ? "notifications" : "notifications-outline"}
               size={26}
               color={color}
             />

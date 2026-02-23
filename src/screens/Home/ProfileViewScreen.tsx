@@ -207,13 +207,13 @@ const ProfileViewScreen: React.FC = () => {
       </View>
 
       {/* Interests */}
-      {profile.interests.length > 0 && (
+      {(profile.interests || []).length > 0 && (
         <>
           <Text style={styles.sectionTitle}>Interests</Text>
           <View style={styles.chipsContainer}>
-            {profile.interests.map((interest, idx) => (
+            {(profile.interests || []).map((interest, idx) => (
               <View key={idx} style={styles.chip}>
-                <Text style={styles.chipText}>{interest}</Text>
+                <Text style={styles.chipText}>{typeof interest === 'string' ? interest : ''}</Text>
               </View>
             ))}
           </View>
@@ -240,11 +240,11 @@ const ProfileViewScreen: React.FC = () => {
   const renderMedia = () => (
     <View style={styles.tabContent}>
       <View style={styles.mediaGrid}>
-        {profile.photos.map((photo, idx) => (
+        {(profile.photos || []).map((photo, idx) => (
           <View key={idx} style={styles.mediaItem}>
             <Image source={photo} style={styles.mediaImage} />
             {/* Video indicator on last item (demo) */}
-            {idx === profile.photos.length - 1 && (
+            {idx === (profile.photos || []).length - 1 && (
               <View style={styles.playOverlay}>
                 <Icon name="play-circle" size={32} color="#FFF" />
               </View>

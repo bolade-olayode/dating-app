@@ -47,40 +47,21 @@ const NearbyMatchesScreen = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  const goToHome = () => {
+    navigation.reset({ index: 0, routes: [{ name: 'HomeTabs' }] });
+  };
+
   const handleEnablePress = async () => {
     try {
-      // Request location permission first
-      console.log('🔍 Requesting location permission...');
-      const locationGranted = await requestLocation();
-      console.log('📍 Location permission result:', locationGranted);
-
-      // Request notifications permission (regardless of location result)
-      console.log('🔔 Requesting notification permission...');
-      const notificationGranted = await requestNotifications();
-      console.log('🔔 Notification permission result:', notificationGranted);
-
-      // Navigate to HomeTabs regardless of permission results
-      console.log('✅ Permissions requested. Navigating to HomeTabs.');
-      navigation.replace('HomeTabs');
-    } catch (error) {
-      console.error('❌ Error requesting permissions:', error);
-    }
+      await requestLocation();
+      await requestNotifications();
+    } catch {}
+    goToHome();
   };
 
-  const handleSkipPress = () => {
-    // User skipped permissions - navigate to HomeTabs anyway
-    console.log('User skipped permissions. Navigating to HomeTabs.');
-    navigation.replace('HomeTabs');
-  };
-
-  const handleBackPress = () => {
-    navigation.goBack();
-  };
-
-  const handleCancelPress = () => {
-    // Navigate to HomeTabs or go back
-    navigation.goBack();
-  };
+  const handleSkipPress = () => goToHome();
+  const handleBackPress = () => goToHome();
+  const handleCancelPress = () => goToHome();
 
   return (
     <View style={styles.container}>

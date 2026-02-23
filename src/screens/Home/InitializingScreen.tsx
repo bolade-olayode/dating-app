@@ -26,8 +26,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FONTS } from '@config/fonts';
 import MarqueeColumn from '@components/common/AnimatedBackground/MarqueeColumn';
+import { authService } from '@services/api/authService';
+import { useUser, UserProfile } from '@context/UserContext';
+import { STORAGE_KEYS } from '@utils/constant';
 
 // Import the 3 vertical column images
 const COLUMN_IMAGES = {
@@ -38,19 +42,56 @@ const COLUMN_IMAGES = {
 
 const InitializingScreen = () => {
   const navigation = useNavigation<StackNavigationProp<any>>();
+  const { login: loginUser } = useUser();
   const { height } = Dimensions.get('window');
-
-  // Use full screen height for each image to ensure no gaps
-  // The images will overlap slightly to prevent any spacing during scroll
   const imageHeight = height;
 
   useEffect(() => {
-    // Auto-navigate to NearbyMatches after 2.5 seconds
-    const timer = setTimeout(() => {
-      (navigation as any).replace('NearbyMatches');
-    }, 2500);
+    let cancelled = false;
 
-    return () => clearTimeout(timer);
+    const initialize = async () => {
+      // Run animation delay and profile fetch in parallel
+      const [, meResult] = await Promise.all([
+        new Promise(resolve => setTimeout(resolve, 2500)),
+        authService.getMe().catch(() => null),
+      ]);
+
+      if (cancelled) return;
+
+      // Populate context with real profile data for fresh signups
+      if (meResult?.success && meResult.profile) {
+        try {
+          const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+          if (token) {
+            const p = meResult.profile;
+            const userProfile: UserProfile = {
+              id: p.id || p._id,
+              name: p.name || '',
+              email: p.email,
+              phoneNumber: p.phone,
+              dateOfBirth: p.dateOfBirth,
+              age: p.age,
+              gender: p.gender || '',
+              lookingFor: p.lookingFor || '',
+              relationshipGoal: p.relationshipGoal || '',
+              interests: (p.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
+              photos: p.photos || [],
+              bio: p.bio,
+              location: typeof p.location === 'string' ? p.location : p.location?.city || p.city || '',
+              verified: p.verified || false,
+            };
+            await loginUser(token, userProfile);
+          }
+        } catch {}
+      }
+
+      if (!cancelled) {
+        (navigation as any).replace('NearbyMatches');
+      }
+    };
+
+    initialize();
+    return () => { cancelled = true; };
   }, []);
 
   return (

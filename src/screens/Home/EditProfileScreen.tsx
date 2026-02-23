@@ -156,14 +156,18 @@ const EditProfileScreen: React.FC = () => {
     setIsSaving(true);
 
     // Map frontend fields to backend API field names
+    // gender must be lowercase; interests omitted (backend expects IDs, not names)
     const lookingForMap: Record<string, string> = { men: 'male', women: 'female', both: 'both' };
-    const apiPayload = {
+    const apiPayload: Record<string, any> = {
       username: name,
-      gender,
-      interestedIn: lookingFor ? (lookingForMap[lookingFor.toLowerCase()] || lookingFor) : undefined,
-      goal: relationshipGoal,
-      interests: selectedInterests,
+      gender: gender.toLowerCase(),
     };
+    if (lookingFor) {
+      apiPayload.interestedIn = lookingForMap[lookingFor.toLowerCase()] || lookingFor.toLowerCase();
+    }
+    if (relationshipGoal) {
+      apiPayload.goal = relationshipGoal;
+    }
 
     devLog('💾 EditProfile: Saving to API', Object.keys(apiPayload));
     const result = await userService.updateProfile(apiPayload);

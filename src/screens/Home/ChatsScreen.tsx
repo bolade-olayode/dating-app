@@ -169,25 +169,27 @@ const ChatsScreen: React.FC = () => {
     fetchData();
   }, [isFocused, setUnreadChatCount]);
 
-  // Use API data when available, fallback to mock
-  const activeMatchesList = apiMatches.length > 0 ? apiMatches : ACTIVE_MATCHES;
+  // Use API data only — no mock fallback
+  const activeMatchesList = apiMatches;
 
-  // Merge real matches from context with API conversations, then mock fallback
-  const matchConversations = matches.map(match => ({
-    id: match.id,
-    name: match.profile.name,
-    photo: match.profile.photo,
-    lastMessage: '',
-    time: new Date(match.matchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    unread: 0,
-    age: match.profile.age,
-    location: match.profile.location,
-    isNewMatch: true,
-  }));
+  // Merge real matches from context with API conversations
+  const matchConversations = matches
+    .filter(match => match?.profile)
+    .map(match => ({
+      id: match.id,
+      name: match.profile.name || 'Unknown',
+      photo: match.profile.photo,
+      lastMessage: '',
+      time: match.matchedAt && !isNaN(new Date(match.matchedAt).getTime())
+        ? new Date(match.matchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : '',
+      unread: 0,
+      age: match.profile.age || 0,
+      location: typeof match.profile.location === 'string' ? match.profile.location : '',
+      isNewMatch: true,
+    }));
 
-  const allConversations = apiConversations.length > 0
-    ? [...matchConversations, ...apiConversations]
-    : [...matchConversations, ...CONVERSATIONS];
+  const allConversations = [...matchConversations, ...apiConversations];
 
   const renderActiveMatch = ({ item }: { item: typeof ACTIVE_MATCHES[0] }) => (
     <TouchableOpacity style={styles.activeMatchItem} activeOpacity={0.8}>
@@ -297,6 +299,14 @@ const ChatsScreen: React.FC = () => {
       {/* Conversation List */}
       {isLoading ? (
         <ActivityIndicator size="large" color="#FF007B" style={{ marginTop: 40 }} />
+      ) : allConversations.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Icon name="chatbubbles-outline" size={52} color="#333" />
+          <Text style={styles.emptyTitle}>No conversations yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Start swiping to find matches.{'\n'}Your chats will appear here.
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={allConversations as any[]}
@@ -526,6 +536,27 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.Medium,
     fontSize: 14,
     color: '#FFF',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    marginTop: -40,
+  },
+  emptyTitle: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 18,
+    color: '#FFF',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontFamily: FONTS.Regular,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

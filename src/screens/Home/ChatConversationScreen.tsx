@@ -129,9 +129,9 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
         const mapped: Message[] = result.data.map((m: any) => ({
           id: m._id || m.id || Date.now(),
           text: m.content || m.text || '',
-          image: m.type === 'image' && m.content ? { uri: m.content } : undefined,
+          image: m.type === 'image' && typeof m.content === 'string' ? { uri: m.content } : undefined,
           sent: m.isMine ?? m.sender === 'me',
-          time: m.createdAt
+          time: m.createdAt && !isNaN(new Date(m.createdAt).getTime())
             ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '',
           liked: false,
@@ -155,9 +155,9 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
         const mapped: Message[] = result.data.map((m: any) => ({
           id: m._id || m.id || Date.now(),
           text: m.content || m.text || '',
-          image: m.type === 'image' && m.content ? { uri: m.content } : undefined,
+          image: m.type === 'image' && typeof m.content === 'string' ? { uri: m.content } : undefined,
           sent: m.isMine ?? m.sender === 'me',
-          time: m.createdAt
+          time: m.createdAt && !isNaN(new Date(m.createdAt).getTime())
             ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '',
           liked: false,
