@@ -61,6 +61,7 @@ interface MatchScreenProps {
   route: {
     params: {
       matchedProfile: {
+        id?: string | number;
         name: string;
         photo: any;
         age: number;

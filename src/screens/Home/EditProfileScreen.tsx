@@ -68,7 +68,7 @@ const EditProfileScreen: React.FC = () => {
   const [relationshipGoal, setRelationshipGoal] = useState(contextProfile?.relationshipGoal || '');
   const [education, setEducation] = useState(contextProfile?.education || '');
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
-    contextProfile?.interests || [],
+    (contextProfile?.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
   );
   const [prompts, setPrompts] = useState<Array<{ question: string; answer: string }>>(
     contextProfile?.prompts || [],

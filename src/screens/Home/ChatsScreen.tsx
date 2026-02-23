@@ -299,7 +299,7 @@ const ChatsScreen: React.FC = () => {
         <ActivityIndicator size="large" color="#FF007B" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
-          data={allConversations}
+          data={allConversations as any[]}
           renderItem={renderConversation}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}

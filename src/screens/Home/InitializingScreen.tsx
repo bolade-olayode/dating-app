@@ -47,7 +47,7 @@ const InitializingScreen = () => {
   useEffect(() => {
     // Auto-navigate to NearbyMatches after 2.5 seconds
     const timer = setTimeout(() => {
-      navigation.replace('NearbyMatches' as never);
+      (navigation as any).replace('NearbyMatches');
     }, 2500);
 
     return () => clearTimeout(timer);

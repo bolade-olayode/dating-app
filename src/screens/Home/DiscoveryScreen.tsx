@@ -34,6 +34,7 @@ import CoinBalance from '@components/ui/CoinBalance';
 import { useUser } from '@context/UserContext';
 import { matchingService } from '@services/api/matchingService';
 import { devLog } from '@config/environment';
+import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
 
@@ -242,8 +243,23 @@ const DiscoveryScreen = () => {
     const fetchProfiles = async () => {
       setIsLoadingProfiles(true);
 
-      // Update location (hardcoded Lagos for now)
-      matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
+      // Update location with real GPS (falls back to Lagos if permission denied)
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          const [place] = await Location.reverseGeocodeAsync(loc.coords);
+          const city = place?.city || place?.district || place?.subregion || 'Unknown';
+          matchingService.updateLocation(loc.coords.latitude, loc.coords.longitude, city);
+          devLog('📍 Location updated:', city, loc.coords.latitude, loc.coords.longitude);
+        } else {
+          devLog('📍 Location permission denied, falling back to Lagos');
+          matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
+        }
+      } catch {
+        devLog('📍 Location error, falling back to Lagos');
+        matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
+      }
 
       const result = await matchingService.discoverProfiles();
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {

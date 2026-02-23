@@ -7,6 +7,7 @@ import { UserProvider } from '@context/UserContext';
 import { QueryProvider } from '@services/api-new/QueryProvider';
 import { FONT_FILES } from '@config/fonts';
 import AppNavigator from '@navigation/AppNavigator';
+import ErrorBoundary from '@components/common/ErrorBoundary';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -25,14 +26,16 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryProvider>
-        <UserProvider>
-          <ThemeProvider>
-            <AppNavigator />
-          </ThemeProvider>
-        </UserProvider>
-      </QueryProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryProvider>
+          <UserProvider>
+            <ThemeProvider>
+              <AppNavigator />
+            </ThemeProvider>
+          </UserProvider>
+        </QueryProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

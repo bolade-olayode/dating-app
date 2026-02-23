@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ENV, devLog, errorLog } from '@config/environment';
 import { AuthResponse } from './mockAuthService';
 import { STORAGE_KEYS } from '@utils/constant';
+import { navigationRef } from '@navigation/navigationRef';
 
 // ─── Axios Instance ──────────────────────────────────────────
 
@@ -46,10 +47,26 @@ apiClient.interceptors.response.use(
     devLog('✅ API Response:', response.status, response.config.url);
     return response;
   },
-  (error) => {
+  async (error) => {
     const status = error.response?.status;
     const message = error.response?.data?.message || error.message;
     errorLog('❌ API Error:', status, message);
+
+    // Global 401 handler: if a request was made WITH a Bearer token and the
+    // server says it's invalid, clear the session and kick the user to Welcome.
+    // We check for the Authorization header so that OTP-verify calls (no token)
+    // don't accidentally trigger this.
+    if (status === 401 && error.config?.headers?.Authorization) {
+      devLog('🔒 Global 401: token rejected, clearing session');
+      try {
+        await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      } catch {}
+
+      if (navigationRef.isReady()) {
+        navigationRef.reset({ index: 0, routes: [{ name: 'Welcome' }] });
+      }
+    }
+
     return Promise.reject(error);
   },
 );

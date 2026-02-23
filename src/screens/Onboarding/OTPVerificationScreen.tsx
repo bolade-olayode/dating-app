@@ -10,7 +10,6 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   TextInput,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -55,6 +54,13 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const [timer, setTimer] = useState(30);
   const [focusedInput, setFocusedInput] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Parse "try again in X seconds" from a backend rate-limit message.
+  const parseRateLimitSeconds = (msg: string): number | null => {
+    const match = msg.match(/(\d+)\s*second/i);
+    return match ? parseInt(match[1], 10) : null;
+  };
 
   // Onboarding progress
   const CURRENT_STEP = ONBOARDING_STEPS.OTP_VERIFICATION;
@@ -119,10 +125,9 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
     if (otpCode.length < 6) return;
 
     setLoading(true);
+    setErrorMessage(null);
 
     try {
-      // For signup, OTP is sent to email — use email as the identifier for verify
-      // Also pass the phone number as extra so backend gets both identifiers
       const verifyContact = (mode === 'signup' && email) ? email : contact;
       const extra = mode === 'signup' ? { email, phone: phoneNumber } : undefined;
       devLog('Verifying OTP:', otpCode, 'for:', verifyContact, 'mode:', mode, 'extra:', extra);
@@ -132,7 +137,6 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
         devLog('OTP Verified successfully!', result);
 
         if (mode === 'login') {
-          // Login: fetch profile, store in context, go to HomeTabs
           if (result.token) {
             try {
               const meResult = await authService.getMe();
@@ -148,10 +152,12 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
                   gender: meResult.profile.gender || '',
                   lookingFor: meResult.profile.lookingFor || '',
                   relationshipGoal: meResult.profile.relationshipGoal || '',
-                  interests: meResult.profile.interests || [],
+                  interests: (meResult.profile.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
                   photos: meResult.profile.photos || [],
                   bio: meResult.profile.bio,
-                  location: meResult.profile.location,
+                  location: typeof meResult.profile.location === 'string'
+                    ? meResult.profile.location
+                    : meResult.profile.location?.city || meResult.profile.city || '',
                   verified: meResult.profile.verified || false,
                 };
                 await loginUser(result.token, userProfile);
@@ -162,14 +168,20 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
           }
           navigation.reset({ index: 0, routes: [{ name: 'HomeTabs' }] });
         } else {
-          // Signup: continue onboarding
           navigation.replace('NameInput');
         }
       } else {
-        Alert.alert('Verification Failed', result.message);
+        // Show inline error instead of Alert
+        const waitSecs = parseRateLimitSeconds(result.message);
+        if (waitSecs) {
+          setTimer(waitSecs);
+          setErrorMessage(`Too many attempts. Try again in ${waitSecs}s.`);
+        } else {
+          setErrorMessage(result.message || 'Invalid OTP. Please try again.');
+        }
       }
-    } catch (err) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } catch {
+      setErrorMessage('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -178,16 +190,22 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleResend = async () => {
     if (timer > 0) return;
 
+    setErrorMessage(null);
     try {
       const result = await authService.resendOTP(contact || '');
       if (result.success) {
         setTimer(30);
-        Alert.alert('OTP Sent', 'A new OTP has been sent to your ' + (isPhoneMode ? 'phone' : 'email'));
       } else {
-        Alert.alert('Failed', result.message);
+        const waitSecs = parseRateLimitSeconds(result.message);
+        if (waitSecs) {
+          setTimer(waitSecs);
+          setErrorMessage(`Too many requests. Try again in ${waitSecs}s.`);
+        } else {
+          setErrorMessage(result.message || 'Failed to resend OTP.');
+        }
       }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+    } catch {
+      setErrorMessage('Failed to resend OTP. Please try again.');
     }
   };
 
@@ -254,6 +272,10 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
               />
             ))}
           </View>
+
+          {errorMessage && (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          )}
 
           <View style={styles.resendContainer}>
             <Text style={styles.resendText}>
@@ -350,6 +372,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     textAlign: 'center',
     fontFamily: FONTS.H2,
+  },
+  errorText: {
+    color: '#FF4D4D',
+    fontSize: 13,
+    fontFamily: FONTS.Body,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   resendContainer: {
     alignItems: 'center',

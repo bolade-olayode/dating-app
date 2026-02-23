@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@utils/constant';
 import { authService } from '@services/api/authService';
 import { devLog } from '@config/environment';
+import { navigationRef } from '@navigation/navigationRef';
+import OfflineBanner from '@components/common/OfflineBanner';
 
 // Import Screens
 import IntroSlideshowScreen from '@screens/IntroSlideshow/IntroSlideshowScreen';
@@ -102,6 +104,7 @@ export type RootStackParamList = {
   TopUp: undefined;
   Match: {
     matchedProfile: {
+      id?: string | number;
       name: string;
       photo: any;
       age: number;
@@ -149,10 +152,12 @@ const mapApiUserToProfile = (user: any): UserProfile => ({
   gender: user.gender || '',
   lookingFor: user.lookingFor || '',
   relationshipGoal: user.relationshipGoal || '',
-  interests: user.interests || [],
+  interests: (user.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
   photos: user.photos || [],
   bio: user.bio,
-  location: user.location,
+  location: typeof user.location === 'string'
+    ? user.location
+    : user.location?.city || user.city || '',
   verified: user.verified || false,
 });
 
@@ -222,7 +227,8 @@ const AppNavigator = () => {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
+        <OfflineBanner />
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
         <Stack.Navigator
