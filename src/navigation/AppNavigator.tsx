@@ -142,31 +142,38 @@ export type RootStackParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-const mapApiUserToProfile = (user: any): UserProfile => ({
-  id: user.id || user._id,
-  name: user.name || '',
-  email: user.email,
-  phoneNumber: user.phone,
-  dateOfBirth: user.dateOfBirth,
-  age: user.age || (user.dateOfBirth ? (() => {
-    const dob = new Date(user.dateOfBirth);
+const mapApiUserToProfile = (user: any): UserProfile => {
+  // Backend may return name as fullname, username, or name depending on the endpoint
+  const rawName = user.name || user.fullname || user.username || '';
+  // Backend sends/returns DOB as 'dob' from onboarding, 'dateOfBirth' elsewhere
+  const rawDob = user.dateOfBirth || user.dob || '';
+  const calcAge = (dobStr: string) => {
+    const dob = new Date(dobStr);
     const today = new Date();
     let a = today.getFullYear() - dob.getFullYear();
     const m = today.getMonth() - dob.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
     return a;
-  })() : undefined),
-  gender: user.gender || '',
-  lookingFor: user.lookingFor || '',
-  relationshipGoal: user.relationshipGoal || '',
-  interests: (user.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
-  photos: user.photos || [],
-  bio: user.bio,
-  location: typeof user.location === 'string'
-    ? user.location
-    : user.location?.city || user.city || '',
-  verified: user.verified || false,
-});
+  };
+  return {
+    id: user.id || user._id,
+    name: rawName,
+    email: user.email,
+    phoneNumber: user.phone,
+    dateOfBirth: rawDob,
+    age: user.age || (rawDob ? calcAge(rawDob) : undefined),
+    gender: user.gender || '',
+    lookingFor: user.lookingFor || '',
+    relationshipGoal: user.relationshipGoal || '',
+    interests: (user.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
+    photos: user.photos || [],
+    bio: user.bio,
+    location: typeof user.location === 'string'
+      ? user.location
+      : user.location?.city || user.city || '',
+    verified: user.verified || false,
+  };
+};
 
 const AppNavigator = () => {
   const theme = useTheme();

@@ -24,6 +24,7 @@ import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
 import { userService } from '@services/api/userService';
+import { uploadToCloudinary } from '@services/api/cloudinaryService';
 import { devLog } from '@config/environment';
 import {
   GENDER_OPTIONS,
@@ -50,10 +51,10 @@ const EditProfileScreen: React.FC = () => {
   const dobLocked = !!contextProfile?.dateOfBirth;
 
   // Initialize from context profile, fallback to defaults
-  const [name, setName] = useState(contextProfile?.name || 'BaaleofUI');
-  const [email, setEmail] = useState(contextProfile?.email || 'selenakumbaya@icloud.com');
+  const [name, setName] = useState(contextProfile?.name || '');
+  const [email, setEmail] = useState(contextProfile?.email || '');
   const [phone, setPhone] = useState(
-    contextProfile?.phoneNumber?.replace(/^\+\d{1,3}/, '') || '7000000008',
+    contextProfile?.phoneNumber?.replace(/^\+\d{1,3}/, '') || '',
   );
   const [countryCode] = useState('+234');
   const [gender, setGender] = useState(contextProfile?.gender || '');
@@ -86,54 +87,45 @@ const EditProfileScreen: React.FC = () => {
   const [dropdownTitle, setDropdownTitle] = useState('');
   const [dropdownSelected, setDropdownSelected] = useState('');
 
-  // Photo action sheet
-  const [photoSheetVisible, setPhotoSheetVisible] = useState(false);
+  // Photo picking — no custom Modal, native Alert avoids the dismiss/present conflict
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
-  const handlePickImage = async (from: 'camera' | 'library') => {
-    setPhotoSheetVisible(false);
-    // Wait for the modal slide-out animation to finish before launching
-    // the native picker — opening a picker on top of a dismissing modal
-    // silently fails on both iOS and Android.
-    await new Promise(resolve => setTimeout(resolve, 400));
-
+  const handlePickImage = async (from: 'camera' | 'library', slotIdx: number | null) => {
     const { status } = from === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to continue.');
+      Alert.alert('Permission needed', 'Please allow photo access in your device settings.');
       return;
     }
 
     const result = from === 'camera'
-      ? await ImagePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [4, 5],
-          quality: 0.8,
-        })
-      : await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [4, 5],
-          quality: 0.8,
-        });
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
 
+    devLog('📷 Picker result:', result.canceled ? 'canceled' : `selected ${result.assets?.length}`);
     if (!result.canceled && result.assets[0]) {
       const newPhoto = { uri: result.assets[0].uri };
-      const idx = activeSlot;
       setPhotos(prev => {
         const next = [...prev];
-        if (idx !== null && next[idx]) {
-          next[idx] = newPhoto; // replace existing
+        if (slotIdx !== null && next[slotIdx]) {
+          next[slotIdx] = newPhoto;
         } else {
-          next.push(newPhoto);  // add to next empty slot
+          next.push(newPhoto);
         }
         return next.slice(0, 4);
       });
     }
-    setActiveSlot(null);
+  };
+
+  const showAddPhotoSheet = (slotIdx: number) => {
+    setActiveSlot(slotIdx);
+    Alert.alert('Add photo', undefined, [
+      { text: 'Take photo', onPress: () => handlePickImage('camera', slotIdx) },
+      { text: 'Choose from library', onPress: () => handlePickImage('library', slotIdx) },
+      { text: 'Cancel', style: 'cancel', onPress: () => setActiveSlot(null) },
+    ]);
   };
 
   // Prompt editor modal
@@ -202,19 +194,39 @@ const EditProfileScreen: React.FC = () => {
     if (isSaving) return;
     setIsSaving(true);
 
-    // Map frontend fields to backend API field names
-    // gender must be lowercase; interests omitted (backend expects IDs, not names)
+    // Upload any new photos (local device URIs) to Cloudinary before saving.
+    // Photos that are already Cloudinary URLs (startsWith 'http') are kept as-is.
+    let finalPhotoUrls: string[] = [];
+    try {
+      finalPhotoUrls = await Promise.all(
+        photos.map(async (p: any) => {
+          const uri: string = typeof p === 'string' ? p : p.uri;
+          if (uri.startsWith('http')) return uri; // already a remote URL
+          devLog('☁️ EditProfile: uploading new photo to Cloudinary');
+          return await uploadToCloudinary(uri);
+        }),
+      );
+      // Update local photo state to show Cloudinary URLs (persists on re-open)
+      setPhotos(finalPhotoUrls.map(url => ({ uri: url })));
+    } catch (err) {
+      devLog('⚠️ EditProfile: photo upload error, saving without photo changes', err);
+      // Fall back to existing context photos rather than broken local URIs
+      finalPhotoUrls = contextProfile?.photos || [];
+    }
+
+    // Map frontend fields to backend API field names.
+    // Only include non-empty values — sending empty strings causes backend validation errors.
     const lookingForMap: Record<string, string> = { men: 'male', women: 'female', both: 'both' };
-    const apiPayload: Record<string, any> = {
-      username: name,
-      gender: gender.toLowerCase(),
-    };
+    const apiPayload: Record<string, any> = {};
+    if (name) apiPayload.username = name;
+    if (gender) apiPayload.gender = gender.toLowerCase();
     if (lookingFor) {
       apiPayload.interestedIn = lookingForMap[lookingFor.toLowerCase()] || lookingFor.toLowerCase();
     }
-    if (relationshipGoal) {
-      apiPayload.goal = relationshipGoal;
-    }
+    if (relationshipGoal) apiPayload.goal = relationshipGoal;
+    // bio/weight/height are not in the backend's PATCH /api/user/profile schema — stored locally only
+    if (selectedInterests.length) apiPayload.interests = selectedInterests;
+    if (finalPhotoUrls.length) apiPayload.photos = finalPhotoUrls;
 
     devLog('💾 EditProfile: Saving to API', Object.keys(apiPayload));
     const result = await userService.updateProfile(apiPayload);
@@ -233,6 +245,7 @@ const EditProfileScreen: React.FC = () => {
       relationshipGoal,
       interests: selectedInterests,
       prompts,
+      photos: finalPhotoUrls,
     });
 
     setIsSaving(false);
@@ -541,20 +554,12 @@ const EditProfileScreen: React.FC = () => {
       const handlePress = () => {
         if (photo) {
           Alert.alert('Photo options', undefined, [
-            {
-              text: 'Replace',
-              onPress: () => { setActiveSlot(index); setPhotoSheetVisible(true); },
-            },
-            {
-              text: 'Delete',
-              style: 'destructive',
-              onPress: () => setPhotos(prev => prev.filter((_, i) => i !== index)),
-            },
+            { text: 'Replace', onPress: () => showAddPhotoSheet(index) },
+            { text: 'Delete', style: 'destructive', onPress: () => setPhotos(prev => prev.filter((_, i) => i !== index)) },
             { text: 'Cancel', style: 'cancel' },
           ]);
         } else {
-          setActiveSlot(index);
-          setPhotoSheetVisible(true);
+          showAddPhotoSheet(index);
         }
       };
 
@@ -638,12 +643,12 @@ const EditProfileScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             <Text style={styles.profileName}>{name || 'Your Name'}</Text>
-            <View style={styles.locationRow}>
-              <Icon name="location-outline" size={14} color="#999" />
-              <Text style={styles.locationText}>
-                {contextProfile?.location || 'Ontario, Japan'}
-              </Text>
-            </View>
+            {contextProfile?.location ? (
+              <View style={styles.locationRow}>
+                <Icon name="location-outline" size={14} color="#999" />
+                <Text style={styles.locationText}>{contextProfile.location}</Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Tab Bar */}
@@ -801,46 +806,6 @@ const EditProfileScreen: React.FC = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Photo Action Sheet */}
-      <Modal
-        visible={photoSheetVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPhotoSheetVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.sheetOverlay}
-          activeOpacity={1}
-          onPress={() => setPhotoSheetVisible(false)}
-        >
-          <View style={styles.actionSheet}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>
-                {activeSlot !== null && photos[activeSlot] ? 'Replace photo' : 'Add photo'}
-              </Text>
-              <TouchableOpacity onPress={() => { setPhotoSheetVisible(false); setActiveSlot(null); }}>
-                <Icon name="close-circle" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={styles.sheetOption}
-              activeOpacity={0.7}
-              onPress={() => handlePickImage('camera')}
-            >
-              <Text style={styles.sheetOptionText}>Take photo</Text>
-              <Icon name="camera-outline" size={20} color="#FF007B" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.sheetOption}
-              activeOpacity={0.7}
-              onPress={() => handlePickImage('library')}
-            >
-              <Text style={styles.sheetOptionText}>Choose from library</Text>
-              <Icon name="image-outline" size={20} color="#FF007B" />
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 };

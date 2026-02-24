@@ -41,10 +41,12 @@ const updateProfile = async (
       data: response.data,
     };
   } catch (error: any) {
-    errorLog('User updateProfile error:', error.response?.data || error.message);
+    const status = error.response?.status;
+    const msg = error.response?.data?.message || error.message;
+    errorLog('User updateProfile error:', status ? `${status} — ${msg}` : msg);
     return {
       success: false,
-      message: error.response?.data?.message || 'Failed to update profile',
+      message: msg || 'Failed to update profile',
     };
   }
 };

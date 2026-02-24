@@ -67,7 +67,7 @@ const ProfileViewScreen: React.FC = () => {
     if (!contextProfile) return MOCK_PROFILE;
     return {
       ...MOCK_PROFILE,
-      name: contextProfile.name || MOCK_PROFILE.name,
+      name: contextProfile.name || '',
       age: contextProfile.age || (contextProfile.dateOfBirth ? (() => {
         const dob = new Date(contextProfile.dateOfBirth!);
         const today = new Date();
@@ -75,24 +75,27 @@ const ProfileViewScreen: React.FC = () => {
         const m = today.getMonth() - dob.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
         return a;
-      })() : MOCK_PROFILE.age),
-      location: contextProfile.location || MOCK_PROFILE.location,
+      })() : undefined),
+      location: contextProfile.location || '',
       bio: contextProfile.bio || '',
-      interests: contextProfile.interests?.length ? contextProfile.interests : MOCK_PROFILE.interests,
-      photos: contextProfile.photos?.length ? contextProfile.photos : MOCK_PROFILE.photos,
+      interests: contextProfile.interests?.length ? contextProfile.interests : [],
+      photos: contextProfile.photos?.length ? contextProfile.photos : [],
       photo: contextProfile.photos?.[0] ? { uri: contextProfile.photos[0] } : MOCK_PROFILE.photo,
-      gender: contextProfile.gender || MOCK_PROFILE.gender,
-      lookingFor: contextProfile.lookingFor || MOCK_PROFILE.lookingFor,
-      relationshipGoal: contextProfile.relationshipGoal || MOCK_PROFILE.relationshipGoal,
+      gender: contextProfile.gender || '',
+      lookingFor: contextProfile.lookingFor || '',
+      relationshipGoal: contextProfile.relationshipGoal || '',
       basics: {
-        ...MOCK_PROFILE.basics,
+        status: '',
         weight: contextProfile.weight || '',
+        zodiac: '',
+        nationality: '',
         height: contextProfile.height || '',
         education: contextProfile.education || '',
+        employment: '',
       },
-      email: contextProfile.email || MOCK_PROFILE.email,
-      phone: contextProfile.phoneNumber || MOCK_PROFILE.phone,
-      prompts: contextProfile.prompts || MOCK_PROFILE.prompts,
+      email: contextProfile.email || '',
+      phone: contextProfile.phoneNumber || '',
+      prompts: contextProfile.prompts || [],
       verified: contextProfile.verified ?? false,
     };
   }, [contextProfile]);
@@ -311,11 +314,13 @@ const ProfileViewScreen: React.FC = () => {
               <Icon name="pencil" size={12} color="#FFF" />
             </View>
           </View>
-          <Text style={styles.profileName}>{profile.name}</Text>
-          <View style={styles.locationRow}>
-            <Icon name="location-outline" size={14} color="#999" />
-            <Text style={styles.locationText}>{profile.location}</Text>
-          </View>
+          <Text style={styles.profileName}>{profile.name || 'Complete your profile'}</Text>
+          {profile.location ? (
+            <View style={styles.locationRow}>
+              <Icon name="location-outline" size={14} color="#999" />
+              <Text style={styles.locationText}>{profile.location}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Tab Bar */}

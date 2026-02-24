@@ -52,13 +52,13 @@ const MOCK_PROFILE = {
 // Profile completion calculation
 const calculateCompletion = (profile: typeof MOCK_PROFILE) => {
   const checks = [
-    { label: 'Add profile photos (min 3)', weight: 20, done: profile.photos.length >= 3 },
+    { label: 'Add profile photos (min 2)', weight: 20, done: (profile.photos?.length || 0) >= 2 },
     { label: 'Write your bio', weight: 20, done: !!profile.bio && profile.bio.length > 10 },
-    { label: 'Select interests (min 5)', weight: 15, done: profile.interests.length >= 5 },
+    { label: 'Select interests (min 5)', weight: 15, done: (profile.interests?.length || 0) >= 5 },
     { label: 'Answer prompts (min 2)', weight: 15, done: (profile.prompts?.length || 0) >= 2 },
     { label: 'Add height & weight', weight: 10, done: !!profile.basics.height && !!profile.basics.weight },
-    { label: 'Complete basics (zodiac, education)', weight: 10, done: !!profile.basics.zodiac && !!profile.basics.education },
     { label: 'Set relationship goal', weight: 10, done: !!profile.relationshipGoal },
+    { label: 'Add your bio', weight: 10, done: !!profile.bio },
   ];
 
   const completed = checks.filter(c => c.done);
@@ -112,36 +112,40 @@ const MeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { profile: contextProfile } = useUser();
 
-  // Merge context profile over mock defaults
+  // Build display profile from real context data — no hardcoded fallbacks
   const profile = useMemo(() => {
     if (!contextProfile) return MOCK_PROFILE;
+    const calcAge = (dob: string) => {
+      const d = new Date(dob);
+      const today = new Date();
+      let a = today.getFullYear() - d.getFullYear();
+      const m = today.getMonth() - d.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < d.getDate())) a--;
+      return a;
+    };
     return {
       ...MOCK_PROFILE,
-      name: contextProfile.name || MOCK_PROFILE.name,
-      age: contextProfile.age || (contextProfile.dateOfBirth ? (() => {
-        const dob = new Date(contextProfile.dateOfBirth!);
-        const today = new Date();
-        let a = today.getFullYear() - dob.getFullYear();
-        const m = today.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
-        return a;
-      })() : MOCK_PROFILE.age),
-      location: contextProfile.location || MOCK_PROFILE.location,
+      name: contextProfile.name || '',
+      age: contextProfile.age || (contextProfile.dateOfBirth ? calcAge(contextProfile.dateOfBirth) : undefined),
+      location: contextProfile.location || '',
       bio: contextProfile.bio || '',
-      interests: contextProfile.interests?.length ? contextProfile.interests : MOCK_PROFILE.interests,
-      photos: contextProfile.photos?.length ? contextProfile.photos : MOCK_PROFILE.photos,
+      interests: contextProfile.interests?.length ? contextProfile.interests : [],
+      photos: contextProfile.photos?.length ? contextProfile.photos : [],
       photo: contextProfile.photos?.[0] ? { uri: contextProfile.photos[0] } : MOCK_PROFILE.photo,
-      gender: contextProfile.gender || MOCK_PROFILE.gender,
-      lookingFor: contextProfile.lookingFor || MOCK_PROFILE.lookingFor,
-      relationshipGoal: contextProfile.relationshipGoal || MOCK_PROFILE.relationshipGoal,
+      gender: contextProfile.gender || '',
+      lookingFor: contextProfile.lookingFor || '',
+      relationshipGoal: contextProfile.relationshipGoal || '',
       basics: {
-        ...MOCK_PROFILE.basics,
+        status: '',
         weight: contextProfile.weight || '',
+        zodiac: '',
+        nationality: '',
         height: contextProfile.height || '',
         education: contextProfile.education || '',
+        employment: '',
       },
-      email: contextProfile.email || MOCK_PROFILE.email,
-      phone: contextProfile.phoneNumber || MOCK_PROFILE.phone,
+      email: contextProfile.email || '',
+      phone: contextProfile.phoneNumber || '',
       prompts: contextProfile.prompts || [],
       verified: contextProfile.verified ?? false,
     };
@@ -179,8 +183,10 @@ const MeScreen: React.FC = () => {
             <View style={styles.profileRow}>
               <Image source={profile.photo} style={styles.profilePhoto} />
               <View style={styles.profileInfo}>
-                <Text style={styles.profileName}>{profile.name}</Text>
-                <Text style={styles.profileMeta}>{profile.age} y.o, {profile.location}</Text>
+                <Text style={styles.profileName}>{profile.name || 'Complete your profile'}</Text>
+                <Text style={styles.profileMeta}>
+                  {[profile.age ? `${profile.age} y.o` : null, profile.location || null].filter(Boolean).join(', ') || 'Add your details'}
+                </Text>
               </View>
             </View>
           </LinearGradient>
@@ -191,7 +197,7 @@ const MeScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.completionBanner}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('AccountSetup', { completion })}
+            onPress={() => navigation.navigate('EditProfile')}
           >
             <LinearGradient
               colors={['rgba(255, 0, 123, 0.2)', 'rgba(30, 30, 30, 0.9)']}

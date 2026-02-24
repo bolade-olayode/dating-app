@@ -178,7 +178,7 @@ import { useNavigation } from '@react-navigation/native';
 
 const DiscoveryScreen = () => {
   const navigation = useNavigation<any>();
-  const { coinBalance, spendCoins, swipeCount, incrementSwipeCount, freeSwipesRemaining, addMatch } = useUser();
+  const { coinBalance, spendCoins, swipeCount, incrementSwipeCount, freeSwipesRemaining, addMatch, updateProfile } = useUser();
 
   // Profiles state — defaults to shuffled mock, replaced by API data on mount
   const [profiles, setProfiles] = useState(() => {
@@ -266,15 +266,15 @@ const DiscoveryScreen = () => {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
           const [place] = await Location.reverseGeocodeAsync(loc.coords);
           const city = place?.city || place?.district || place?.subregion || 'Unknown';
+          // Save city to context so profile screens show real location even if API fails
+          updateProfile({ location: city });
           await matchingService.updateLocation(loc.coords.latitude, loc.coords.longitude, city);
           devLog('📍 Location updated:', city, loc.coords.latitude, loc.coords.longitude);
         } else {
-          devLog('📍 Location permission denied, falling back to Lagos');
-          await matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
+          devLog('📍 Location permission denied');
         }
       } catch {
-        devLog('📍 Location error, falling back to Lagos');
-        await matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
+        devLog('📍 Location error — skipping location update');
       }
 
       const result = await matchingService.discoverProfiles();
