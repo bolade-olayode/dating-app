@@ -136,7 +136,9 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
       if (result.success) {
         devLog('OTP Verified successfully!', result);
 
-        if (mode === 'login') {
+        if (mode === 'login' || (mode === 'signup' && result.token)) {
+          // For login OR for existing users going through signup (backend logs them in via OTP),
+          // fetch their full profile and route to HomeTabs.
           if (result.token) {
             try {
               const meResult = await authService.getMe();
@@ -144,30 +146,44 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
               if (meResult.success && meResult.profile) {
                 const userProfile: UserProfile = {
                   id: meResult.profile.id || meResult.profile._id,
-                  name: meResult.profile.name || '',
+                  name: meResult.profile.name || meResult.profile.fullname || meResult.profile.username || '',
                   email: meResult.profile.email,
                   phoneNumber: meResult.profile.phone,
-                  dateOfBirth: meResult.profile.dateOfBirth,
+                  dateOfBirth: meResult.profile.dateOfBirth || meResult.profile.dob || '',
                   age: meResult.profile.age,
                   gender: meResult.profile.gender || '',
-                  lookingFor: meResult.profile.lookingFor || '',
-                  relationshipGoal: meResult.profile.relationshipGoal || '',
+                  lookingFor: ({ male: 'Men', female: 'Women', both: 'Both' } as Record<string, string>)[meResult.profile.interestedIn] || meResult.profile.lookingFor || '',
+                  relationshipGoal: meResult.profile.goal || meResult.profile.relationshipGoal || '',
                   interests: (meResult.profile.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
                   photos: meResult.profile.photos || [],
-                  bio: meResult.profile.bio,
+                  bio: meResult.profile.bio || '',
                   location: typeof meResult.profile.location === 'string'
                     ? meResult.profile.location
                     : meResult.profile.location?.city || meResult.profile.city || '',
                   verified: meResult.profile.verified || false,
                 };
                 await loginUser(result.token, userProfile);
+
+                // If this was a signup attempt but the account is already complete
+                // (has photos = finished onboarding), go straight to HomeTabs.
+                const isComplete = (meResult.profile.photos?.length || 0) > 0;
+                if (mode === 'signup' && !isComplete) {
+                  devLog('New account — proceeding to onboarding');
+                  navigation.replace('NameInput');
+                  return;
+                }
               }
             } catch (e) {
-              devLog('getMe failed after login verify:', e);
+              devLog('getMe failed after verify:', e);
+              if (mode === 'signup') {
+                navigation.replace('NameInput');
+                return;
+              }
             }
           }
           navigation.reset({ index: 0, routes: [{ name: 'HomeTabs' }] });
         } else {
+          // New signup — no token yet, proceed through onboarding
           navigation.replace('NameInput');
         }
       } else {

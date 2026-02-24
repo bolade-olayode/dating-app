@@ -38,7 +38,39 @@ import {
 const TABS = ['Personal info', 'About me', 'Media'] as const;
 type TabType = typeof TABS[number];
 
-const EDUCATION_OPTIONS = ['High school', 'Undergraduate', 'BsC degree', 'Masters', 'Doctorate', 'Other'];
+// Maps frontend display labels ↔ backend enum values for education
+const EDUCATION_OPTIONS = [
+  'High school',
+  'Some college',
+  'Associate degree',
+  "Bachelor's degree",
+  "Master's degree",
+  'Doctorate',
+  'Trade school',
+  'Prefer not to say',
+];
+
+const EDUCATION_TO_API: Record<string, string> = {
+  'High school':        'high_school',
+  'Some college':       'some_college',
+  'Associate degree':   'associate_degree',
+  "Bachelor's degree":  'bachelor_degree',
+  "Master's degree":    'master_degree',
+  'Doctorate':          'doctorate',
+  'Trade school':       'trade_school',
+  'Prefer not to say':  'prefer_not_to_say',
+};
+
+const EDUCATION_FROM_API: Record<string, string> = {
+  high_school:         'High school',
+  some_college:        'Some college',
+  associate_degree:    'Associate degree',
+  bachelor_degree:     "Bachelor's degree",
+  master_degree:       "Master's degree",
+  doctorate:           'Doctorate',
+  trade_school:        'Trade school',
+  prefer_not_to_say:   'Prefer not to say',
+};
 
 const EditProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -63,7 +95,9 @@ const EditProfileScreen: React.FC = () => {
   const [weight, setWeight] = useState(contextProfile?.weight || '');
   const [height, setHeight] = useState(contextProfile?.height || '');
   const [relationshipGoal, setRelationshipGoal] = useState(contextProfile?.relationshipGoal || '');
-  const [education, setEducation] = useState(contextProfile?.education || '');
+  const [education, setEducation] = useState(
+    EDUCATION_FROM_API[contextProfile?.education || ''] || contextProfile?.education || '',
+  );
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     (contextProfile?.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
   );
@@ -223,12 +257,24 @@ const EditProfileScreen: React.FC = () => {
     if (lookingFor) {
       apiPayload.interestedIn = lookingForMap[lookingFor.toLowerCase()] || lookingFor.toLowerCase();
     }
-    if (relationshipGoal) apiPayload.goal = relationshipGoal;
-    // bio/weight/height are not in the backend's PATCH /api/user/profile schema — stored locally only
-    if (selectedInterests.length) apiPayload.interests = selectedInterests;
+    // Send goal as the backend ID (not the display label with & etc.)
+    if (relationshipGoal) {
+      const goalEntry = RELATIONSHIP_GOALS.find(g => g.label === relationshipGoal || g.id === relationshipGoal);
+      apiPayload.goal = goalEntry?.id || relationshipGoal;
+    }
+    if (bio) apiPayload.bio = bio;
+    // height/weight: backend stores as Number (cm/kg) — strip units before sending
+    const heightNum = parseFloat(height.replace(/[^0-9.]/g, ''));
+    if (!isNaN(heightNum)) apiPayload.height = heightNum;
+    const weightNum = parseFloat(weight.replace(/[^0-9.]/g, ''));
+    if (!isNaN(weightNum)) apiPayload.weight = weightNum;
+    if (education) apiPayload.education = EDUCATION_TO_API[education] || education;
+    // prompts saved locally only for now — backend validator may have bugs with nested objects
+    // interests are stored on the backend as ObjectIds — sending display strings causes a 500.
+    // Both will be re-wired once backend confirms correct format.
     if (finalPhotoUrls.length) apiPayload.photos = finalPhotoUrls;
 
-    devLog('💾 EditProfile: Saving to API', Object.keys(apiPayload));
+    devLog('💾 EditProfile: Saving to API', JSON.stringify(apiPayload));
     const result = await userService.updateProfile(apiPayload);
 
     // Always update local context regardless of API result
@@ -363,7 +409,14 @@ const EditProfileScreen: React.FC = () => {
       <View style={[styles.inputRow, styles.lockedField]}>
         <Icon name="calendar-outline" size={18} color="#888" />
         <Text style={styles.textInputReadonly}>
-          {contextProfile?.dateOfBirth || '02 - 02 - 1990'}
+          {contextProfile?.dateOfBirth
+            ? (() => {
+                const d = new Date(contextProfile.dateOfBirth);
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                return `${dd} - ${mm} - ${d.getFullYear()}`;
+              })()
+            : ''}
         </Text>
         <Icon name="lock-closed" size={14} color="#555" />
       </View>
@@ -739,71 +792,77 @@ const EditProfileScreen: React.FC = () => {
         animationType="slide"
         onRequestClose={() => setPromptModalVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.sheetOverlay}
-          activeOpacity={1}
-          onPress={() => setPromptModalVisible(false)}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.promptEditorSheet}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>
-                {editingPromptIdx !== null ? 'Edit Prompt' : 'Add Prompt'}
-              </Text>
-              <TouchableOpacity onPress={() => setPromptModalVisible(false)}>
-                <Icon name="close-circle" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Question selector */}
-            <Text style={styles.promptEditorLabel}>Choose a question</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promptQuestionsScroll}>
-              {PROMPT_QUESTIONS.map(q => (
-                <TouchableOpacity
-                  key={q}
-                  style={[
-                    styles.promptQuestionChip,
-                    promptQuestion === q && styles.promptQuestionChipActive,
-                  ]}
-                  onPress={() => setPromptQuestion(q)}
-                >
-                  <Text
-                    style={[
-                      styles.promptQuestionChipText,
-                      promptQuestion === q && styles.promptQuestionChipTextActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {q}
-                  </Text>
+          <TouchableOpacity
+            style={styles.sheetOverlay}
+            activeOpacity={1}
+            onPress={() => setPromptModalVisible(false)}
+          >
+            {/* Inner TouchableOpacity stops touches from bubbling to the close overlay */}
+            <TouchableOpacity activeOpacity={1} style={styles.promptEditorSheet}>
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>
+                  {editingPromptIdx !== null ? 'Edit Prompt' : 'Add Prompt'}
+                </Text>
+                <TouchableOpacity onPress={() => setPromptModalVisible(false)}>
+                  <Icon name="close-circle" size={24} color="#666" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
 
-            {/* Answer input */}
-            <Text style={styles.promptEditorLabel}>Your answer</Text>
-            <TextInput
-              style={styles.promptEditorInput}
-              value={promptAnswer}
-              onChangeText={setPromptAnswer}
-              placeholder="Type your answer..."
-              placeholderTextColor="#555"
-              multiline
-              textAlignVertical="top"
-            />
+              {/* Question selector */}
+              <Text style={styles.promptEditorLabel}>Choose a question</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promptQuestionsScroll}>
+                {PROMPT_QUESTIONS.map(q => (
+                  <TouchableOpacity
+                    key={q}
+                    style={[
+                      styles.promptQuestionChip,
+                      promptQuestion === q && styles.promptQuestionChipActive,
+                    ]}
+                    onPress={() => setPromptQuestion(q)}
+                  >
+                    <Text
+                      style={[
+                        styles.promptQuestionChipText,
+                        promptQuestion === q && styles.promptQuestionChipTextActive,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {q}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
-            <TouchableOpacity
-              style={[
-                styles.promptSaveButton,
-                (!promptQuestion || !promptAnswer.trim()) && styles.promptSaveButtonDisabled,
-              ]}
-              activeOpacity={0.8}
-              onPress={savePrompt}
-              disabled={!promptQuestion || !promptAnswer.trim()}
-            >
-              <Text style={styles.promptSaveButtonText}>Save Prompt</Text>
+              {/* Answer input */}
+              <Text style={styles.promptEditorLabel}>Your answer</Text>
+              <TextInput
+                style={styles.promptEditorInput}
+                value={promptAnswer}
+                onChangeText={setPromptAnswer}
+                placeholder="Type your answer..."
+                placeholderTextColor="#555"
+                multiline
+                textAlignVertical="top"
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.promptSaveButton,
+                  (!promptQuestion || !promptAnswer.trim()) && styles.promptSaveButtonDisabled,
+                ]}
+                activeOpacity={0.8}
+                onPress={savePrompt}
+                disabled={!promptQuestion || !promptAnswer.trim()}
+              >
+                <Text style={styles.promptSaveButtonText}>Save Prompt</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
     </View>

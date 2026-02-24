@@ -23,6 +23,12 @@ export interface UpdateProfilePayload {
   photos?: string[];
   lat?: number;
   long?: number;
+  // Profile detail fields (added to backend schema)
+  bio?: string;
+  height?: number;   // centimetres e.g. 175
+  weight?: number;   // kilograms e.g. 70
+  education?: string; // backend enum: high_school, bachelor_degree, etc.
+  prompts?: Array<{ question: string; answer: string }>;
 }
 
 // ─── Update Profile ─────────────────────────────────────────

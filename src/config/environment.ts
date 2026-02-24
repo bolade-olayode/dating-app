@@ -36,6 +36,7 @@ export const ENV = {
     ENABLE_DEBUG_LOGS: __DEV__,      // Show console logs in development
     SKIP_ONBOARDING: false,          // Set to true to skip onboarding during dev (testing)
     ENABLE_ERROR_OVERLAY: __DEV__,   // Show error details in development
+    DEV_CLEAR_STORAGE: true,         // ⚠️ DEV ONLY: wipe all storage on next launch (set false after reset)
   },
   
   // Cloudinary (unsigned upload — swap keys for production)

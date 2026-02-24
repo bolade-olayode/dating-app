@@ -256,23 +256,25 @@ const ChatsScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Active Matches Row */}
-      <FlatList
-        data={activeMatchesList}
-        renderItem={renderActiveMatch}
-        keyExtractor={(item) => item.id.toString()}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.activeMatchesRow}
-        style={styles.activeMatchesList}
-      />
+      {/* Active Matches Row — only shown when there are matches */}
+      {activeMatchesList.length > 0 && (
+        <FlatList
+          data={activeMatchesList}
+          renderItem={renderActiveMatch}
+          keyExtractor={(item) => item.id.toString()}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.activeMatchesRow}
+          style={styles.activeMatchesList}
+        />
+      )}
 
       {/* Filter Tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filterRow}
-        style={styles.filterContainer}
+        style={[styles.filterContainer, activeMatchesList.length === 0 && styles.filterContainerNoMatches]}
       >
         {FILTER_TABS.map((tab) => (
           <TouchableOpacity
@@ -414,6 +416,9 @@ const styles = StyleSheet.create({
   filterContainer: {
     maxHeight: 50,
     marginTop: 16,
+  },
+  filterContainerNoMatches: {
+    marginTop: 4,
   },
   filterRow: {
     paddingHorizontal: 20,

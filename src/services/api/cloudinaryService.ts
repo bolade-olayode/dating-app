@@ -37,8 +37,11 @@ export const uploadToCloudinary = async (localUri: string): Promise<string> => {
   }
 
   const data = await response.json();
-  devLog('☁️ Cloudinary: Upload success →', data.secure_url);
-  return data.secure_url;
+  // Normalize HEIC/HEIF to JPEG — Cloudinary serves the same asset as JPEG when the
+  // URL extension is changed, preventing backends from rejecting non-standard extensions.
+  const secureUrl: string = data.secure_url.replace(/\.(heic|heif)$/i, '.jpg');
+  devLog('☁️ Cloudinary: Upload success →', secureUrl);
+  return secureUrl;
 };
 
 export default { uploadToCloudinary };

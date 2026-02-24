@@ -50,19 +50,55 @@ const MOCK_PROFILE = {
 };
 
 // Profile completion calculation
+// Each item has a clear action label + weight. Weights sum to exactly 100.
+// Verification badge eligibility requires 100% (enforced server-side later).
 const calculateCompletion = (profile: typeof MOCK_PROFILE) => {
   const checks = [
-    { label: 'Add profile photos (min 2)', weight: 20, done: (profile.photos?.length || 0) >= 2 },
-    { label: 'Write your bio', weight: 20, done: !!profile.bio && profile.bio.length > 10 },
-    { label: 'Select interests (min 5)', weight: 15, done: (profile.interests?.length || 0) >= 5 },
-    { label: 'Answer prompts (min 2)', weight: 15, done: (profile.prompts?.length || 0) >= 2 },
-    { label: 'Add height & weight', weight: 10, done: !!profile.basics.height && !!profile.basics.weight },
-    { label: 'Set relationship goal', weight: 10, done: !!profile.relationshipGoal },
-    { label: 'Add your bio', weight: 10, done: !!profile.bio },
+    {
+      label: 'Add at least 2 photos',
+      action: 'Go to Media tab → add photos',
+      weight: 25,
+      done: (profile.photos?.length || 0) >= 2,
+    },
+    {
+      label: 'Write your bio',
+      action: 'Go to About Me tab → write a short bio',
+      weight: 20,
+      done: !!profile.bio && profile.bio.trim().length > 0,
+    },
+    {
+      label: 'Select at least 5 interests',
+      action: 'Go to About Me tab → pick your interests',
+      weight: 15,
+      done: (profile.interests?.length || 0) >= 5,
+    },
+    {
+      label: 'Answer at least 2 prompts',
+      action: 'Go to About Me tab → add prompts',
+      weight: 15,
+      done: (profile.prompts?.length || 0) >= 2,
+    },
+    {
+      label: 'Set your relationship goal',
+      action: 'Go to About Me tab → choose a goal',
+      weight: 10,
+      done: !!profile.relationshipGoal,
+    },
+    {
+      label: 'Add your height & weight',
+      action: 'Go to About Me tab → fill in height and weight',
+      weight: 10,
+      done: !!profile.basics?.height && !!profile.basics?.weight,
+    },
+    {
+      label: 'Set your education level',
+      action: 'Go to About Me tab → select education',
+      weight: 5,
+      done: !!profile.basics?.education,
+    },
   ];
 
-  const completed = checks.filter(c => c.done);
-  const percentage = completed.reduce((sum, c) => sum + c.weight, 0);
+  const percentage = checks.reduce((sum, c) => sum + (c.done ? c.weight : 0), 0);
   const incomplete = checks.filter(c => !c.done);
 
   return { percentage, checks, incomplete };
@@ -214,10 +250,21 @@ const MeScreen: React.FC = () => {
                 </View>
               </View>
               <View style={styles.completionRight}>
-                <Text style={styles.completionTitle}>Final Touches!</Text>
-                <Text style={styles.completionSubtitle}>
-                  Just finish these quick tasks to fully customize your MeetPie experience and make your app even more amazing!
+                <Text style={styles.completionTitle}>
+                  {completion.percentage === 0 ? 'Complete your profile' :
+                   completion.percentage < 50 ? 'Keep going!' :
+                   completion.percentage < 80 ? 'Almost there!' : 'Final touches!'}
                 </Text>
+                {completion.incomplete.slice(0, 2).map((item, i) => (
+                  <Text key={i} style={styles.completionSubtitle}>
+                    {'• '}{item.label}
+                  </Text>
+                ))}
+                {completion.incomplete.length > 2 && (
+                  <Text style={styles.completionSubtitle}>
+                    {'+ '}{completion.incomplete.length - 2}{' more'}
+                  </Text>
+                )}
               </View>
               <Icon name="chevron-forward" size={20} color="#FFF" />
             </LinearGradient>

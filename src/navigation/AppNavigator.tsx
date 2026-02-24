@@ -9,7 +9,7 @@ import { StatusBar, View, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@utils/constant';
 import { authService } from '@services/api/authService';
-import { devLog } from '@config/environment';
+import { devLog, ENV } from '@config/environment';
 import { navigationRef } from '@navigation/navigationRef';
 import OfflineBanner from '@components/common/OfflineBanner';
 
@@ -163,11 +163,34 @@ const mapApiUserToProfile = (user: any): UserProfile => {
     dateOfBirth: rawDob,
     age: user.age || (rawDob ? calcAge(rawDob) : undefined),
     gender: user.gender || '',
-    lookingFor: user.lookingFor || '',
-    relationshipGoal: user.relationshipGoal || '',
+    // Backend field is 'interestedIn' — map 'male'/'female'/'both' back to display label
+    lookingFor: ({ male: 'Men', female: 'Women', both: 'Both' } as Record<string, string>)[user.interestedIn]
+      || user.lookingFor || '',
+    // Backend field is 'goal' — map id back to display label
+    relationshipGoal: (() => {
+      const raw = user.goal || user.relationshipGoal || '';
+      return ({
+        'Get married':           'Get Married',
+        'Find a relationship':   'Find a Relationship',
+        'Chat and meet friends': 'Chat & Meet Friends',
+        'Learn other cultures':  'Learn Other Cultures',
+        'Travel the world':      'Travel the World',
+      } as Record<string, string>)[raw] || raw;
+    })(),
     interests: (user.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
     photos: user.photos || [],
-    bio: user.bio,
+    bio: user.bio || '',
+    // height/weight stored as Numbers on backend — format as display strings for local state
+    height: user.height ? `${user.height}cm` : '',
+    weight: user.weight ? `${user.weight}kg` : '',
+    // education stored as backend enum — convert to display label
+    education: {
+      high_school: 'High school', some_college: 'Some college',
+      associate_degree: 'Associate degree', bachelor_degree: "Bachelor's degree",
+      master_degree: "Master's degree", doctorate: 'Doctorate',
+      trade_school: 'Trade school', prefer_not_to_say: 'Prefer not to say',
+    }[user.education as string] || user.education || '',
+    prompts: (user.prompts || []).filter((p: any) => p.question && p.answer),
     location: typeof user.location === 'string'
       ? user.location
       : user.location?.city || user.city || '',
@@ -186,6 +209,12 @@ const AppNavigator = () => {
 
     const initialize = async () => {
       try {
+        // ⚠️ DEV ONLY: wipe all storage to test from scratch (set DEV_CLEAR_STORAGE: false after reset)
+        if (ENV.FEATURES.DEV_CLEAR_STORAGE) {
+          await AsyncStorage.clear();
+          devLog('🧹 DEV: Storage cleared — set DEV_CLEAR_STORAGE: false to stop this');
+        }
+
         // 1. Check if user has seen intro slideshow
         const hasSeen = await AsyncStorage.getItem(STORAGE_KEYS.HAS_SEEN_INTRO);
         if (!hasSeen) {
