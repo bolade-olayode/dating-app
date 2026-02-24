@@ -9,7 +9,6 @@ import {
   ScrollView,
   Image,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +18,6 @@ import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
 
-const { width } = Dimensions.get('window');
 
 // Mock profile data (until real data flows from onboarding → context)
 const MOCK_PROFILE = {
@@ -120,12 +118,19 @@ const MeScreen: React.FC = () => {
     return {
       ...MOCK_PROFILE,
       name: contextProfile.name || MOCK_PROFILE.name,
-      age: contextProfile.age || MOCK_PROFILE.age,
+      age: contextProfile.age || (contextProfile.dateOfBirth ? (() => {
+        const dob = new Date(contextProfile.dateOfBirth!);
+        const today = new Date();
+        let a = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
+        return a;
+      })() : MOCK_PROFILE.age),
       location: contextProfile.location || MOCK_PROFILE.location,
       bio: contextProfile.bio || '',
       interests: contextProfile.interests?.length ? contextProfile.interests : MOCK_PROFILE.interests,
-      photos: MOCK_PROFILE.photos, // photos are local assets until real upload
-      photo: MOCK_PROFILE.photo,
+      photos: contextProfile.photos?.length ? contextProfile.photos : MOCK_PROFILE.photos,
+      photo: contextProfile.photos?.[0] ? { uri: contextProfile.photos[0] } : MOCK_PROFILE.photo,
       gender: contextProfile.gender || MOCK_PROFILE.gender,
       lookingFor: contextProfile.lookingFor || MOCK_PROFILE.lookingFor,
       relationshipGoal: contextProfile.relationshipGoal || MOCK_PROFILE.relationshipGoal,

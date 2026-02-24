@@ -59,7 +59,8 @@ const discoverProfiles = async (
       data: response.data?.data || response.data,
     };
   } catch (error: any) {
-    errorLog('Matching discoverProfiles error:', error.response?.data || error.message);
+    // During development with a single test account, no nearby users is expected — use devLog not errorLog
+    devLog('⚠️ Matching discoverProfiles failed (expected if no nearby users):', error.response?.data?.message || error.message);
     return {
       success: false,
       message: error.response?.data?.message || 'Failed to fetch profiles',

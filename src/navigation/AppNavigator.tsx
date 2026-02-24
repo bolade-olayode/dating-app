@@ -148,7 +148,14 @@ const mapApiUserToProfile = (user: any): UserProfile => ({
   email: user.email,
   phoneNumber: user.phone,
   dateOfBirth: user.dateOfBirth,
-  age: user.age,
+  age: user.age || (user.dateOfBirth ? (() => {
+    const dob = new Date(user.dateOfBirth);
+    const today = new Date();
+    let a = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
+    return a;
+  })() : undefined),
   gender: user.gender || '',
   lookingFor: user.lookingFor || '',
   relationshipGoal: user.relationshipGoal || '',
@@ -194,7 +201,23 @@ const AppNavigator = () => {
             devLog('✅ Session restore: token valid, refreshing profile');
             const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
             if (token) {
-              await loginUser(token, mapApiUserToProfile(result.profile));
+              const apiProfile = mapApiUserToProfile(result.profile);
+              // Merge: keep locally-saved values for any field the API returned empty/missing.
+              // This prevents a backend non-200 name (or missing field) from overwriting
+              // edits the user made and saved locally.
+              const merged = { ...(profile || {}), ...apiProfile } as UserProfile;
+              if (profile) {
+                (Object.keys(merged) as (keyof UserProfile)[]).forEach((key) => {
+                  const apiVal = (apiProfile as any)[key];
+                  const localVal = (profile as any)[key];
+                  const isEmpty = apiVal === undefined || apiVal === null || apiVal === '' ||
+                    (Array.isArray(apiVal) && apiVal.length === 0);
+                  if (isEmpty && localVal) {
+                    (merged as any)[key] = localVal;
+                  }
+                });
+              }
+              await loginUser(token, merged);
             }
             setInitialRoute('HomeTabs');
           } else {

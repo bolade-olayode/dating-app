@@ -9,7 +9,6 @@ import {
   ScrollView,
   Image,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,10 +18,6 @@ import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
 
-const { width } = Dimensions.get('window');
-const MEDIA_GAP = 12;
-const MEDIA_PADDING = 20;
-const MEDIA_ITEM_SIZE = (width - MEDIA_PADDING * 2 - MEDIA_GAP) / 2;
 
 // Mock profile (same as MeScreen, shared until context has real data)
 const MOCK_PROFILE = {
@@ -73,12 +68,19 @@ const ProfileViewScreen: React.FC = () => {
     return {
       ...MOCK_PROFILE,
       name: contextProfile.name || MOCK_PROFILE.name,
-      age: contextProfile.age || MOCK_PROFILE.age,
+      age: contextProfile.age || (contextProfile.dateOfBirth ? (() => {
+        const dob = new Date(contextProfile.dateOfBirth!);
+        const today = new Date();
+        let a = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
+        return a;
+      })() : MOCK_PROFILE.age),
       location: contextProfile.location || MOCK_PROFILE.location,
       bio: contextProfile.bio || '',
       interests: contextProfile.interests?.length ? contextProfile.interests : MOCK_PROFILE.interests,
-      photos: MOCK_PROFILE.photos,
-      photo: MOCK_PROFILE.photo,
+      photos: contextProfile.photos?.length ? contextProfile.photos : MOCK_PROFILE.photos,
+      photo: contextProfile.photos?.[0] ? { uri: contextProfile.photos[0] } : MOCK_PROFILE.photo,
       gender: contextProfile.gender || MOCK_PROFILE.gender,
       lookingFor: contextProfile.lookingFor || MOCK_PROFILE.lookingFor,
       relationshipGoal: contextProfile.relationshipGoal || MOCK_PROFILE.relationshipGoal,
@@ -237,27 +239,44 @@ const ProfileViewScreen: React.FC = () => {
 
   // ─── Media Tab ─────────────────────────────────────────
 
-  const renderMedia = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.mediaGrid}>
-        {(profile.photos || []).map((photo, idx) => (
-          <View key={idx} style={styles.mediaItem}>
-            <Image source={photo} style={styles.mediaImage} />
-            {/* Video indicator on last item (demo) */}
-            {idx === (profile.photos || []).length - 1 && (
-              <View style={styles.playOverlay}>
-                <Icon name="play-circle" size={32} color="#FFF" />
-              </View>
-            )}
+  const renderMedia = () => {
+    const renderSlot = (index: number) => {
+      const raw = (profile.photos || [])[index];
+      const src = raw
+        ? (typeof raw === 'string' ? { uri: raw } : raw)
+        : null;
+
+      return (
+        <View key={index} style={styles.slotWrapper}>
+          <LinearGradient
+            colors={['#FF007B', '#00B4D8']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.slotGradientBorder}
+          >
+            <View style={styles.slot}>
+              {src && <Image source={src} style={styles.slotImage} />}
+            </View>
+          </LinearGradient>
+        </View>
+      );
+    };
+
+    return (
+      <View style={styles.tabContent}>
+        <View style={styles.mediaGrid}>
+          <View style={styles.mediaRow}>
+            {renderSlot(0)}
+            {renderSlot(1)}
           </View>
-        ))}
-        {/* Add button */}
-        <TouchableOpacity style={styles.addMediaButton} activeOpacity={0.7}>
-          <Icon name="add" size={28} color="#00D4FF" />
-        </TouchableOpacity>
+          <View style={styles.mediaRow}>
+            {renderSlot(2)}
+            {renderSlot(3)}
+          </View>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -550,40 +569,35 @@ const styles = StyleSheet.create({
     color: '#DDD',
     lineHeight: 20,
   },
-  // Media Grid (2x2)
+  // Media Grid (2x2 slots — matches onboarding PhotoUploadScreen)
   mediaGrid: {
+    gap: 12,
+  },
+  mediaRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: MEDIA_GAP,
+    gap: 12,
   },
-  mediaItem: {
-    width: MEDIA_ITEM_SIZE,
-    height: MEDIA_ITEM_SIZE * 1.2,
-    borderRadius: 14,
+  slotWrapper: {
+    flex: 1,
+    aspectRatio: 0.8,
+  },
+  slotGradientBorder: {
+    padding: 1.5,
+    borderRadius: 20,
+    height: '100%',
+  },
+  slot: {
+    flex: 1,
+    borderRadius: 18.5,
     overflow: 'hidden',
-    position: 'relative',
+    backgroundColor: '#0D0D0D',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  mediaImage: {
+  slotImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 14,
-  },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  addMediaButton: {
-    width: MEDIA_ITEM_SIZE,
-    height: MEDIA_ITEM_SIZE * 1.2,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#FF007B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 0, 123, 0.05)',
+    resizeMode: 'cover',
   },
   // Bottom Button
   bottomButtonContainer: {

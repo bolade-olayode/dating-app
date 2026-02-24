@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import { chatService } from '@services/api/chatService';
+import { useUser } from '@context/UserContext';
 import { devLog } from '@config/environment';
 
 const { width } = Dimensions.get('window');
@@ -110,6 +111,7 @@ interface ChatConversationProps {
 
 const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
+  const { profile: currentUserProfile } = useUser();
   const { chatId, name, photo, age, location, isNewMatch } = route.params;
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>(CHAT_MESSAGES[chatId] || []);
@@ -130,7 +132,10 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
           id: m._id || m.id || Date.now(),
           text: m.content || m.text || '',
           image: m.type === 'image' && typeof m.content === 'string' ? { uri: m.content } : undefined,
-          sent: m.isMine ?? m.sender === 'me',
+          sent: m.isMine === true || (
+            currentUserProfile?.id != null &&
+            String(m.senderId || (typeof m.sender === 'string' ? m.sender : m.sender?._id) || '') === String(currentUserProfile.id)
+          ),
           time: m.createdAt && !isNaN(new Date(m.createdAt).getTime())
             ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '',
@@ -156,7 +161,10 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
           id: m._id || m.id || Date.now(),
           text: m.content || m.text || '',
           image: m.type === 'image' && typeof m.content === 'string' ? { uri: m.content } : undefined,
-          sent: m.isMine ?? m.sender === 'me',
+          sent: m.isMine === true || (
+            currentUserProfile?.id != null &&
+            String(m.senderId || (typeof m.sender === 'string' ? m.sender : m.sender?._id) || '') === String(currentUserProfile.id)
+          ),
           time: m.createdAt && !isNaN(new Date(m.createdAt).getTime())
             ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '',

@@ -1,6 +1,7 @@
 // src/screens/Home/EditProfileScreen.tsx
 
 import React, { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import {
   View,
   Text,
@@ -10,7 +11,6 @@ import {
   Image,
   StatusBar,
   TextInput,
-  Dimensions,
   Alert,
   Modal,
   KeyboardAvoidingView,
@@ -33,10 +33,6 @@ import {
   PROMPT_QUESTIONS,
 } from '@utils/constant';
 
-const { width } = Dimensions.get('window');
-const MEDIA_GAP = 12;
-const MEDIA_PADDING = 20;
-const MEDIA_ITEM_SIZE = (width - MEDIA_PADDING * 2 - MEDIA_GAP) / 2;
 
 const TABS = ['Personal info', 'About me', 'Media'] as const;
 type TabType = typeof TABS[number];
@@ -73,11 +69,15 @@ const EditProfileScreen: React.FC = () => {
   const [prompts, setPrompts] = useState<Array<{ question: string; answer: string }>>(
     contextProfile?.prompts || [],
   );
-  const [photos] = useState([
-    require('../../assets/images/opuehbckgdimg2.png'),
-    require('../../assets/images/opuehbckgdimg.jpg'),
-    require('../../assets/images/opuehbckgdimg3.png'),
-  ]);
+  const [photos, setPhotos] = useState<any[]>(
+    contextProfile?.photos?.length
+      ? contextProfile.photos.map((url: string) => ({ uri: url }))
+      : [
+          require('../../assets/images/opuehbckgdimg2.png'),
+          require('../../assets/images/opuehbckgdimg.jpg'),
+          require('../../assets/images/opuehbckgdimg3.png'),
+        ],
+  );
 
   // Dropdown modal state
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -88,6 +88,53 @@ const EditProfileScreen: React.FC = () => {
 
   // Photo action sheet
   const [photoSheetVisible, setPhotoSheetVisible] = useState(false);
+  const [activeSlot, setActiveSlot] = useState<number | null>(null);
+
+  const handlePickImage = async (from: 'camera' | 'library') => {
+    setPhotoSheetVisible(false);
+    // Wait for the modal slide-out animation to finish before launching
+    // the native picker — opening a picker on top of a dismissing modal
+    // silently fails on both iOS and Android.
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    const { status } = from === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to continue.');
+      return;
+    }
+
+    const result = from === 'camera'
+      ? await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [4, 5],
+          quality: 0.8,
+        })
+      : await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [4, 5],
+          quality: 0.8,
+        });
+
+    if (!result.canceled && result.assets[0]) {
+      const newPhoto = { uri: result.assets[0].uri };
+      const idx = activeSlot;
+      setPhotos(prev => {
+        const next = [...prev];
+        if (idx !== null && next[idx]) {
+          next[idx] = newPhoto; // replace existing
+        } else {
+          next.push(newPhoto);  // add to next empty slot
+        }
+        return next.slice(0, 4);
+      });
+    }
+    setActiveSlot(null);
+  };
 
   // Prompt editor modal
   const [promptModalVisible, setPromptModalVisible] = useState(false);
@@ -487,36 +534,68 @@ const EditProfileScreen: React.FC = () => {
 
   // ─── Media Tab ─────────────────────────────────────────
 
-  const renderMedia = () => (
-    <View style={styles.tabContent}>
-      <Text style={styles.mediaHint}>
-        Add at least 3 photos. First photo is your main profile picture.
-      </Text>
-      <View style={styles.mediaGrid}>
-        {photos.map((photo, idx) => (
-          <View key={idx} style={styles.mediaItem}>
-            <Image source={photo} style={styles.mediaImage} />
-            {idx === photos.length - 1 && (
-              <View style={styles.playOverlay}>
-                <Icon name="play-circle" size={32} color="#FFF" />
-              </View>
-            )}
-          </View>
-        ))}
-        {/* Add button (fills 4th slot) */}
-        {photos.length < 4 && (
-          <TouchableOpacity
-            style={styles.addMediaButton}
-            activeOpacity={0.7}
-            onPress={() => setPhotoSheetVisible(true)}
+  const renderMedia = () => {
+    const renderSlot = (index: number) => {
+      const photo = photos[index];
+
+      const handlePress = () => {
+        if (photo) {
+          Alert.alert('Photo options', undefined, [
+            {
+              text: 'Replace',
+              onPress: () => { setActiveSlot(index); setPhotoSheetVisible(true); },
+            },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => setPhotos(prev => prev.filter((_, i) => i !== index)),
+            },
+            { text: 'Cancel', style: 'cancel' },
+          ]);
+        } else {
+          setActiveSlot(index);
+          setPhotoSheetVisible(true);
+        }
+      };
+
+      return (
+        <View key={index} style={styles.slotWrapper}>
+          <LinearGradient
+            colors={['#FF007B', '#00B4D8']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.slotGradientBorder}
           >
-            <Icon name="add" size={28} color="#00D4FF" />
-            <Text style={styles.addMediaLabel}>Add</Text>
-          </TouchableOpacity>
-        )}
+            <TouchableOpacity style={styles.slot} activeOpacity={0.7} onPress={handlePress}>
+              {photo ? (
+                <Image source={photo} style={styles.slotImage} />
+              ) : (
+                <Icon name="add" size={32} color="#00B4D8" />
+              )}
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      );
+    };
+
+    return (
+      <View style={styles.tabContent}>
+        <Text style={styles.mediaHint}>
+          First photo is your main profile picture.
+        </Text>
+        <View style={styles.mediaGrid}>
+          <View style={styles.mediaRow}>
+            {renderSlot(0)}
+            {renderSlot(1)}
+          </View>
+          <View style={styles.mediaRow}>
+            {renderSlot(2)}
+            {renderSlot(3)}
+          </View>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -547,7 +626,11 @@ const EditProfileScreen: React.FC = () => {
           <View style={styles.profileSection}>
             <View style={styles.photoContainer}>
               <Image
-                source={require('../../assets/images/opuehbckgdimg2.png')}
+                source={
+                  contextProfile?.photos?.[0]
+                    ? { uri: contextProfile.photos[0] }
+                    : require('../../assets/images/opuehbckgdimg2.png')
+                }
                 style={styles.profilePhoto}
               />
               <TouchableOpacity style={styles.editPhotoIcon} activeOpacity={0.7}>
@@ -732,36 +815,28 @@ const EditProfileScreen: React.FC = () => {
         >
           <View style={styles.actionSheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Add photos</Text>
-              <TouchableOpacity onPress={() => setPhotoSheetVisible(false)}>
+              <Text style={styles.sheetTitle}>
+                {activeSlot !== null && photos[activeSlot] ? 'Replace photo' : 'Add photo'}
+              </Text>
+              <TouchableOpacity onPress={() => { setPhotoSheetVisible(false); setActiveSlot(null); }}>
                 <Icon name="close-circle" size={24} color="#666" />
               </TouchableOpacity>
             </View>
-            {[
-              { label: 'Create profile avatar', icon: 'happy-outline' },
-              { label: 'Take photo', icon: 'camera-outline' },
-              { label: 'Choose photo', icon: 'image-outline' },
-            ].map(action => (
-              <TouchableOpacity
-                key={action.label}
-                style={styles.sheetOption}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setPhotoSheetVisible(false);
-                  // TODO: implement photo picker
-                }}
-              >
-                <Text style={styles.sheetOptionText}>{action.label}</Text>
-                <Icon name="checkmark-circle-outline" size={20} color="#FF007B" />
-              </TouchableOpacity>
-            ))}
             <TouchableOpacity
               style={styles.sheetOption}
               activeOpacity={0.7}
-              onPress={() => setPhotoSheetVisible(false)}
+              onPress={() => handlePickImage('camera')}
             >
-              <Text style={[styles.sheetOptionText, { color: '#FF3B30' }]}>Delete photo</Text>
-              <Icon name="close-circle-outline" size={20} color="#FF3B30" />
+              <Text style={styles.sheetOptionText}>Take photo</Text>
+              <Icon name="camera-outline" size={20} color="#FF007B" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              activeOpacity={0.7}
+              onPress={() => handlePickImage('library')}
+            >
+              <Text style={styles.sheetOptionText}>Choose from library</Text>
+              <Icon name="image-outline" size={20} color="#FF007B" />
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -1110,7 +1185,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FF007B',
   },
-  // Media Grid (2x2)
+  // Media Grid (2x2 slots — matches onboarding PhotoUploadScreen)
   mediaHint: {
     fontFamily: FONTS.Regular,
     fontSize: 12,
@@ -1118,44 +1193,33 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   mediaGrid: {
+    gap: 12,
+  },
+  mediaRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: MEDIA_GAP,
+    gap: 12,
   },
-  mediaItem: {
-    width: MEDIA_ITEM_SIZE,
-    height: MEDIA_ITEM_SIZE * 1.2,
-    borderRadius: 14,
+  slotWrapper: {
+    flex: 1,
+    aspectRatio: 0.8,
+  },
+  slotGradientBorder: {
+    padding: 1.5,
+    borderRadius: 20,
+    height: '100%',
+  },
+  slot: {
+    flex: 1,
+    borderRadius: 18.5,
     overflow: 'hidden',
-    position: 'relative',
+    backgroundColor: '#0D0D0D',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  mediaImage: {
+  slotImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 14,
-  },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  addMediaButton: {
-    width: MEDIA_ITEM_SIZE,
-    height: MEDIA_ITEM_SIZE * 1.2,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#FF007B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 0, 123, 0.05)',
-  },
-  addMediaLabel: {
-    fontFamily: FONTS.Medium,
-    fontSize: 12,
-    color: '#00D4FF',
-    marginTop: 4,
+    resizeMode: 'cover',
   },
   // Footer
   footer: {

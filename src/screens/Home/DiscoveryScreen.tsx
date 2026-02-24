@@ -47,11 +47,12 @@ const CARD_CONTAINER_HEIGHT = CARD_HEIGHT + 20;
 const TOP_SPACING = Math.round(height * 0.065);   // Minimal gap above header row
 const BOTTOM_SPACING = Math.round(height * 0.055); // ~49px on 900px height
 
-// Mock profile data for testing (10 profiles)
+// Mock profile data — used as fallback when API returns no profiles.
+// isMock: true prevents real swipe API calls with fake IDs.
 const MOCK_PROFILES = [
   // Male profiles (img1-img5)
   {
-    id: 1,
+    id: 'mock_1',
     name: 'Chukwueze',
     age: 28,
     location: 'Awka, Anambra',
@@ -59,10 +60,11 @@ const MOCK_PROFILES = [
     zodiac: 'Leo',
     interest: 'Long-term relationship',
     verified: true,
+    isMock: true,
     photo: require('@assets/images/img1.jpg'),
   },
   {
-    id: 2,
+    id: 'mock_2',
     name: 'David',
     age: 32,
     location: 'Maitama, Abuja',
@@ -70,10 +72,11 @@ const MOCK_PROFILES = [
     zodiac: 'Scorpio',
     interest: 'Casual dating',
     verified: false,
+    isMock: true,
     photo: require('@assets/images/img2.jpg'),
   },
   {
-    id: 3,
+    id: 'mock_3',
     name: 'James',
     age: 26,
     location: 'Ikorodu, Lagos',
@@ -81,21 +84,23 @@ const MOCK_PROFILES = [
     zodiac: 'Gemini',
     interest: 'New friends',
     verified: true,
+    isMock: true,
     photo: require('@assets/images/img3.jpg'),
   },
   {
-    id: 4,
+    id: 'mock_4',
     name: 'Alex',
     age: 30,
-    location: 'Lagos Islnad, Lagos',
+    location: 'Lagos Island, Lagos',
     distance: '12 miles away',
     zodiac: 'Aries',
     interest: 'Something casual',
     verified: true,
+    isMock: true,
     photo: require('@assets/images/img4.jpg'),
   },
   {
-    id: 5,
+    id: 'mock_5',
     name: 'Ryan',
     age: 27,
     location: 'Surulere, Lagos',
@@ -103,11 +108,12 @@ const MOCK_PROFILES = [
     zodiac: 'Taurus',
     interest: 'Long-term relationship',
     verified: false,
+    isMock: true,
     photo: require('@assets/images/img5.jpg'),
   },
   // Female profiles (img6-img10)
   {
-    id: 6,
+    id: 'mock_6',
     name: 'Tokumbo',
     age: 25,
     location: 'Ibadan, Oyo',
@@ -115,10 +121,11 @@ const MOCK_PROFILES = [
     zodiac: 'Libra',
     interest: 'Serious relationship',
     verified: true,
+    isMock: true,
     photo: require('@assets/images/img6.jpg'),
   },
   {
-    id: 7,
+    id: 'mock_7',
     name: 'Tems',
     age: 29,
     location: 'Ikeja, Lagos',
@@ -126,10 +133,11 @@ const MOCK_PROFILES = [
     zodiac: 'Cancer',
     interest: 'Casual fun',
     verified: true,
+    isMock: true,
     photo: require('@assets/images/img7.jpg'),
   },
   {
-    id: 8,
+    id: 'mock_8',
     name: 'Adesewa',
     age: 24,
     location: 'Ilesha, Osun',
@@ -137,10 +145,11 @@ const MOCK_PROFILES = [
     zodiac: 'Pisces',
     interest: 'New friends',
     verified: false,
+    isMock: true,
     photo: require('@assets/images/img8.jpg'),
   },
   {
-    id: 9,
+    id: 'mock_9',
     name: 'Fatima',
     age: 31,
     location: 'Yola, Adamawa',
@@ -148,10 +157,11 @@ const MOCK_PROFILES = [
     zodiac: 'Virgo',
     interest: 'Long-term relationship',
     verified: true,
+    isMock: true,
     photo: require('@assets/images/img9.jpg'),
   },
   {
-    id: 10,
+    id: 'mock_10',
     name: 'Cindarella',
     age: 26,
     location: 'Niamey, Niger',
@@ -159,6 +169,7 @@ const MOCK_PROFILES = [
     zodiac: 'Sagittarius',
     interest: 'Something casual',
     verified: true,
+    isMock: true,
     photo: require('@assets/images/img10.jpg'),
   },
 ];
@@ -191,7 +202,12 @@ const DiscoveryScreen = () => {
   const userPhoto = require('@assets/images/img3.jpg');
 
   // Fire real swipe API and handle match result
+  // Skips API call for mock/fallback profiles (they have fake IDs like "mock_1")
   const fireSwipeApi = async (profile: typeof currentProfile, action: 'like' | 'pass') => {
+    if ((profile as any).isMock) {
+      devLog('🎭 Mock profile — skipping swipe API');
+      return;
+    }
     const profileId = String(profile.id);
     const result = await matchingService.swipe(profileId, action);
 
@@ -243,22 +259,22 @@ const DiscoveryScreen = () => {
     const fetchProfiles = async () => {
       setIsLoadingProfiles(true);
 
-      // Update location with real GPS (falls back to Lagos if permission denied)
+      // Update location first (awaited) — discover needs location set on backend before it works
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
           const [place] = await Location.reverseGeocodeAsync(loc.coords);
           const city = place?.city || place?.district || place?.subregion || 'Unknown';
-          matchingService.updateLocation(loc.coords.latitude, loc.coords.longitude, city);
+          await matchingService.updateLocation(loc.coords.latitude, loc.coords.longitude, city);
           devLog('📍 Location updated:', city, loc.coords.latitude, loc.coords.longitude);
         } else {
           devLog('📍 Location permission denied, falling back to Lagos');
-          matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
+          await matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
         }
       } catch {
         devLog('📍 Location error, falling back to Lagos');
-        matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
+        await matchingService.updateLocation(6.5244, 3.3792, 'Lagos');
       }
 
       const result = await matchingService.discoverProfiles();
@@ -267,11 +283,12 @@ const DiscoveryScreen = () => {
           id: p._id || p.id,
           name: p.fullname || p.name || 'Unknown',
           age: p.age || 0,
-          location: p.city || p.location?.city || 'Nearby',
+          location: p.city || (typeof p.location === 'string' ? p.location : p.location?.city) || 'Nearby',
           distance: p.distance ? `${Math.round(p.distance / 1000)} km away` : '',
           zodiac: p.zodiac || '',
-          interest: p.goal || '',
+          interest: p.goal || p.relationshipGoal || '',
           verified: p.verified || false,
+          isMock: false,
           photo: p.photos?.[0]
             ? { uri: p.photos[0] }
             : MOCK_PROFILES[idx % MOCK_PROFILES.length].photo,

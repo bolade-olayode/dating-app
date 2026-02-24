@@ -81,17 +81,33 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
     setIsLiking(false);
   };
 
-  // Report user handler
+  // Report user handler — reasons must match backend enum exactly
+  const REPORT_REASONS: Array<{ label: string; value: import('@services/api/moderationService').ReportReason }> = [
+    { label: 'Inappropriate content', value: 'inappropriate_content' },
+    { label: 'Harassment',            value: 'harassment' },
+    { label: 'Fake profile',          value: 'fake_profile' },
+    { label: 'Spam',                  value: 'spam' },
+    { label: 'Underage user',         value: 'underage' },
+    { label: 'Hate speech',           value: 'hate_speech' },
+    { label: 'Violence',              value: 'violence' },
+    { label: 'Other',                 value: 'other' },
+  ];
+
   const handleReport = () => {
-    Alert.alert('Report User', `Why are you reporting ${profile.name}?`, [
-      { text: 'Inappropriate photos', onPress: () => submitReport('inappropriate_photos') },
-      { text: 'Fake profile', onPress: () => submitReport('fake_profile') },
-      { text: 'Harassment', onPress: () => submitReport('harassment') },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    Alert.alert(
+      'Report User',
+      `Why are you reporting ${profile.name}?`,
+      [
+        ...REPORT_REASONS.map(r => ({
+          text: r.label,
+          onPress: () => submitReport(r.value),
+        })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ],
+    );
   };
 
-  const submitReport = async (reason: string) => {
+  const submitReport = async (reason: import('@services/api/moderationService').ReportReason) => {
     const result = await moderationService.reportUser(String(profile.id), reason);
     Alert.alert(result.success ? 'Report Submitted' : 'Error', result.message);
   };

@@ -50,7 +50,12 @@ apiClient.interceptors.response.use(
   async (error) => {
     const status = error.response?.status;
     const message = error.response?.data?.message || error.message;
-    errorLog('❌ API Error:', status, message);
+    // 5xx are transient backend errors — log quietly so they don't alarm the console
+    if (status >= 500) {
+      devLog('⚠️ API 5xx (transient):', status, message);
+    } else {
+      errorLog('❌ API Error:', status, message);
+    }
 
     // Global 401 handler: if a request was made WITH a Bearer token and the
     // server says it's invalid, clear the session and kick the user to Welcome.

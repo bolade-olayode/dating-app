@@ -5,6 +5,17 @@ import { devLog, errorLog } from '@config/environment';
 
 // ─── Types ───────────────────────────────────────────────────
 
+// Exact enum values the backend accepts for report reasons
+export type ReportReason =
+  | 'inappropriate_content'
+  | 'harassment'
+  | 'fake_profile'
+  | 'spam'
+  | 'underage'
+  | 'hate_speech'
+  | 'violence'
+  | 'other';
+
 export interface ModerationResponse {
   success: boolean;
   message: string;
@@ -16,7 +27,7 @@ export interface ModerationResponse {
 
 const reportUser = async (
   reportedUserId: string,
-  reason: string,
+  reason: ReportReason,
   description?: string,
 ): Promise<ModerationResponse> => {
   try {

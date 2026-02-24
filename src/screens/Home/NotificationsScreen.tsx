@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
@@ -29,7 +28,6 @@ interface Notification {
 }
 
 const NotificationsScreen = () => {
-  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,11 +134,7 @@ const NotificationsScreen = () => {
       <Flare />
 
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <View style={styles.backButton}>
-            <Icon name="chevron-back" size={22} color="#FFF" />
-          </View>
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
         <Text style={styles.headerTitle}>Notifications</Text>
         <TouchableOpacity onPress={handleMarkAllRead} activeOpacity={0.7}>
           <Text style={styles.markAllText}>Read all</Text>
