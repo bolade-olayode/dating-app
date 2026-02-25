@@ -12,6 +12,8 @@ import { authService } from '@services/api/authService';
 import { devLog, ENV } from '@config/environment';
 import { navigationRef } from '@navigation/navigationRef';
 import OfflineBanner from '@components/common/OfflineBanner';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 // Import Screens
 import IntroSlideshowScreen from '@screens/IntroSlideshow/IntroSlideshowScreen';
@@ -200,6 +202,27 @@ const mapApiUserToProfile = (user: any): UserProfile => {
   };
 };
 
+// ─── Push notification token registration ────────────────────
+// Requests permission, gets the Expo push token, and stores it in
+// AsyncStorage. The token is sent to the backend when that endpoint
+// is available. Safe to call multiple times — skips if already stored.
+
+const registerPushToken = async () => {
+  try {
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== 'granted') {
+      devLog('📱 Push notifications: permission denied');
+      return;
+    }
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_TOKEN, tokenData.data);
+    devLog('📱 Push token registered:', tokenData.data);
+  } catch (e) {
+    devLog('📱 Push token registration skipped (emulator or no project ID)');
+  }
+};
+
 const AppNavigator = () => {
   const theme = useTheme();
   const { isLoading: contextLoading, isAuthenticated, profile, login: loginUser, logout: logoutUser } = useUser();
@@ -256,8 +279,20 @@ const AppNavigator = () => {
                 });
               }
               await loginUser(token, merged);
+
+              // Onboarding resume: if user quit before completing their profile
+              // (no name or no photos), send them back to finish it.
+              const isProfileComplete =
+                !!(merged.name && merged.name.trim()) &&
+                (merged.photos || []).length > 0;
+              if (!isProfileComplete) {
+                devLog('⚠️ Session restore: incomplete profile — resuming onboarding');
+                setInitialRoute('NameInput');
+                return;
+              }
             }
             setInitialRoute('HomeTabs');
+            registerPushToken();
           } else {
             // Token invalid (401 or expired) — clear session
             devLog('⚠️ Session restore: token invalid, clearing session');

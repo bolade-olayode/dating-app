@@ -13,6 +13,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppStateStatus } from 'react-native';
+import { registerSessionExpiredCallback } from '@services/api/realAuthService';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -324,6 +325,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsAuthenticated(false);
     console.log('User logged out');
   }, []);
+
+  // Register the logout callback so the 401 interceptor can clear context
+  // state without importing React or creating a circular dependency.
+  useEffect(() => {
+    registerSessionExpiredCallback(logout);
+  }, [logout]);
 
   // ─── Context value ───────────────────────────────────────
 

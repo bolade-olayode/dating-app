@@ -7,6 +7,16 @@ import { AuthResponse } from './mockAuthService';
 import { STORAGE_KEYS } from '@utils/constant';
 import { navigationRef } from '@navigation/navigationRef';
 
+// ─── Session-expired callback ────────────────────────────────
+// Registered by UserProvider on mount so the 401 interceptor can clear
+// context state without importing React or creating a circular dependency.
+
+let _onSessionExpired: (() => void) | null = null;
+
+export const registerSessionExpiredCallback = (cb: () => void) => {
+  _onSessionExpired = cb;
+};
+
 // ─── Axios Instance ──────────────────────────────────────────
 
 export const apiClient = axios.create({
@@ -66,6 +76,9 @@ apiClient.interceptors.response.use(
       try {
         await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       } catch {}
+
+      // Clear UserContext state (profile, isAuthenticated, coins, etc.)
+      _onSessionExpired?.();
 
       if (navigationRef.isReady()) {
         navigationRef.reset({ index: 0, routes: [{ name: 'Welcome' }] });
