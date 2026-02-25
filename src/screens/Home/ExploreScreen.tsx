@@ -32,10 +32,13 @@ interface ExploreCategoryCard {
   image: ImageSourcePropType;
 }
 
+// Static member counts — avoids re-rendering jitter from Math.random() on each mount
+const INTEREST_CARD_MEMBERS = ['22K', '17K', '31K'];
+
 const INTEREST_CARDS: ExploreCategoryCard[] = INTEREST_CATEGORIES.map((cat, i) => ({
   id: cat.title.toLowerCase().replace(/\s+/g, '_'),
   title: cat.title,
-  memberCount: `${Math.floor(Math.random() * 20 + 5)}K`,
+  memberCount: INTEREST_CARD_MEMBERS[i] ?? '10K',
   image: [
     require('../../assets/images/foodanddrinks.jpg'),
     require('../../assets/images/sport.jpg'),

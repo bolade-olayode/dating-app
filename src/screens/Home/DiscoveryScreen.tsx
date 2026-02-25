@@ -35,6 +35,7 @@ import { useUser } from '@context/UserContext';
 import { matchingService } from '@services/api/matchingService';
 import { loadDiscoverySettings } from '@screens/Home/DiscoverySettingsScreen';
 import { devLog } from '@config/environment';
+import { SWIPE_LIMITS } from '@utils/constant';
 import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
@@ -249,7 +250,7 @@ import { useNavigation } from '@react-navigation/native';
 
 const DiscoveryScreen = () => {
   const navigation = useNavigation<any>();
-  const { coinBalance, spendCoins, swipeCount, incrementSwipeCount, freeSwipesRemaining, addMatch, updateProfile } = useUser();
+  const { coinBalance, spendCoins, swipeCount, incrementSwipeCount, freeSwipesRemaining, addMatch, updateProfile, profile: userProfile } = useUser();
 
   // Profiles state — defaults to shuffled mock, replaced by API data on mount
   const [profiles, setProfiles] = useState(() => {
@@ -414,8 +415,9 @@ const DiscoveryScreen = () => {
   });
 
   // Revenue plan: 10 free/day (men), 15 free/day (women)
-  // TODO: Read gender from UserContext to set limit dynamically
-  const FREE_SWIPE_LIMIT = 10;
+  const FREE_SWIPE_LIMIT = userProfile?.gender?.toLowerCase() === 'female'
+    ? SWIPE_LIMITS.FREE_FEMALE   // 15
+    : SWIPE_LIMITS.FREE_MALE;    // 10 (default for male and unknown)
   const SWIPE_COST = 5; // Per extra swipe (or 120 coins for 24hr Swipe Pass)
 
   const checkSwipeLimit = () => {
@@ -506,7 +508,10 @@ const DiscoveryScreen = () => {
   };
 
   const handleMessage = () => {
-    console.log('Message:', currentProfile.name);
+    navigation.navigate('ProfileDetail', {
+      profile: currentProfile,
+      isPaidView: swipeCount >= FREE_SWIPE_LIMIT,
+    });
   };
 
   const nextProfile = () => {
@@ -620,38 +625,69 @@ const DiscoveryScreen = () => {
     })
   ).current;
 
+  // ─── Shared header for empty / nearby states ───────────────
+  const renderHeader = () => (
+    <View style={styles.headerRow}>
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity
+          style={[styles.toggleButton, activeTab === 'forYou' && styles.activeToggle]}
+          onPress={() => setActiveTab('forYou')}
+        >
+          <Text style={[styles.toggleText, activeTab === 'forYou' && styles.activeToggleText]}>
+            For You
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleButton, activeTab === 'nearby' && styles.activeToggle]}
+          onPress={() => setActiveTab('nearby')}
+        >
+          <Text style={[styles.toggleText, activeTab === 'nearby' && styles.activeToggleText]}>
+            Nearby
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <CoinBalance
+        balance={coinBalance}
+        variant="compact"
+        onPress={() => navigation.navigate('Wallet')}
+      />
+    </View>
+  );
+
+  // ─── Nearby Coming Soon ─────────────────────────────────────
+  if (activeTab === 'nearby') {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <Flare />
+        {renderHeader()}
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconRing}>
+            <Icon name="location-outline" size={52} color="#FF007B" />
+          </View>
+          <Text style={styles.emptyTitle}>Nearby is coming soon</Text>
+          <Text style={styles.emptyBody}>
+            We're working on hyper-local discovery. For now, use "For You" to find matches nearby.
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyRefreshBtn}
+            onPress={() => setActiveTab('forYou')}
+            activeOpacity={0.85}
+          >
+            <Icon name="heart-outline" size={16} color="#FFF" />
+            <Text style={styles.emptyRefreshText}>Go to For You</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   if (!currentProfile) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
         <Flare />
-
-        {/* Keep header visible so user can still access wallet */}
-        <View style={styles.headerRow}>
-          <View style={styles.toggleContainer}>
-            <TouchableOpacity
-              style={[styles.toggleButton, activeTab === 'forYou' && styles.activeToggle]}
-              onPress={() => setActiveTab('forYou')}
-            >
-              <Text style={[styles.toggleText, activeTab === 'forYou' && styles.activeToggleText]}>
-                For You
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleButton, activeTab === 'nearby' && styles.activeToggle]}
-              onPress={() => setActiveTab('nearby')}
-            >
-              <Text style={[styles.toggleText, activeTab === 'nearby' && styles.activeToggleText]}>
-                Nearby
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <CoinBalance
-            balance={coinBalance}
-            variant="compact"
-            onPress={() => navigation.navigate('Wallet')}
-          />
-        </View>
+        {renderHeader()}
 
         {/* Empty State */}
         <View style={styles.emptyState}>
@@ -702,34 +738,7 @@ const DiscoveryScreen = () => {
       <Flare />
 
       {/* Header Row: Toggle + Coin Balance */}
-      <View style={styles.headerRow}>
-        {/* For You / Nearby Toggle */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[styles.toggleButton, activeTab === 'forYou' && styles.activeToggle]}
-            onPress={() => setActiveTab('forYou')}
-          >
-            <Text style={[styles.toggleText, activeTab === 'forYou' && styles.activeToggleText]}>
-              For You
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleButton, activeTab === 'nearby' && styles.activeToggle]}
-            onPress={() => setActiveTab('nearby')}
-          >
-            <Text style={[styles.toggleText, activeTab === 'nearby' && styles.activeToggleText]}>
-              Nearby
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Compact Coin Balance */}
-        <CoinBalance
-          balance={coinBalance}
-          variant="compact"
-          onPress={() => navigation.navigate('Wallet')}
-        />
-      </View>
+      {renderHeader()}
 
       {/* Swipe Status Indicator */}
       {swipeCount > 0 && (
