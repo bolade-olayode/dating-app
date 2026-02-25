@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
   ScrollView,
   FlatList,
-  Image,
   StatusBar,
   Animated,
   Modal,
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';

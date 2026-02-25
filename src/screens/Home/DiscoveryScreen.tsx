@@ -325,70 +325,71 @@ const DiscoveryScreen = () => {
     profilesRef.current = profiles;
   }, [profiles]);
 
-  // Fetch profiles from API on mount + update location
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      setIsLoadingProfiles(true);
+  // Fetch profiles from API — extracted so the empty-state Refresh button can call it too
+  const fetchProfiles = useCallback(async () => {
+    setIsLoadingProfiles(true);
 
-      // Update location first (awaited) — discover needs location set on backend before it works
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          const [place] = await Location.reverseGeocodeAsync(loc.coords);
-          const city = place?.city || place?.district || place?.subregion || 'Unknown';
-          // Save city to context so profile screens show real location even if API fails
-          updateProfile({ location: city });
-          await matchingService.updateLocation(loc.coords.latitude, loc.coords.longitude, city);
-          devLog('📍 Location updated:', city, loc.coords.latitude, loc.coords.longitude);
-        } else {
-          devLog('📍 Location permission denied');
-        }
-      } catch {
-        devLog('📍 Location error — skipping location update');
-      }
-
-      // Load saved settings and pass maxDistance (km → metres for the API)
-      const discoverySettings = await loadDiscoverySettings();
-      const maxDistanceMetres = discoverySettings.globalMode
-        ? undefined  // no cap when global mode is on
-        : discoverySettings.maxDistance * 1000;
-      const result = await matchingService.discoverProfiles(maxDistanceMetres, 20);
-      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-        const apiProfiles = result.data.map((p: any, idx: number) => ({
-          id: p._id || p.id,
-          name: p.fullname || p.name || 'Unknown',
-          age: p.age || 0,
-          location: p.city || (typeof p.location === 'string' ? p.location : p.location?.city) || 'Nearby',
-          distance: p.distance ? `${Math.round(p.distance / 1000)} km away` : '',
-          zodiac: p.zodiac || '',
-          interest: p.goal || p.relationshipGoal || '',
-          verified: p.verified || false,
-          isMock: false,
-          photo: p.photos?.[0]
-            ? { uri: p.photos[0] }
-            : MOCK_PROFILES[idx % MOCK_PROFILES.length].photo,
-          // Extra fields for ProfileDetailScreen
-          bio: p.bio || '',
-          height: p.height,
-          weight: p.weight,
-          gender: p.gender || '',
-          lookingFor: p.interestedIn || '',
-          education: p.education || '',
-          interests: (p.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || i.label || '')).filter(Boolean),
-          photos: p.photos || [],
-        }));
-        devLog('✅ Discovery: Loaded', apiProfiles.length, 'profiles from API');
-        setProfiles(apiProfiles);
-        setCurrentIndex(0);
+    // Update location first (awaited) — discover needs location set on backend before it works
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const [place] = await Location.reverseGeocodeAsync(loc.coords);
+        const city = place?.city || place?.district || place?.subregion || 'Unknown';
+        // Save city to context so profile screens show real location even if API fails
+        updateProfile({ location: city });
+        await matchingService.updateLocation(loc.coords.latitude, loc.coords.longitude, city);
+        devLog('📍 Location updated:', city, loc.coords.latitude, loc.coords.longitude);
       } else {
-        devLog('⚠️ Discovery: API returned no profiles, using mock data');
+        devLog('📍 Location permission denied');
       }
+    } catch {
+      devLog('📍 Location error — skipping location update');
+    }
 
-      setIsLoadingProfiles(false);
-    };
+    // Load saved settings and pass maxDistance (km → metres for the API)
+    const discoverySettings = await loadDiscoverySettings();
+    const maxDistanceMetres = discoverySettings.globalMode
+      ? undefined  // no cap when global mode is on
+      : discoverySettings.maxDistance * 1000;
+    const result = await matchingService.discoverProfiles(maxDistanceMetres, 20);
+    if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+      const apiProfiles = result.data.map((p: any, idx: number) => ({
+        id: p._id || p.id,
+        name: p.fullname || p.name || 'Unknown',
+        age: p.age || 0,
+        location: p.city || (typeof p.location === 'string' ? p.location : p.location?.city) || 'Nearby',
+        distance: p.distance ? `${Math.round(p.distance / 1000)} km away` : '',
+        zodiac: p.zodiac || '',
+        interest: p.goal || p.relationshipGoal || '',
+        verified: p.verified || false,
+        isMock: false,
+        photo: p.photos?.[0]
+          ? { uri: p.photos[0] }
+          : MOCK_PROFILES[idx % MOCK_PROFILES.length].photo,
+        // Extra fields for ProfileDetailScreen
+        bio: p.bio || '',
+        height: p.height,
+        weight: p.weight,
+        gender: p.gender || '',
+        lookingFor: p.interestedIn || '',
+        education: p.education || '',
+        interests: (p.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || i.label || '')).filter(Boolean),
+        photos: p.photos || [],
+      }));
+      devLog('✅ Discovery: Loaded', apiProfiles.length, 'profiles from API');
+      setProfiles(apiProfiles);
+      setCurrentIndex(0);
+    } else {
+      devLog('⚠️ Discovery: API returned no profiles, using mock data');
+    }
+
+    setIsLoadingProfiles(false);
+  }, [updateProfile]);
+
+  useEffect(() => {
     fetchProfiles();
-  }, []);
+  }, [fetchProfiles]);
 
   // Animation values
   const position = useRef(new Animated.ValueXY()).current;
@@ -622,7 +623,64 @@ const DiscoveryScreen = () => {
   if (!currentProfile) {
     return (
       <View style={styles.container}>
-        <Text style={styles.noMoreText}>No more profiles</Text>
+        <StatusBar barStyle="light-content" />
+        <Flare />
+
+        {/* Keep header visible so user can still access wallet */}
+        <View style={styles.headerRow}>
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity
+              style={[styles.toggleButton, activeTab === 'forYou' && styles.activeToggle]}
+              onPress={() => setActiveTab('forYou')}
+            >
+              <Text style={[styles.toggleText, activeTab === 'forYou' && styles.activeToggleText]}>
+                For You
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, activeTab === 'nearby' && styles.activeToggle]}
+              onPress={() => setActiveTab('nearby')}
+            >
+              <Text style={[styles.toggleText, activeTab === 'nearby' && styles.activeToggleText]}>
+                Nearby
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <CoinBalance
+            balance={coinBalance}
+            variant="compact"
+            onPress={() => navigation.navigate('Wallet')}
+          />
+        </View>
+
+        {/* Empty State */}
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconRing}>
+            <Icon name="heart-outline" size={52} color="#FF007B" />
+          </View>
+          <Text style={styles.emptyTitle}>You've seen everyone nearby</Text>
+          <Text style={styles.emptyBody}>
+            Try expanding your distance in settings, or check back later for new people.
+          </Text>
+          <TouchableOpacity
+            style={[styles.emptyRefreshBtn, isLoadingProfiles && { opacity: 0.6 }]}
+            onPress={fetchProfiles}
+            activeOpacity={0.85}
+            disabled={isLoadingProfiles}
+          >
+            <Icon name="refresh-outline" size={16} color="#FFF" />
+            <Text style={styles.emptyRefreshText}>
+              {isLoadingProfiles ? 'Loading...' : 'Refresh'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.emptySettingsBtn}
+            onPress={() => navigation.navigate('DiscoverySettings')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.emptySettingsText}>Change discovery settings</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -992,10 +1050,62 @@ const styles = StyleSheet.create({
   likeButton: {
     // Plain white border with glassmorphism
   },
-  noMoreText: {
-    fontFamily: FONTS.H3,
-    fontSize: 20,
+  // Empty state
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    gap: 12,
+    marginTop: -40,
+  },
+  emptyIconRing: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 0, 123, 0.25)',
+    backgroundColor: 'rgba(255, 0, 123, 0.07)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontFamily: FONTS.Bold,
+    fontSize: 22,
     color: '#FFF',
+    textAlign: 'center',
+  },
+  emptyBody: {
+    fontFamily: FONTS.Regular,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 12,
+  },
+  emptyRefreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FF007B',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+  },
+  emptyRefreshText: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 15,
+    color: '#FFF',
+  },
+  emptySettingsBtn: {
+    marginTop: 4,
+  },
+  emptySettingsText: {
+    fontFamily: FONTS.Regular,
+    fontSize: 13,
+    color: '#888',
+    textDecorationLine: 'underline',
   },
   // Modal styles
   modalOverlay: {

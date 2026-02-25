@@ -9,11 +9,11 @@ import {
   StatusBar,
   ActivityIndicator,
   FlatList,
-  Image,
   Alert,
   RefreshControl,
   Dimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -168,7 +168,8 @@ const LikesYouScreen: React.FC<any> = ({ navigation }) => {
         <Image
           source={{ uri: item.photoUri }}
           style={styles.cardPhoto}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={200}
         />
       ) : (
         <View style={styles.cardPhotoPlaceholder}>

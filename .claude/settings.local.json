@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx tsc:*)",
       "Bash(npx expo start)",
-      "WebFetch(domain:meetpie-backend.onrender.com)"
+      "WebFetch(domain:meetpie-backend.onrender.com)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")"
     ]
   }
 }

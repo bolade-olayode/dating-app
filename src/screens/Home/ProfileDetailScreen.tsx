@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   Dimensions,
   StatusBar,
-  Image,
   Animated,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -202,7 +202,8 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
           <Image
             source={mainPhoto}
             style={styles.mainPhoto}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.6)', '#000']}
