@@ -950,6 +950,89 @@ This session wired ALL remaining backend API endpoints into the app. 25 new endp
 
 ---
 
+### **Session 15: February 24, 2026 — Profile Detail Polish, Edit Profile Fixes & New Backend Endpoints**
+
+**What We Built / Fixed:**
+
+**1. ProfileDetailScreen — Real Data** (`ProfileDetailScreen.tsx` — MODIFIED)
+- Expanded route params interface to include: `height`, `weight`, `gender`, `lookingFor`, `education`, `interests[]`, `photos[]`, `bio`
+- `basics` array now built from real profile data (height, weight, zodiac, education, goal, gender) — hardcoded placeholders removed
+- `interests` array now built from real API interest labels — hardcoded copy-paste removed
+- `bio` section only renders when non-empty (no hardcoded fallback text)
+- "My Basics" and "Interests" sections only render when data exists
+- Added age to name overlay: `{profile.name}, {profile.age}`
+- `mainPhoto` now uses first URL from `profile.photos[]` if available, falls back to `profile.photo`
+
+**2. DiscoveryScreen — Pass Extra Profile Fields** (`DiscoveryScreen.tsx` — MODIFIED)
+- API profile mapping now passes extra fields to ProfileDetailScreen: `bio`, `height`, `weight`, `gender`, `lookingFor` (interestedIn), `education`, `interests[]` (mapped to string labels), `photos[]`
+
+**3. ExploreCategoryScreen — Pass Extra Profile Fields** (`ExploreCategoryScreen.tsx` — MODIFIED)
+- Expanded `ExploreProfile` interface with all extra fields
+- Both `navigate('ProfileDetail', ...)` calls (grid card + top avatar) now pass full field set
+
+**4. ChatsScreen — Filter Tab Layout Fix** (`ChatsScreen.tsx` — MODIFIED)
+- Active matches `FlatList` now only renders when `activeMatchesList.length > 0`
+- When no matches: filter tabs sit 4px below header instead of 96px (80px matches + 16px margin)
+- Added `filterContainerNoMatches` style for the collapsed state
+
+**5. Edit Profile — Backend Field Fixes** (`EditProfileScreen.tsx` — MODIFIED)
+- Added `EDUCATION_OPTIONS`, `EDUCATION_TO_API`, `EDUCATION_FROM_API` maps (8 enum values: high_school → doctorate + trade_school + prefer_not_to_say)
+- `handleSave` now sends: bio, height (parsed float → Number), weight (parsed float → Number), education (mapped to enum), HEIC-normalized photo URLs
+- Goal now sends backend ID (`'Chat and meet friends'`) not display label (`'Chat & Meet Friends'`)
+- Only non-empty fields included in API payload (no empty string gender etc.)
+- `interests` and `prompts` excluded from API payload pending backend ObjectId/format confirmation
+- DOB now formatted as `DD - MM - YYYY` instead of raw ISO string
+
+**6. Cloudinary Service — HEIC Normalization** (`cloudinaryService.ts` — MODIFIED)
+- After upload, `.heic`/`.heif` extensions replaced with `.jpg` in the returned URL
+- Prevents backend URL validation failures for iOS HEIC photos
+
+**7. OTP Verification — Existing User Signup** (`OTPVerificationScreen.tsx` — MODIFIED)
+- Signup mode: if backend returns a token (existing account), calls `getMe()` to fetch profile
+- Checks `photos.length` — if profile has photos (complete), routes to HomeTabs; if not, routes to NameInput for onboarding
+- Prevents existing users from re-entering full onboarding flow
+
+**8. AppNavigator — Storage Reset & Profile Fix** (`AppNavigator.tsx` — MODIFIED)
+- Added `DEV_CLEAR_STORAGE` flag support: `AsyncStorage.clear()` on startup for testing fresh state
+- Fixed `mapApiUserToProfile()` to read correct backend fields: `user.interestedIn` (not `user.lookingFor`), `user.goal` (not `user.relationshipGoal`)
+- Added `bio`, `height`, `weight`, `education`, `prompts` mappings to mapApiUserToProfile
+
+**9. Environment Config** (`environment.ts` — MODIFIED)
+- Added `DEV_CLEAR_STORAGE: true/false` flag — one-line toggle to wipe all AsyncStorage on next launch
+
+**10. MeScreen — Profile Completion Redesign** (`MeScreen.tsx` — MODIFIED)
+- `calculateCompletion` rebuilt with 7 clear checks summing to exactly 100%: photos×2 (25%), bio (20%), interests×5 (15%), prompts×2 (15%), relationship goal (10%), height+weight (10%), education (5%)
+- Dynamic banner title: "Complete your profile" / "Keep going!" / "Almost there!" / "Final touches!"
+- Shows first 2 incomplete steps inline + "+ N more" count
+
+**11. New Backend Endpoints Discovered (via Swagger)**
+- **Wallet (6 endpoints):** `GET /api/wallet/balance`, `GET /api/wallet/packages`, `GET /api/wallet/actions`, `GET /api/wallet/transactions`, `POST /api/wallet/purchase`, `POST /api/wallet/spend`
+- **Verification (2 endpoints):** `POST /api/verification/initiate` (Smile Identity SDK), `GET /api/verification/status`
+- **Admin (14+ endpoints):** Users CRUD, analytics dashboard/growth/swipes/coins, interests management, coin packages/actions management, support/reports — not needed in mobile app
+- **User Profile — New Fields:** `bio`, `height` (Number cm), `weight` (Number kg), `education` (enum), `prompts` (array) added to `PATCH /api/user/profile`
+
+**Files Updated (9):**
+- `src/screens/Home/ProfileDetailScreen.tsx` (real basics/interests, age display, mainPhoto)
+- `src/screens/Home/DiscoveryScreen.tsx` (pass extra fields to ProfileDetail)
+- `src/screens/Home/ExploreCategoryScreen.tsx` (pass extra fields to ProfileDetail, expanded interface)
+- `src/screens/Home/ChatsScreen.tsx` (conditional active matches row, filter tab fix)
+- `src/screens/Home/EditProfileScreen.tsx` (education maps, handleSave API fixes, DOB display)
+- `src/services/api/cloudinaryService.ts` (HEIC → .jpg normalization)
+- `src/screens/Onboarding/OTPVerificationScreen.tsx` (existing user signup routing)
+- `src/navigation/AppNavigator.tsx` (DEV_CLEAR_STORAGE, mapApiUserToProfile field fixes)
+- `src/screens/Home/MeScreen.tsx` (profile completion redesign)
+
+**Bugs Fixed:**
+- ProfileDetailScreen showing hardcoded "Bisexual / Single / 155cm" for every user → real data
+- Chat filter tabs pushed ~96px below header due to always-rendered empty matches FlatList
+- Edit profile `handleSave` sending `goal: 'Chat & Meet Friends'` (display label) → now sends backend ID
+- Edit profile `handleSave` 500 errors caused by HEIC photo URL (backend URL validation rejected `.heic`)
+- DOB showing raw ISO string `2001-01-04T00:00:00.000Z` → now formats as `04 - 01 - 2001`
+- Profile completion bar had duplicate bio check + weights didn't sum to 100%
+- Session restore overwriting edits (mapApiUserToProfile reading wrong field names)
+
+---
+
 ## CURRENT STATUS (February 2026)
 
 ### ✅ Fully Complete
@@ -1105,18 +1188,34 @@ This session wired ALL remaining backend API endpoints into the app. 25 new endp
 | User Profile (1 endpoint) | ✅ Fully wired — profile update |
 | Notifications (5 endpoints) | ✅ Fully wired — list, unread count, mark read, delete |
 
-### Back-End: Still Needed
+### Back-End: Available but Not Yet Wired (Mobile App)
 
-#### Explore & Red Room
-| Endpoint | Description |
+#### Wallet & Payments — LIVE on backend, not yet wired
+| Endpoint | Status |
 |---|---|
-| `GET /api/explore/categories` | Get all explore categories with member counts |
-| `GET /api/explore/categories/:id/profiles` | Get paginated profiles in a category |
-| `GET /api/explore/trending` | Get trending/featured profiles |
-| `GET /api/explore/redroom` | Get Red Room content/profiles (premium-gated) |
-| `POST /api/explore/redroom/access` | Unlock Red Room access (coin spend) |
+| `GET /api/wallet/balance` | ⏳ Service needed |
+| `GET /api/wallet/packages` | ⏳ Service needed |
+| `GET /api/wallet/actions` | ⏳ Service needed |
+| `GET /api/wallet/transactions` | ⏳ Service needed |
+| `POST /api/wallet/purchase` | ⏳ Service needed (IAP receipt verify) |
+| `POST /api/wallet/spend` | ⏳ Service needed |
 
-#### Real-Time
+#### Verification — LIVE on backend, not yet wired
+| Endpoint | Status |
+|---|---|
+| `POST /api/verification/initiate` | ⏳ Service needed (Smile Identity SDK token) |
+| `GET /api/verification/status` | ⏳ Service needed |
+
+#### Admin Dashboard — LIVE on backend, mobile app does NOT need these
+| Area | Endpoints |
+|---|---|
+| User management | `GET/DELETE /api/admin/users`, ban/unban/role |
+| Analytics | Dashboard stats, growth, swipe funnel, coin revenue |
+| Interests | CRUD for interest items |
+| Coins | Packages management, action costs, transaction log |
+| Support | Reports list, review, reply |
+
+#### Real-Time (Not yet on backend)
 | Feature | Description |
 |---|---|
 | WebSocket server | Real-time messaging (replace current 10s REST polling) |
@@ -1124,34 +1223,12 @@ This session wired ALL remaining backend API endpoints into the app. 25 new endp
 | Online status | Live presence tracking |
 | Push notification service | FCM/APNs integration |
 
-#### Wallet & Payments
+#### Other Missing
 | Endpoint | Description |
 |---|---|
-| `GET /api/wallet/balance` | Get coin balance |
-| `POST /api/wallet/purchase` | Purchase coins (Paystack/Stripe) |
-| `POST /api/wallet/spend` | Spend coins (unlock feature) |
-| `GET /api/wallet/transactions` | Transaction history |
-
-#### User Settings & Verification
-| Endpoint | Description |
-|---|---|
-| `POST /api/user/verify` | Profile verification (selfie check) |
 | `GET /api/user/settings` | Get discovery preferences |
 | `PATCH /api/user/settings` | Save discovery preferences |
-
-#### Admin Dashboard (subdomain: admin.meetpie.com)
-| Feature | Description |
-|---|---|
-| Admin auth | Login with role-based access (super admin, moderator, support) |
-| User management | View, search, suspend, ban users |
-| Content moderation | Review reports, flagged photos, approve verifications |
-| Analytics dashboard | Signups, DAU/MAU, retention, revenue charts |
-| Interest/category management | CRUD for interests & Explore categories |
-| Coin & transaction management | Purchases, refunds, revenue breakdown |
-| Push notification console | Send targeted announcements |
-| App config | Feature flags, pricing tiers, swipe limits (editable live) |
-| Red Room management | Content, access rules, pricing |
-| Support tickets | View and respond to user reports |
+| `GET /api/explore/categories/:id/profiles` | Profiles per interest category (currently using discover) |
 
 ### Front-End: Remaining
 | Task | Status |
@@ -1163,23 +1240,26 @@ This session wired ALL remaining backend API endpoints into the app. 25 new endp
 | Wire Explore/ExploreCategory to real API | ✅ Done |
 | Wire Chat screens to real API | ✅ Done |
 | Wire matches list to real API | ✅ Done |
-| Wire EditProfile to save to backend | ✅ Done |
+| Wire EditProfile to save to backend (bio, height, weight, education) | ✅ Done |
 | Wire report/block functionality | ✅ Done |
 | Wire notifications screen | ✅ Done |
 | Dynamic chat badge (real unread count) | ✅ Done |
-| Red Room UI + coin-gated access | Not started |
+| ProfileDetailScreen shows real basics/interests/bio | ✅ Done |
+| Wire Wallet screen to real balance + packages API | ⏳ Next (walletService needed) |
+| Wire TopUp screen to real purchase flow (IAP + /api/wallet/purchase) | ⏳ Next |
+| Wire coin spend to /api/wallet/spend on discovery swipe etc. | ⏳ Next |
+| Profile verification flow (selfie via Smile Identity → /api/verification/initiate) | ⏳ Next |
+| Wire interests update (needs ObjectId format confirmed with backend) | ⏳ Blocked |
+| Wire prompts update (nested object format to confirm with backend) | ⏳ Blocked |
 | Real-time chat (WebSocket client) | Not started (using 10s REST polling) |
 | Wire discovery filters (age, distance, interests) | UI exists, no backend settings endpoint |
-| Wire wallet to real payments (Paystack/Stripe SDK) | Not started |
 | Push notifications (FCM/APNs via Expo) | Not started |
-| Geolocation — real lat/long for profile & nearby | Hardcoded to Lagos |
-| Profile verification flow (selfie capture + submit) | Not started |
+| Geolocation — use device GPS (partially done — DiscoveryScreen uses real GPS) | Partial |
 | Image caching & optimization | Not started |
 | Deep linking (match notifications → chat) | Not started |
 | Token refresh / expiry handling (401 → redirect to login) | Not started |
 | Onboarding resume (quit mid-flow → resume on reopen) | Not started |
 | Offline handling (no internet banner/modal) | Not started |
-| OTP rate-limit UI ("try again in X seconds") | Not started |
 | Error boundaries & crash reporting (Sentry) | Not started |
 | Analytics (Mixpanel/Amplitude) | Not started |
 | App Store / Play Store assets (screenshots, descriptions) | Not started |
@@ -1304,10 +1384,11 @@ This session wired ALL remaining backend API endpoints into the app. 25 new endp
 
 ---
 
-**Last Updated:** February 2026
+**Last Updated:** February 24, 2026
 **Onboarding Flow:** 100% Complete (wired to real API)
 **Auth Flow:** Login + Signup + Session Restore + Logout + Delete Account — all wired
 **Core Screens:** 28+ screens built
 **API Endpoints Wired:** 36 (Auth + Onboarding + Matching + Chat + Moderation + User + Notifications)
-**Backend Status:** OTP sending broken (500) — backend dev fixing. All other endpoints verified working.
-**Ready for:** Payments (Paystack), WebSocket real-time chat, Push Notifications, Admin Dashboard
+**New Backend Endpoints Discovered:** Wallet (6) + Verification (2) + Admin (14) — wallet/verification to wire next
+**Backend Status:** OTP sending intermittently broken — backend dev fixing. All other endpoints verified working.
+**Ready for:** Wallet service + screen wiring, Verification flow (Smile Identity), WebSocket real-time chat

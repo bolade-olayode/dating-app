@@ -28,16 +28,23 @@ interface ProfileDetailProps {
   route: {
     params: {
       profile: {
-        id: number;
+        id: string | number;
         name: string;
         age: number;
         location: string;
-        distance: string;
-        zodiac: string;
-        interest: string;
-        verified: boolean;
-        photo: any;
+        distance?: string;
+        zodiac?: string;
+        interest?: string;      // relationship goal label
+        verified?: boolean;
+        photo: any;             // require() or { uri } — first photo fallback
         bio?: string;
+        height?: number;        // cm
+        weight?: number;        // kg
+        gender?: string;        // 'male' | 'female'
+        lookingFor?: string;    // 'male' | 'female' | 'both'
+        education?: string;     // display label
+        interests?: string[];   // array of interest labels
+        photos?: string[];      // Cloudinary URLs (all photos)
       };
       isPaidView?: boolean;
     };
@@ -130,28 +137,30 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
     ]);
   };
 
-  // Default bio
-  const bio = profile.bio || "Confident, easy-going with great sense of humor, hardworker, watches anime, romantic, enjoys meeting people and having meaningful conversations. My love language is food.";
+  const bio = profile.bio || '';
 
-  // Mock basics (placeholders - will come from backend)
-  const basics = [
-    { icon: '🏳️‍🌈', label: 'Bisexual' },
-    { icon: '❤️', label: 'Single' },
-    { icon: '📏', label: '155cm' },
-    { icon: '⚖️', label: '75kg' },
-    { icon: '♒', label: profile.zodiac },
-    { icon: '🌍', label: 'Nigerian' },
-  ];
+  // Build basics from real profile data — only show fields that exist
+  const ZODIAC_EMOJI: Record<string, string> = {
+    aries: '♈', taurus: '♉', gemini: '♊', cancer: '♋', leo: '♌', virgo: '♍',
+    libra: '♎', scorpio: '♏', sagittarius: '♐', capricorn: '♑', aquarius: '♒', pisces: '♓',
+  };
+  const GENDER_LABEL: Record<string, string> = { male: 'Male', female: 'Female', other: 'Other' };
+  const LOOKING_FOR_LABEL: Record<string, string> = { male: 'Men', female: 'Women', both: 'Everyone' };
 
-  // Mock interests (placeholders)
-  const interests = [
-    { icon: '🏳️‍🌈', label: 'Bisexual' },
-    { icon: '❤️', label: 'Single' },
-    { icon: '📏', label: '155cm' },
-    { icon: '⚖️', label: '75kg' },
-    { icon: '♒', label: 'Aquarius' },
-    { icon: '🌍', label: 'Nigerian' },
-  ];
+  const basics: Array<{ icon: string; label: string }> = [];
+  if (profile.gender) basics.push({ icon: profile.gender === 'male' ? '👨' : '👩', label: GENDER_LABEL[profile.gender] || profile.gender });
+  if (profile.height) basics.push({ icon: '📏', label: `${profile.height}cm` });
+  if (profile.weight) basics.push({ icon: '⚖️', label: `${profile.weight}kg` });
+  if (profile.zodiac) basics.push({ icon: ZODIAC_EMOJI[profile.zodiac.toLowerCase()] || '⭐', label: profile.zodiac });
+  if (profile.education) basics.push({ icon: '🎓', label: profile.education });
+  if (profile.interest) basics.push({ icon: '❤️', label: profile.interest });
+  if (profile.lookingFor) basics.push({ icon: '🔍', label: LOOKING_FOR_LABEL[profile.lookingFor] || profile.lookingFor });
+
+  // Real interests from API
+  const interests = (profile.interests || []).map(label => ({ label }));
+
+  // Main photo — prefer first URL from photos array, fall back to passed photo
+  const mainPhoto = profile.photos?.[0] ? { uri: profile.photos[0] } : profile.photo;
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, PHOTO_HEIGHT - 100],
@@ -191,7 +200,7 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
         {/* Main Photo */}
         <View style={styles.photoContainer}>
           <Image
-            source={profile.photo}
+            source={mainPhoto}
             style={styles.mainPhoto}
             resizeMode="cover"
           />
@@ -206,7 +215,7 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
               <Icon name="location" size={14} color="#FFF" />
               <Text style={styles.locationText}>{profile.location}</Text>
             </View>
-            <Text style={styles.name}>{profile.name}</Text>
+            <Text style={styles.name}>{profile.name}{profile.age ? `, ${profile.age}` : ''}</Text>
           </View>
         </View>
 
@@ -239,37 +248,42 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
           <Text style={styles.blockButtonText}>Block this user</Text>
         </TouchableOpacity>
 
-        {/* Bio Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bio</Text>
-          <Text style={styles.bioText}>{bio}</Text>
-        </View>
-
-        {/* My Basics */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Basics</Text>
-          <View style={styles.chipGrid}>
-            {basics.map((item, index) => (
-              <View key={index} style={styles.chip}>
-                <Text style={styles.chipEmoji}>{item.icon}</Text>
-                <Text style={styles.chipText}>{item.label}</Text>
-              </View>
-            ))}
+        {/* Bio Section — only shown when non-empty */}
+        {!!bio && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Bio</Text>
+            <Text style={styles.bioText}>{bio}</Text>
           </View>
-        </View>
+        )}
 
-        {/* Interests */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Interests</Text>
-          <View style={styles.chipGrid}>
-            {interests.map((item, index) => (
-              <View key={index} style={styles.chip}>
-                <Text style={styles.chipEmoji}>{item.icon}</Text>
-                <Text style={styles.chipText}>{item.label}</Text>
-              </View>
-            ))}
+        {/* My Basics — only shown when we have at least one field */}
+        {basics.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Basics</Text>
+            <View style={styles.chipGrid}>
+              {basics.map((item, index) => (
+                <View key={index} style={styles.chip}>
+                  <Text style={styles.chipEmoji}>{item.icon}</Text>
+                  <Text style={styles.chipText}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
+
+        {/* Interests — only shown when non-empty */}
+        {interests.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Interests</Text>
+            <View style={styles.chipGrid}>
+              {interests.map((item, index) => (
+                <View key={index} style={styles.chip}>
+                  <Text style={styles.chipText}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Paid view badge */}
         {isPaidView && (

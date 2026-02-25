@@ -41,13 +41,23 @@ type ExploreCategoryParams = {
 // ─── Mock profile data ──────────────────────────────────────
 
 interface ExploreProfile {
-  id: number;
+  id: string | number;
   name: string;
   age: number;
   zodiac: string;
   location: string;
   photo: any;
   isOnline: boolean;
+  // Extra fields for ProfileDetailScreen
+  bio?: string;
+  height?: number;
+  weight?: number;
+  gender?: string;
+  lookingFor?: string;
+  education?: string;
+  interests?: string[];
+  photos?: string[];
+  interest?: string;
 }
 
 const MOCK_PROFILES: ExploreProfile[] = [
@@ -85,6 +95,16 @@ const ExploreCategoryScreen: React.FC = () => {
             ? { uri: p.photos[0] }
             : MOCK_PROFILES[idx % MOCK_PROFILES.length].photo,
           isOnline: false,
+          // Extra fields for ProfileDetailScreen
+          bio: p.bio || '',
+          height: p.height,
+          weight: p.weight,
+          gender: p.gender || '',
+          lookingFor: p.interestedIn || '',
+          education: p.education || '',
+          interest: p.goal || p.relationshipGoal || '',
+          interests: (p.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || i.label || '')).filter(Boolean),
+          photos: p.photos || [],
         }));
         devLog('✅ ExploreCategory: Loaded', mapped.length, 'profiles from API');
         setProfiles(mapped);
@@ -110,6 +130,15 @@ const ExploreCategoryScreen: React.FC = () => {
             photo: profile.photo,
             location: profile.location,
             zodiac: profile.zodiac,
+            bio: profile.bio,
+            height: profile.height,
+            weight: profile.weight,
+            gender: profile.gender,
+            lookingFor: profile.lookingFor,
+            education: profile.education,
+            interest: profile.interest,
+            interests: profile.interests,
+            photos: profile.photos,
           },
         })
       }
@@ -154,6 +183,16 @@ const ExploreCategoryScreen: React.FC = () => {
             age: profile.age,
             photo: profile.photo,
             location: profile.location,
+            zodiac: profile.zodiac,
+            bio: profile.bio,
+            height: profile.height,
+            weight: profile.weight,
+            gender: profile.gender,
+            lookingFor: profile.lookingFor,
+            education: profile.education,
+            interest: profile.interest,
+            interests: profile.interests,
+            photos: profile.photos,
           },
         })
       }

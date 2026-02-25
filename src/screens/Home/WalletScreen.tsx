@@ -1,6 +1,6 @@
 // src/screens/Home/WalletScreen.tsx
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,17 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import CoinBalance from '@components/ui/CoinBalance';
 import { useUser } from '@context/UserContext';
+import { walletService, CoinAction } from '@services/api/walletService';
+import { devLog } from '@config/environment';
 
 // Premium features with coin costs (from revenue plan)
 const TOKEN_PACKAGES = [
@@ -71,10 +74,73 @@ const FEATURES = [
   { id: 4, title: 'Verified Badge', description: 'Get verified — 250 coins (one-time)', icon: 'checkmark-circle-outline' },
 ];
 
+// Map backend actionKey → icon name (Ionicons)
+const ACTION_ICON: Record<string, string> = {
+  super_like:       'heart-outline',
+  boost:            'rocket-outline',
+  see_likes:        'eye-outline',
+  priority_message: 'sparkles-outline',
+  visitors:         'people-outline',
+  spotlight:        'flashlight-outline',
+  swipe_pass:       'infinite-outline',
+  rewind:           'arrow-undo-outline',
+  read_receipts:    'checkmark-done-outline',
+  verified_badge:   'checkmark-circle-outline',
+};
+
 const WalletScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { coinBalance } = useUser();
+  const isFocused = useIsFocused();
+  const { coinBalance, setCoinBalance } = useUser();
+
+  const [apiActions, setApiActions] = useState<CoinAction[]>([]);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+
+  // Fetch real balance + actions whenever screen is focused
+  useEffect(() => {
+    if (!isFocused) return;
+
+    const fetchWalletData = async () => {
+      setIsLoadingBalance(true);
+
+      const [balanceResult, actionsResult] = await Promise.all([
+        walletService.getBalance(),
+        walletService.getActions(),
+      ]);
+
+      // Sync real balance into context
+      if (balanceResult.success && balanceResult.data != null) {
+        const balance = typeof balanceResult.data === 'number'
+          ? balanceResult.data
+          : balanceResult.data?.balance ?? balanceResult.data?.coins ?? 0;
+        devLog('💰 Wallet: balance =', balance);
+        setCoinBalance(balance);
+      }
+
+      // Replace actions list with real data
+      if (actionsResult.success && Array.isArray(actionsResult.data) && actionsResult.data.length > 0) {
+        devLog('🎯 Wallet: loaded', actionsResult.data.length, 'actions');
+        setApiActions(actionsResult.data.filter((a: CoinAction) => a.isActive));
+      }
+
+      setIsLoadingBalance(false);
+    };
+
+    fetchWalletData();
+  }, [isFocused, setCoinBalance]);
+
+  // Merge API actions with local fallback — API wins if available
+  const displayActions = apiActions.length > 0
+    ? apiActions.map((a) => ({
+        id: a._id || a.actionKey,
+        name: a.label,
+        description: `${a.cost} coins`,
+        icon: ACTION_ICON[a.actionKey] || 'flash-outline',
+        cost: a.cost,
+        actionKey: a.actionKey,
+      }))
+    : TOKEN_PACKAGES;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
@@ -84,6 +150,9 @@ const WalletScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Wallet</Text>
+        {isLoadingBalance && (
+          <ActivityIndicator size="small" color="#FF007B" />
+        )}
       </View>
 
       <ScrollView
@@ -97,11 +166,11 @@ const WalletScreen: React.FC = () => {
           onBuyPress={() => navigation.navigate('TopUp')}
         />
 
-        {/* Token Packages */}
+        {/* Coin-gated actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Token packages</Text>
 
-          {TOKEN_PACKAGES.map((pkg) => (
+          {displayActions.map((pkg) => (
             <TouchableOpacity
               key={pkg.id}
               style={styles.packageRow}
@@ -126,7 +195,7 @@ const WalletScreen: React.FC = () => {
           ))}
         </View>
 
-        {/* What you can do */}
+        {/* What you can do — static list */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What you can do</Text>
 
@@ -135,6 +204,7 @@ const WalletScreen: React.FC = () => {
               key={feature.id}
               style={styles.packageRow}
               activeOpacity={0.7}
+              onPress={feature.id === 4 ? () => navigation.navigate('ProfileVerification') : undefined}
             >
               <View style={styles.packageIconContainer}>
                 <Icon name={feature.icon} size={20} color="#FF007B" />

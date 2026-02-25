@@ -42,6 +42,7 @@ import PrivacySafetyScreen from '@screens/Home/PrivacySafetyScreen';
 import ProfilePerformanceScreen from '@screens/Home/ProfilePerformanceScreen';
 import AccountActionsScreen from '@screens/Home/AccountActionsScreen';
 import ExploreCategoryScreen from '@screens/Home/ExploreCategoryScreen';
+import ProfileVerificationScreen from '@screens/Home/ProfileVerificationScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -138,6 +139,7 @@ export type RootStackParamList = {
     memberCount: string;
     type: 'interest' | 'relationship';
   };
+  ProfileVerification: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -325,6 +327,7 @@ const AppNavigator = () => {
           <Stack.Screen name="ProfilePerformance" component={ProfilePerformanceScreen} />
           <Stack.Screen name="AccountActions" component={AccountActionsScreen} />
           <Stack.Screen name="ExploreCategory" component={ExploreCategoryScreen} />
+          <Stack.Screen name="ProfileVerification" component={ProfileVerificationScreen} />
           <Stack.Screen
             name="Match"
             component={MatchScreen}

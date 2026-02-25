@@ -166,8 +166,23 @@ OpuehApp/
 | | `PATCH /api/notifications/{id}/read` | Mark single notification as read |
 | | `DELETE /api/notifications/{id}` | Delete a notification |
 
-### Remaining Backend Endpoints
-See `DEVELOPMENT_LOG.md` for remaining requirements: Wallet/Payments, Admin Dashboard, WebSocket real-time chat, Push Notifications.
+### Available but Not Yet Wired — 8 Endpoints
+| Service | Endpoint | Description |
+|---|---|---|
+| **Wallet** | `GET /api/wallet/balance` | Get current coin balance |
+| | `GET /api/wallet/packages` | Get available coin packages |
+| | `GET /api/wallet/actions` | Get coin-gated action costs |
+| | `GET /api/wallet/transactions` | Paginated transaction history |
+| | `POST /api/wallet/purchase` | Verify IAP receipt → credit coins |
+| | `POST /api/wallet/spend` | Spend coins on premium action |
+| **Verification** | `POST /api/verification/initiate` | Start Smile Identity selfie check |
+| | `GET /api/verification/status` | Get current verification status |
+
+### Admin Endpoints (Backend Only — Not Used in Mobile App)
+14 endpoints under `/api/admin/` for user management, analytics, interest CRUD, coin packages, and support reports. See `DEVELOPMENT_LOG.md`.
+
+### Remaining Backend Endpoints Still Needed
+See `DEVELOPMENT_LOG.md` for remaining requirements: WebSocket real-time chat, Discovery Settings API, Push Notifications.
 
 ### Known Backend Issues
 See `BACKEND_FIXES.md` for priority-ranked issues (MongoDB timeouts, incorrect HTTP status codes, OTP delivery failures).
@@ -316,6 +331,12 @@ eas build --platform ios --profile production
 - [x] Wire Edit Profile to real user API
 - [x] Wire Notifications screen to real API
 - [x] Dynamic chat badge on tab bar (real unread count)
+- [x] ProfileDetailScreen shows real bio, basics (height/weight/zodiac/education), interests
+- [x] Edit Profile saves bio, height, weight, education to backend (HEIC photo fix, goal ID mapping)
+- [x] Profile completion banner — 7 weighted checks totalling 100%
+- [ ] Wallet screen wired to real balance + packages API (walletService)
+- [ ] TopUp screen wired to real purchase flow (/api/wallet/purchase)
+- [ ] Profile verification flow (Smile Identity selfie — /api/verification/initiate)
 - [ ] Real-time chat (WebSocket — currently using 10s REST polling)
 - [ ] Payment integration (Paystack)
 - [ ] Push notifications (FCM/APNs via Expo)
@@ -351,5 +372,5 @@ eas build --platform ios --profile production
 
 Proprietary - All Rights Reserved
 
-**Last Updated:** February 2026
-**Version:** 0.4.0 (Alpha — Full API Integration)
+**Last Updated:** February 24, 2026
+**Version:** 0.5.0 (Alpha — Profile Polish + New Backend Endpoints Discovered)

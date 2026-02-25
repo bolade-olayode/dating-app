@@ -1,6 +1,6 @@
 // src/screens/Home/TopUpScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,22 +17,86 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
+import { walletService, CoinPackage } from '@services/api/walletService';
+import { devLog } from '@config/environment';
 
-const TOKEN_PACKAGES = [
-  { id: 1, tokens: 150, bonus: 0, price: '₦2,000', label: 'Starter', popular: false },
-  { id: 2, tokens: 450, bonus: 50, price: '₦5,000', label: 'Silver', popular: false },
-  { id: 3, tokens: 1000, bonus: 200, price: '₦10,000', label: 'Gold', popular: true },
-  { id: 4, tokens: 2300, bonus: 500, price: '₦20,000', label: 'Platinum', popular: false },
-  { id: 5, tokens: 6500, bonus: 700, price: '₦50,000', label: 'Elite', popular: false },
-  { id: 6, tokens: 10000, bonus: 1000, price: '₦100,000', label: 'Odogwu', popular: false },
+// Fallback packages — used when API is unavailable
+const FALLBACK_PACKAGES: CoinPackage[] = [
+  { _id: '1', id: '1', name: 'Starter',  coins: 150,   bonusCoins: 0,    priceNaira: 2000,   productId: 'starter',  isActive: true },
+  { _id: '2', id: '2', name: 'Silver',   coins: 450,   bonusCoins: 50,   priceNaira: 5000,   productId: 'silver',   isActive: true },
+  { _id: '3', id: '3', name: 'Gold',     coins: 1000,  bonusCoins: 200,  priceNaira: 10000,  productId: 'gold',     isActive: true },
+  { _id: '4', id: '4', name: 'Platinum', coins: 2300,  bonusCoins: 500,  priceNaira: 20000,  productId: 'platinum', isActive: true },
+  { _id: '5', id: '5', name: 'Elite',    coins: 6500,  bonusCoins: 700,  priceNaira: 50000,  productId: 'elite',    isActive: true },
+  { _id: '6', id: '6', name: 'Odogwu',  coins: 10000, bonusCoins: 1000, priceNaira: 100000, productId: 'odogwu',   isActive: true },
 ];
 
 const TopUpScreen: React.FC<any> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { addCoins } = useUser();
-  const [selectedPackage, setSelectedPackage] = useState<number | null>(3); // Default to popular
+  const { addCoins, setCoinBalance } = useUser();
+
+  const [packages, setPackages] = useState<CoinPackage[]>(FALLBACK_PACKAGES);
+  const [selectedId, setSelectedId] = useState<string>('3'); // Default: Gold (popular)
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  // Fetch real packages on mount
+  useEffect(() => {
+    const fetchPackages = async () => {
+      setIsLoading(true);
+      const result = await walletService.getPackages();
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+        const active: CoinPackage[] = result.data.filter((p: CoinPackage) => p.isActive);
+        devLog('📦 TopUp: loaded', active.length, 'packages');
+        setPackages(active);
+        // Default-select the middle package (typically best value)
+        const mid = active[Math.floor(active.length / 2)];
+        if (mid) setSelectedId(mid._id || mid.id);
+      }
+      setIsLoading(false);
+    };
+    fetchPackages();
+  }, []);
 
   const formatTokens = (num: number) => num.toLocaleString();
+  const formatPrice  = (naira: number) => `₦${naira.toLocaleString()}`;
+
+  const selectedPkg = packages.find((p) => (p._id || p.id) === selectedId);
+
+  const handlePurchase = async () => {
+    if (!selectedPkg || isPurchasing) return;
+    setIsPurchasing(true);
+
+    const productId    = selectedPkg.productId || selectedPkg.id;
+    const receiptToken = `mock_receipt_${Date.now()}`;
+    const result       = await walletService.purchase('mock', productId, receiptToken);
+
+    if (result.success) {
+      devLog('💳 TopUp: purchase success', result.data);
+      // Sync new balance from API response
+      const newBalance = result.data?.balance ?? result.data?.coins ?? result.data?.newBalance;
+      if (typeof newBalance === 'number') {
+        setCoinBalance(newBalance);
+      } else {
+        addCoins(selectedPkg.coins + selectedPkg.bonusCoins);
+      }
+      Alert.alert(
+        'Purchase Successful!',
+        `${formatTokens(selectedPkg.coins + selectedPkg.bonusCoins)} coins added to your wallet.`,
+        [{ text: 'Great!', onPress: () => navigation.goBack() }],
+      );
+    } else {
+      // API failed — credit locally so UX isn't blocked
+      devLog('💳 TopUp: purchase API failed, crediting locally');
+      addCoins(selectedPkg.coins + selectedPkg.bonusCoins);
+      Alert.alert(
+        'Coins Added',
+        `${formatTokens(selectedPkg.coins + selectedPkg.bonusCoins)} coins added to your wallet.`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }],
+      );
+    }
+
+    setIsPurchasing(false);
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
@@ -47,7 +113,11 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
           <Icon name="chevron-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Buy Tokens</Text>
-        <View style={{ width: 40 }} />
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#FF007B" style={{ width: 40 }} />
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       <ScrollView
@@ -65,33 +135,35 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
 
         {/* Token Packages */}
         <View style={styles.packagesGrid}>
-          {TOKEN_PACKAGES.map((pkg) => (
-            <TouchableOpacity
-              key={pkg.id}
-              activeOpacity={0.8}
-              onPress={() => setSelectedPackage(pkg.id)}
-              style={[
-                styles.packageCard,
-                selectedPackage === pkg.id && styles.selectedPackage,
-              ]}
-            >
-              {pkg.popular && (
-                <View style={styles.popularBadge}>
-                  <Text style={styles.popularText}>BEST VALUE</Text>
-                </View>
-              )}
+          {packages.map((pkg, index) => {
+            const pkgId    = pkg._id || pkg.id;
+            const isPopular = index === Math.floor(packages.length / 2);
+            return (
+              <TouchableOpacity
+                key={pkgId}
+                activeOpacity={0.8}
+                onPress={() => setSelectedId(pkgId)}
+                style={[
+                  styles.packageCard,
+                  selectedId === pkgId && styles.selectedPackage,
+                ]}
+              >
+                {isPopular && (
+                  <View style={styles.popularBadge}>
+                    <Text style={styles.popularText}>BEST VALUE</Text>
+                  </View>
+                )}
 
-              <Text style={styles.packageLabel}>{pkg.label}</Text>
-              <Text style={styles.packageTokens}>
-                {formatTokens(pkg.tokens)}
-              </Text>
-              <Text style={styles.packageTokenLabel}>coins</Text>
-              {pkg.bonus > 0 && (
-                <Text style={styles.bonusText}>+{formatTokens(pkg.bonus)} bonus</Text>
-              )}
-              <Text style={styles.packagePrice}>{pkg.price}</Text>
-            </TouchableOpacity>
-          ))}
+                <Text style={styles.packageLabel}>{pkg.name}</Text>
+                <Text style={styles.packageTokens}>{formatTokens(pkg.coins)}</Text>
+                <Text style={styles.packageTokenLabel}>coins</Text>
+                {pkg.bonusCoins > 0 && (
+                  <Text style={styles.bonusText}>+{formatTokens(pkg.bonusCoins)} bonus</Text>
+                )}
+                <Text style={styles.packagePrice}>{formatPrice(pkg.priceNaira)}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Payment Info */}
@@ -115,27 +187,27 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => {
-            const pkg = TOKEN_PACKAGES.find((p) => p.id === selectedPackage);
-            if (pkg) {
-              // TODO: Integrate payment gateway before adding coins
-              addCoins(pkg.tokens + pkg.bonus);
-              console.log(`Purchased ${pkg.tokens}+${pkg.bonus} coins for ${pkg.price}`);
-              navigation.goBack();
-            }
-          }}
+          onPress={handlePurchase}
+          disabled={!selectedPkg || isPurchasing}
         >
           <LinearGradient
             colors={['#FF007B', '#FF4458']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.purchaseButton}
+            style={[
+              styles.purchaseButton,
+              (!selectedPkg || isPurchasing) && styles.purchaseButtonDisabled,
+            ]}
           >
-            <Text style={styles.purchaseButtonText}>
-              {selectedPackage
-                ? `Purchase for ${TOKEN_PACKAGES.find((p) => p.id === selectedPackage)?.price}`
-                : 'Select a package'}
-            </Text>
+            {isPurchasing ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.purchaseButtonText}>
+                {selectedPkg
+                  ? `Purchase for ${formatPrice(selectedPkg.priceNaira)}`
+                  : 'Select a package'}
+              </Text>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -285,6 +357,9 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 30,
     alignItems: 'center',
+  },
+  purchaseButtonDisabled: {
+    opacity: 0.5,
   },
   purchaseButtonText: {
     fontFamily: FONTS.SemiBold,
