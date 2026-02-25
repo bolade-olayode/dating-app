@@ -14,6 +14,24 @@ import { navigationRef } from '@navigation/navigationRef';
 import OfflineBanner from '@components/common/OfflineBanner';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import { LinkingOptions } from '@react-navigation/native';
+
+// ─── Deep linking config ──────────────────────────────────────
+// URL scheme: opueh://  |  HTTPS: https://opueh.app/
+// Example: opueh://profile/123  →  ProfileDetail screen
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['opueh://', 'https://opueh.app'],
+  config: {
+    screens: {
+      HomeTabs: '',
+      ProfileDetail: 'profile/:id',
+      ChatConversation: 'chat/:chatId',
+      ProfileVerification: 'verify',
+      TopUp: 'top-up',
+      Welcome: 'welcome',
+    },
+  },
+};
 
 // Import Screens
 import IntroSlideshowScreen from '@screens/IntroSlideshow/IntroSlideshowScreen';
@@ -205,9 +223,8 @@ const mapApiUserToProfile = (user: any): UserProfile => {
 };
 
 // ─── Push notification token registration ────────────────────
-// Requests permission, gets the Expo push token, and stores it in
-// AsyncStorage. The token is sent to the backend when that endpoint
-// is available. Safe to call multiple times — skips if already stored.
+// Requests permission, gets the Expo push token, stores it locally,
+// and sends it to the backend. Safe to call multiple times.
 
 const registerPushToken = async () => {
   try {
@@ -218,8 +235,18 @@ const registerPushToken = async () => {
     }
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-    await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_TOKEN, tokenData.data);
-    devLog('📱 Push token registered:', tokenData.data);
+    const token = tokenData.data;
+    await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_TOKEN, token);
+    devLog('📱 Push token stored:', token);
+
+    // Send token to backend — fails silently if endpoint not yet available
+    try {
+      const { apiClient } = require('@services/api/realAuthService');
+      await apiClient.post('/api/notifications/device-token', { token, platform: 'expo' });
+      devLog('📱 Push token sent to backend');
+    } catch {
+      devLog('📱 Push token: backend endpoint not available yet (non-blocking)');
+    }
   } catch (e) {
     devLog('📱 Push token registration skipped (emulator or no project ID)');
   }
@@ -325,7 +352,7 @@ const AppNavigator = () => {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
         <OfflineBanner />
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 

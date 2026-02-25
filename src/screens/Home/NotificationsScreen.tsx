@@ -8,9 +8,9 @@ import {
   TouchableOpacity,
   FlatList,
   StatusBar,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { NotificationRowSkeleton } from '@components/ui/SkeletonLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
@@ -142,7 +142,11 @@ const NotificationsScreen = () => {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator size="large" color="#FF007B" style={{ marginTop: 60 }} />
+        <View>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <NotificationRowSkeleton key={i} />
+          ))}
+        </View>
       ) : notifications.length === 0 ? (
         <View style={styles.emptyState}>
           <Icon name="notifications-off-outline" size={48} color="#333" />

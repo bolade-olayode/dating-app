@@ -12,9 +12,9 @@ import {
   Animated,
   Modal,
   Dimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { ConversationRowSkeleton } from '@components/ui/SkeletonLoader';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -300,7 +300,11 @@ const ChatsScreen: React.FC = () => {
 
       {/* Conversation List */}
       {isLoading ? (
-        <ActivityIndicator size="large" color="#FF007B" style={{ marginTop: 40 }} />
+        <View>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <ConversationRowSkeleton key={i} />
+          ))}
+        </View>
       ) : allConversations.length === 0 ? (
         <View style={styles.emptyState}>
           <Icon name="chatbubbles-outline" size={52} color="#333" />
