@@ -1,6 +1,6 @@
 // src/screens/Home/DiscoverySettingsScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,22 +12,78 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
+import { STORAGE_KEYS } from '@utils/constant';
+import { devLog } from '@config/environment';
+
+// ─── Default settings ────────────────────────────────────────
+
+export interface DiscoverySettings {
+  maxDistance:    number;   // km
+  ageMin:         number;
+  ageMax:         number;
+  showMe:         'Men' | 'Women' | 'Everyone';
+  globalMode:     boolean;
+  recentlyActive: boolean;
+  verifiedOnly:   boolean;
+}
+
+export const DEFAULT_DISCOVERY_SETTINGS: DiscoverySettings = {
+  maxDistance:    50,
+  ageMin:         18,
+  ageMax:         45,
+  showMe:         'Everyone',
+  globalMode:     false,
+  recentlyActive: true,
+  verifiedOnly:   false,
+};
+
+// ─── Helpers ─────────────────────────────────────────────────
+
+export const loadDiscoverySettings = async (): Promise<DiscoverySettings> => {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.DISCOVERY_SETTINGS);
+    if (raw) return { ...DEFAULT_DISCOVERY_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_DISCOVERY_SETTINGS;
+};
+
+const saveDiscoverySettings = async (settings: DiscoverySettings) => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.DISCOVERY_SETTINGS, JSON.stringify(settings));
+    devLog('⚙️ Discovery settings saved:', settings);
+  } catch {}
+};
+
+// ─── Component ───────────────────────────────────────────────
 
 const DiscoverySettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
-  // Discovery preferences state
-  const [maxDistance, setMaxDistance] = useState(50);
-  const [ageMin, setAgeMin] = useState(18);
-  const [ageMax, setAgeMax] = useState(45);
-  const [showMe, setShowMe] = useState('Everyone');
-  const [globalMode, setGlobalMode] = useState(false);
-  const [recentlyActive, setRecentlyActive] = useState(true);
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [settings, setSettings] = useState<DiscoverySettings>(DEFAULT_DISCOVERY_SETTINGS);
+
+  // Load persisted settings on mount
+  useEffect(() => {
+    loadDiscoverySettings().then(setSettings);
+  }, []);
+
+  // Save whenever settings change
+  const update = useCallback(<K extends keyof DiscoverySettings>(
+    key: K,
+    value: DiscoverySettings[K],
+  ) => {
+    setSettings(prev => {
+      const next = { ...prev, [key]: value };
+      saveDiscoverySettings(next);
+      return next;
+    });
+  }, []);
+
+  // ─── Render helpers ────────────────────────────────────────
 
   const renderSettingRow = (
     icon: string,
@@ -79,6 +135,65 @@ const DiscoverySettingsScreen: React.FC = () => {
     </View>
   );
 
+  // ─── Distance stepper ──────────────────────────────────────
+
+  const renderDistanceStepper = () => (
+    <View style={styles.settingRow}>
+      <View style={styles.settingLeft}>
+        <View style={styles.settingIconContainer}>
+          <Icon name="location-outline" size={18} color="#FF007B" />
+        </View>
+        <Text style={styles.settingTitle}>Maximum distance</Text>
+      </View>
+      <View style={styles.stepper}>
+        <TouchableOpacity
+          style={styles.stepBtn}
+          onPress={() => update('maxDistance', Math.max(5, settings.maxDistance - 5))}
+          activeOpacity={0.7}
+        >
+          <Icon name="remove" size={16} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.stepValue}>{settings.maxDistance} km</Text>
+        <TouchableOpacity
+          style={styles.stepBtn}
+          onPress={() => update('maxDistance', Math.min(300, settings.maxDistance + 5))}
+          activeOpacity={0.7}
+        >
+          <Icon name="add" size={16} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // ─── Age stepper ───────────────────────────────────────────
+
+  const renderAgeStepper = (
+    label: string,
+    value: number,
+    onDec: () => void,
+    onInc: () => void,
+  ) => (
+    <View style={styles.settingRow}>
+      <View style={styles.settingLeft}>
+        <View style={styles.settingIconContainer}>
+          <Icon name="calendar-outline" size={18} color="#FF007B" />
+        </View>
+        <Text style={styles.settingTitle}>{label}</Text>
+      </View>
+      <View style={styles.stepper}>
+        <TouchableOpacity style={styles.stepBtn} onPress={onDec} activeOpacity={0.7}>
+          <Icon name="remove" size={16} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.stepValue}>{value}</Text>
+        <TouchableOpacity style={styles.stepBtn} onPress={onInc} activeOpacity={0.7}>
+          <Icon name="add" size={16} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // ─── JSX ──────────────────────────────────────────────────
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -105,36 +220,46 @@ const DiscoverySettingsScreen: React.FC = () => {
         {/* Distance */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location</Text>
-          {renderSettingRow('location-outline', 'Maximum distance', `${maxDistance} km`)}
+          {renderDistanceStepper()}
           {renderToggleRow(
             'globe-outline',
             'Global mode',
             'See people from around the world',
-            globalMode,
-            setGlobalMode,
+            settings.globalMode,
+            (v) => update('globalMode', v),
           )}
         </View>
 
         {/* Age Range */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Age Range</Text>
-          {renderSettingRow('calendar-outline', 'Minimum age', `${ageMin}`)}
-          {renderSettingRow('calendar-outline', 'Maximum age', `${ageMax}`)}
+          {renderAgeStepper(
+            'Minimum age',
+            settings.ageMin,
+            () => update('ageMin', Math.max(18, settings.ageMin - 1)),
+            () => update('ageMin', Math.min(settings.ageMax - 1, settings.ageMin + 1)),
+          )}
+          {renderAgeStepper(
+            'Maximum age',
+            settings.ageMax,
+            () => update('ageMax', Math.max(settings.ageMin + 1, settings.ageMax - 1)),
+            () => update('ageMax', Math.min(80, settings.ageMax + 1)),
+          )}
         </View>
 
         {/* Show Me */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Show Me</Text>
-          {['Men', 'Women', 'Everyone'].map(option => (
+          {(['Men', 'Women', 'Everyone'] as const).map(option => (
             <TouchableOpacity
               key={option}
               style={styles.radioRow}
               activeOpacity={0.7}
-              onPress={() => setShowMe(option)}
+              onPress={() => update('showMe', option)}
             >
               <Text style={styles.radioLabel}>{option}</Text>
-              <View style={[styles.radioOuter, showMe === option && styles.radioOuterActive]}>
-                {showMe === option && <View style={styles.radioInner} />}
+              <View style={[styles.radioOuter, settings.showMe === option && styles.radioOuterActive]}>
+                {settings.showMe === option && <View style={styles.radioInner} />}
               </View>
             </TouchableOpacity>
           ))}
@@ -147,21 +272,26 @@ const DiscoverySettingsScreen: React.FC = () => {
             'time-outline',
             'Recently active',
             'Only show people active in the last 7 days',
-            recentlyActive,
-            setRecentlyActive,
+            settings.recentlyActive,
+            (v) => update('recentlyActive', v),
           )}
           {renderToggleRow(
             'checkmark-circle-outline',
             'Verified profiles only',
             'Only show verified users',
-            verifiedOnly,
-            setVerifiedOnly,
+            settings.verifiedOnly,
+            (v) => update('verifiedOnly', v),
           )}
         </View>
+
+        {/* Save hint */}
+        <Text style={styles.saveHint}>Settings are saved automatically.</Text>
       </ScrollView>
     </View>
   );
 };
+
+// ─── Styles ──────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -190,7 +320,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FFF',
   },
-  // Sections
   section: {
     marginBottom: 28,
   },
@@ -200,7 +329,6 @@ const styles = StyleSheet.create({
     color: '#FF007B',
     marginBottom: 14,
   },
-  // Setting Rows
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -244,6 +372,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888',
   },
+  // Stepper
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  stepBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepValue: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 14,
+    color: '#FFF',
+    minWidth: 52,
+    textAlign: 'center',
+  },
   // Radio
   radioRow: {
     flexDirection: 'row',
@@ -275,6 +424,13 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: '#FF007B',
+  },
+  saveHint: {
+    fontFamily: FONTS.Regular,
+    fontSize: 12,
+    color: '#444',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
 

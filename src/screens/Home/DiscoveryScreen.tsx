@@ -14,7 +14,7 @@
  * - Swipe gestures (TODO: Add later)
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ import Flare from '@components/ui/Flare';
 import CoinBalance from '@components/ui/CoinBalance';
 import { useUser } from '@context/UserContext';
 import { matchingService } from '@services/api/matchingService';
+import { loadDiscoverySettings } from '@screens/Home/DiscoverySettingsScreen';
 import { devLog } from '@config/environment';
 import * as Location from 'expo-location';
 
@@ -347,7 +348,12 @@ const DiscoveryScreen = () => {
         devLog('📍 Location error — skipping location update');
       }
 
-      const result = await matchingService.discoverProfiles();
+      // Load saved settings and pass maxDistance (km → metres for the API)
+      const discoverySettings = await loadDiscoverySettings();
+      const maxDistanceMetres = discoverySettings.globalMode
+        ? undefined  // no cap when global mode is on
+        : discoverySettings.maxDistance * 1000;
+      const result = await matchingService.discoverProfiles(maxDistanceMetres, 20);
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         const apiProfiles = result.data.map((p: any, idx: number) => ({
           id: p._id || p.id,

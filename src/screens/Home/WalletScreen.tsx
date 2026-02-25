@@ -175,6 +175,11 @@ const WalletScreen: React.FC = () => {
               key={pkg.id}
               style={styles.packageRow}
               activeOpacity={0.7}
+              onPress={
+                (pkg as any).actionKey === 'see_likes' || pkg.id === 1
+                  ? () => navigation.navigate('LikesYou')
+                  : undefined
+              }
             >
               <View style={styles.packageIconContainer}>
                 <Icon name={pkg.icon} size={20} color="#FF007B" />

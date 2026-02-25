@@ -1,6 +1,6 @@
 // src/screens/Home/ProfilePerformanceScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,29 +9,60 @@ import {
   ScrollView,
   StatusBar,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
+import { matchingService } from '@services/api/matchingService';
+import { devLog } from '@config/environment';
 
 const ProfilePerformanceScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { coinBalance } = useUser();
 
   const [smartPhotos, setSmartPhotos] = useState(false);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [stats, setStats] = useState({
+    profileViews: 0,
+    likes: 0,
+    superLikes: 0,
+    matchRate: '—',
+  });
 
-  // Mock stats
-  const stats = {
-    profileViews: 142,
-    likes: 38,
-    superLikes: 5,
-    matchRate: '27%',
-  };
+  useEffect(() => {
+    if (!isFocused) return;
+
+    const fetchStats = async () => {
+      setIsLoadingStats(true);
+      const result = await matchingService.getStats();
+      if (result.success && result.data) {
+        const d = result.data;
+        devLog('📊 Stats:', d);
+        const totalSwipes = (d.totalLikes ?? d.likes ?? 0) + (d.totalPasses ?? d.passes ?? 0);
+        const matchCount  = d.matches ?? d.totalMatches ?? 0;
+        const likeCount   = d.totalLikes ?? d.likes ?? 0;
+        const rate = totalSwipes > 0
+          ? `${Math.round((matchCount / Math.max(likeCount, 1)) * 100)}%`
+          : '—';
+        setStats({
+          profileViews: d.profileViews ?? d.views ?? 0,
+          likes:        likeCount,
+          superLikes:   d.superLikes ?? d.totalSuperLikes ?? 0,
+          matchRate:    rate,
+        });
+      }
+      setIsLoadingStats(false);
+    };
+
+    fetchStats();
+  }, [isFocused]);
 
   const BOOST_OPTIONS = [
     {
@@ -77,7 +108,10 @@ const ProfilePerformanceScreen: React.FC = () => {
             </View>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile Performance</Text>
-          <View style={{ width: 36 }} />
+          {isLoadingStats
+            ? <ActivityIndicator size="small" color="#FF007B" style={{ width: 36 }} />
+            : <View style={{ width: 36 }} />
+          }
         </View>
 
         {/* Stats Grid */}

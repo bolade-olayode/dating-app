@@ -271,6 +271,7 @@ export const STORAGE_KEYS = {
   ONBOARDING_COMPLETE: '@opueh_onboarding_complete',
   DEVICE_TOKEN: '@opueh_device_token',
   HAS_SEEN_INTRO: '@opueh_has_seen_intro',
+  DISCOVERY_SETTINGS: '@opueh_discovery_settings',
 } as const;
 
 export default {
