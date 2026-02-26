@@ -109,13 +109,15 @@ const WalletScreen: React.FC = () => {
         walletService.getActions(),
       ]);
 
-      // Sync real balance into context
+      // Sync real balance into context.
+      // Use Math.max so a locally-credited balance (e.g. from a fallback purchase)
+      // is never silently overwritten by a stale backend value.
       if (balanceResult.success && balanceResult.data != null) {
         const balance = typeof balanceResult.data === 'number'
           ? balanceResult.data
           : balanceResult.data?.balance ?? balanceResult.data?.coins ?? 0;
         devLog('💰 Wallet: balance =', balance);
-        setCoinBalance(balance);
+        setCoinBalance(Math.max(coinBalance, balance));
       }
 
       // Replace actions list with real data
@@ -149,10 +151,16 @@ const WalletScreen: React.FC = () => {
 
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <View style={styles.backButton}>
+            <Icon name="chevron-back" size={22} color="#FFF" />
+          </View>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Wallet</Text>
-        {isLoadingBalance && (
-          <ActivityIndicator size="small" color="#FF007B" />
-        )}
+        {isLoadingBalance
+          ? <ActivityIndicator size="small" color="#FF007B" style={{ width: 36 }} />
+          : <View style={{ width: 36 }} />
+        }
       </View>
 
       <ScrollView
@@ -236,12 +244,23 @@ const styles = StyleSheet.create({
   },
   // Header
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginBottom: 24,
   },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontFamily: FONTS.Bold,
-    fontSize: 28,
+    fontSize: 22,
     color: '#FFF',
   },
   scrollContent: {

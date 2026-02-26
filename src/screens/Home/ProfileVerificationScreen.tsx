@@ -62,14 +62,16 @@ const STATUS_CONFIG: Record<
 // ─── Profile completion (mirrors MeScreen logic exactly) ─────
 
 const calcCompletion = (profile: any): { percentage: number; incomplete: string[] } => {
+  // profile here is the UserContext profile — fields are flat (height, weight, education)
+  // NOT nested under basics (that shape only exists in ProfileViewScreen's mock)
   const checks = [
     { label: 'Add at least 2 photos',       weight: 25, done: (profile?.photos?.length || 0) >= 2 },
     { label: 'Write your bio',               weight: 20, done: !!profile?.bio?.trim() },
     { label: 'Select at least 5 interests',  weight: 15, done: (profile?.interests?.length || 0) >= 5 },
     { label: 'Answer at least 2 prompts',    weight: 15, done: (profile?.prompts?.length || 0) >= 2 },
     { label: 'Set your relationship goal',   weight: 10, done: !!profile?.relationshipGoal },
-    { label: 'Add height & weight',          weight: 10, done: !!profile?.basics?.height && !!profile?.basics?.weight },
-    { label: 'Set your education level',     weight: 5,  done: !!profile?.basics?.education },
+    { label: 'Add height & weight',          weight: 10, done: !!profile?.height && !!profile?.weight },
+    { label: 'Set your education level',     weight: 5,  done: !!profile?.education },
   ];
   const percentage = checks.reduce((sum, c) => sum + (c.done ? c.weight : 0), 0);
   const incomplete = checks.filter(c => !c.done).map(c => c.label);
