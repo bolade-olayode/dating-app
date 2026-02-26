@@ -13,10 +13,26 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
+import * as WebBrowser from 'expo-web-browser';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
 import { authService } from '@services/api/authService';
+
+// Legal URLs — live website, auto-reflects any content changes
+const LEGAL_URLS = {
+  privacy: 'https://www.meetpie.dating/privacy',
+  terms: 'https://www.meetpie.dating/terms',
+  communityGuidelines: 'https://www.meetpie.dating/community-guidelines',
+} as const;
+
+const openLegalPage = (url: string) => {
+  WebBrowser.openBrowserAsync(url, {
+    toolbarColor: '#000000',
+    controlsColor: '#FF007B',
+    showTitle: true,
+  });
+};
 
 const AccountActionsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -173,13 +189,19 @@ const AccountActionsScreen: React.FC = () => {
             'document-text-outline',
             'Terms of Service',
             'Read our terms and conditions',
-            () => Alert.alert('Terms', 'Terms of service coming soon.'),
+            () => openLegalPage(LEGAL_URLS.terms),
           )}
           {renderActionRow(
             'shield-outline',
             'Privacy Policy',
             'How we handle your data',
-            () => Alert.alert('Privacy', 'Privacy policy coming soon.'),
+            () => openLegalPage(LEGAL_URLS.privacy),
+          )}
+          {renderActionRow(
+            'people-outline',
+            'Community Guidelines',
+            'Our standards for respectful interaction',
+            () => openLegalPage(LEGAL_URLS.communityGuidelines),
           )}
         </View>
 

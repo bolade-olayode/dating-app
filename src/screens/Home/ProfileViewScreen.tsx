@@ -1,15 +1,17 @@
 // src/screens/Home/ProfileViewScreen.tsx
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
+  FlatList,
   StatusBar,
+  Dimensions,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +19,9 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 40; // 20px padding each side
 
 
 // Mock profile (same as MeScreen, shared until context has real data)
@@ -240,43 +245,77 @@ const ProfileViewScreen: React.FC = () => {
     </View>
   );
 
-  // ─── Media Tab ─────────────────────────────────────────
+  // ─── Media Tab — horizontal photo carousel ─────────────
+
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   const renderMedia = () => {
-    const renderSlot = (index: number) => {
-      const raw = (profile.photos || [])[index];
-      const src = raw
-        ? (typeof raw === 'string' ? { uri: raw } : raw)
-        : null;
+    const photos = (profile.photos || []).filter(Boolean);
 
+    if (photos.length === 0) {
       return (
-        <View key={index} style={styles.slotWrapper}>
-          <LinearGradient
-            colors={['#FF007B', '#00B4D8']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.slotGradientBorder}
-          >
-            <View style={styles.slot}>
-              {src && <Image source={src} style={styles.slotImage} />}
-            </View>
-          </LinearGradient>
+        <View style={styles.tabContent}>
+          <View style={styles.emptyPhotos}>
+            <Icon name="images-outline" size={40} color="#444" />
+            <Text style={styles.emptyPhotosText}>No photos yet</Text>
+          </View>
         </View>
       );
-    };
+    }
 
     return (
       <View style={styles.tabContent}>
-        <View style={styles.mediaGrid}>
-          <View style={styles.mediaRow}>
-            {renderSlot(0)}
-            {renderSlot(1)}
+        <FlatList
+          data={photos}
+          keyExtractor={(_, i) => String(i)}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={CAROUSEL_ITEM_WIDTH + 12}
+          decelerationRate="fast"
+          onMomentumScrollEnd={(e) => {
+            const idx = Math.round(
+              e.nativeEvent.contentOffset.x / (CAROUSEL_ITEM_WIDTH + 12),
+            );
+            setCarouselIndex(idx);
+          }}
+          renderItem={({ item }) => {
+            const src = typeof item === 'string' ? { uri: item } : item;
+            return (
+              <LinearGradient
+                colors={['#FF007B', '#00B4D8']}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.carouselGradientBorder}
+              >
+                <View style={styles.carouselSlot}>
+                  <Image
+                    source={src}
+                    style={styles.carouselImage}
+                    contentFit="cover"
+                    transition={200}
+                  />
+                </View>
+              </LinearGradient>
+            );
+          }}
+          contentContainerStyle={{ gap: 12 }}
+          style={{ marginHorizontal: -20 }}
+          contentInset={{ left: 20, right: 20 }}
+          contentOffset={{ x: -20, y: 0 }}
+        />
+
+        {/* Dot indicators */}
+        {photos.length > 1 && (
+          <View style={styles.dotRow}>
+            {photos.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.dot, i === carouselIndex && styles.dotActive]}
+              />
+            ))}
           </View>
-          <View style={styles.mediaRow}>
-            {renderSlot(2)}
-            {renderSlot(3)}
-          </View>
-        </View>
+        )}
       </View>
     );
   };
@@ -309,7 +348,12 @@ const ProfileViewScreen: React.FC = () => {
         {/* Profile Photo + Info */}
         <View style={styles.profileSection}>
           <View style={styles.photoContainer}>
-            <Image source={profile.photo} style={styles.profilePhoto} />
+            <Image
+              source={typeof profile.photo === 'string' ? { uri: profile.photo } : profile.photo}
+              style={styles.profilePhoto}
+              contentFit="cover"
+              transition={200}
+            />
             <View style={styles.editPhotoIcon}>
               <Icon name="pencil" size={12} color="#FFF" />
             </View>
@@ -574,35 +618,54 @@ const styles = StyleSheet.create({
     color: '#DDD',
     lineHeight: 20,
   },
-  // Media Grid (2x2 slots — matches onboarding PhotoUploadScreen)
-  mediaGrid: {
-    gap: 12,
-  },
-  mediaRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  slotWrapper: {
-    flex: 1,
-    aspectRatio: 0.8,
-  },
-  slotGradientBorder: {
+  // Photo carousel
+  carouselGradientBorder: {
+    width: CAROUSEL_ITEM_WIDTH,
+    aspectRatio: 0.85,
     padding: 1.5,
     borderRadius: 20,
-    height: '100%',
   },
-  slot: {
+  carouselSlot: {
     flex: 1,
     borderRadius: 18.5,
     overflow: 'hidden',
     backgroundColor: '#0D0D0D',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  slotImage: {
+  carouselImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+  },
+  dotRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 14,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  dotActive: {
+    backgroundColor: '#FF007B',
+    width: 18,
+    borderRadius: 3,
+  },
+  emptyPhotos: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  emptyPhotosText: {
+    fontFamily: FONTS.Regular,
+    fontSize: 14,
+    color: '#555',
   },
   // Bottom Button
   bottomButtonContainer: {
