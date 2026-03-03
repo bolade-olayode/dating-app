@@ -14,15 +14,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRoute, RouteProp } from '@react-navigation/native';
-import axios from 'axios';
+// [PHONE_DISABLED] import axios from 'axios';
 import * as Yup from 'yup';
 import Icons, { IconsType } from '@components/ui/Icons';
 import { FONTS } from '@config/fonts';
 import { InputField } from '@components/ui/Inputs';
 import { PrimaryButton } from '@components/ui/Buttons';
 import Flare from '@components/ui/Flare';
-import CountryPickerModal from '@components/common/CountryPicker/CountryPickerModal';
-import { Country, COUNTRY_CODES } from '../../data/CountryCodes';
+// [PHONE_DISABLED] import CountryPickerModal from '@components/common/CountryPicker/CountryPickerModal';
+// [PHONE_DISABLED] import { Country, COUNTRY_CODES } from '../../data/CountryCodes';
 import { authService } from '@services/api/authService';
 import { RootStackParamList } from '@navigation/AppNavigator';
 
@@ -31,41 +31,35 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
   const route = useRoute<RouteProp<RootStackParamList, 'Register'>>();
   const mode = route.params?.mode || 'login';
 
-  // Login mode: tab-based (phone OR email)
-  const [activeTab, setActiveTab] = useState<'phone' | 'email'>('phone');
+  // [PHONE_DISABLED] Login tab state removed — email only
+  // const [activeTab, setActiveTab] = useState<'phone' | 'email'>('phone');
   const [value, setValue] = useState('');
 
-  // Signup mode: both fields
-  const [phone, setPhone] = useState('');
+  // Signup mode: email only
+  // [PHONE_DISABLED] const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
 
-  const [country, setCountry] = useState<Country>(COUNTRY_CODES[0]);
+  // [PHONE_DISABLED] const [country, setCountry] = useState<Country>(COUNTRY_CODES[0]);
   const [error, setError] = useState<string | null>(null);
-  const [isCountryPickerVisible, setIsCountryPickerVisible] = useState(false);
+  // [PHONE_DISABLED] const [isCountryPickerVisible, setIsCountryPickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const detectCountry = async () => {
-      try {
-        const response = await axios.get('https://ipwho.is/');
-        const countryCode = response.data.country_code;
-        const matchedCountry = COUNTRY_CODES.find((c) => c.code === countryCode);
-        if (matchedCountry) {
-          setCountry(matchedCountry);
-        }
-      } catch (err) {
-        console.log('Error detecting country:', err);
-      }
-    };
+  // [PHONE_DISABLED] Country detection removed (no phone support)
+  // useEffect(() => {
+  //   const detectCountry = async () => {
+  //     try {
+  //       const response = await axios.get('https://ipwho.is/');
+  //       const countryCode = response.data.country_code;
+  //       const matchedCountry = COUNTRY_CODES.find((c) => c.code === countryCode);
+  //       if (matchedCountry) { setCountry(matchedCountry); }
+  //     } catch (err) { console.log('Error detecting country:', err); }
+  //   };
+  //   detectCountry();
+  // }, []);
 
-    detectCountry();
-  }, []);
-
-  const phoneSchema = Yup.object().shape({
-    phone: Yup.string()
-      .required('Phone number is required')
-      .min(7, 'Invalid phone number'),
-  });
+  // [PHONE_DISABLED] const phoneSchema = Yup.object().shape({
+  //   phone: Yup.string().required('Phone number is required').min(7, 'Invalid phone number'),
+  // });
 
   const emailSchema = Yup.object().shape({
     email: Yup.string()
@@ -78,16 +72,16 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
 
     try {
       if (mode === 'signup') {
-        // Signup: validate both phone and email
-        await phoneSchema.validate({ phone });
+        // [PHONE_DISABLED] Signup: email only (phone removed)
+        // await phoneSchema.validate({ phone });
         await emailSchema.validate({ email });
 
-        const fullPhone = `${country.dial_code}${phone}`;
+        // [PHONE_DISABLED] const fullPhone = `${country.dial_code}${phone}`;
 
         setLoading(true);
-        const result = await authService.sendOTP(fullPhone, 'signup', {
+        const result = await authService.sendOTP(email, 'signup', {
           email,
-          phone: fullPhone,
+          // [PHONE_DISABLED] phone: fullPhone,
         });
         setLoading(false);
 
@@ -97,49 +91,29 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
         }
 
         navigation.navigate('Verification', {
-          phoneNumber: fullPhone,
+          // [PHONE_DISABLED] phoneNumber: fullPhone,
           email,
           expiresAt: result.expiresAt,
           mode: 'signup',
         });
       } else {
-        // Login: validate active tab field
-        if (activeTab === 'phone') {
-          await phoneSchema.validate({ phone: value });
-          const fullPhone = `${country.dial_code}${value}`;
+        // [PHONE_DISABLED] Login: email only (phone tab removed)
+        await emailSchema.validate({ email: value });
 
-          setLoading(true);
-          const result = await authService.sendOTP(fullPhone, 'login');
-          setLoading(false);
+        setLoading(true);
+        const result = await authService.sendOTP(value, 'login');
+        setLoading(false);
 
-          if (!result.success) {
-            Alert.alert('Error', result.message);
-            return;
-          }
-
-          navigation.navigate('Verification', {
-            phoneNumber: fullPhone,
-            expiresAt: result.expiresAt,
-            mode: 'login',
-          });
-        } else {
-          await emailSchema.validate({ email: value });
-
-          setLoading(true);
-          const result = await authService.sendOTP(value, 'login');
-          setLoading(false);
-
-          if (!result.success) {
-            Alert.alert('Error', result.message);
-            return;
-          }
-
-          navigation.navigate('Verification', {
-            email: value,
-            expiresAt: result.expiresAt,
-            mode: 'login',
-          });
+        if (!result.success) {
+          Alert.alert('Error', result.message);
+          return;
         }
+
+        navigation.navigate('Verification', {
+          email: value,
+          expiresAt: result.expiresAt,
+          mode: 'login',
+        });
       }
     } catch (err: any) {
       setLoading(false);
@@ -151,6 +125,7 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
 
   const renderSignupFields = () => (
     <View style={styles.inputContainer}>
+      {/* [PHONE_DISABLED] Phone Number field removed
       <Text style={styles.fieldLabel}>Phone Number</Text>
       <InputField
         placeholder="08123456789"
@@ -158,14 +133,11 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
         countryCode={`${country.flag} ${country.dial_code}`}
         onCountryPress={() => setIsCountryPickerVisible(true)}
         value={phone}
-        onChangeText={(text: string) => {
-          setPhone(text);
-          if (error) setError(null);
-        }}
+        onChangeText={(text: string) => { setPhone(text); if (error) setError(null); }}
         autoFocus
       />
-
       <View style={{ height: 20 }} />
+      */}
 
       <Text style={styles.fieldLabel}>Email Address</Text>
       <InputField
@@ -176,6 +148,7 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
           setEmail(text);
           if (error) setError(null);
         }}
+        autoFocus
       />
 
       {error && <Text style={styles.errorText}>{error}</Text>}
@@ -186,58 +159,17 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
     </View>
   );
 
-  // ─── Login Mode: Tabbed phone OR email ─────────────────────
+  // ─── Login Mode: Email only ─────────────────────────────────
+  // [PHONE_DISABLED] Phone tab removed
 
   const renderLoginFields = () => (
     <>
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => {
-            setActiveTab('phone');
-            setValue('');
-            setError(null);
-          }}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'phone' && styles.activeTabText,
-            ]}
-          >
-            Phone Number
-          </Text>
-          {activeTab === 'phone' && <View style={styles.activeIndicator} />}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => {
-            setActiveTab('email');
-            setValue('');
-            setError(null);
-          }}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'email' && styles.activeTabText,
-            ]}
-          >
-            Email
-          </Text>
-          {activeTab === 'email' && <View style={styles.activeIndicator} />}
-        </TouchableOpacity>
-      </View>
+      {/* [PHONE_DISABLED] Phone/Email tab bar removed */}
 
       <View style={styles.inputContainer}>
         <InputField
-          key={activeTab}
-          placeholder={activeTab === 'phone' ? '08123456789' : 'Enter your email'}
-          keyboardType={activeTab === 'phone' ? 'phone-pad' : 'email-address'}
-          countryCode={activeTab === 'phone' ? `${country.flag} ${country.dial_code}` : undefined}
-          onCountryPress={() => setIsCountryPickerVisible(true)}
+          placeholder="Enter your email"
+          keyboardType="email-address"
           value={value}
           onChangeText={(text: string) => {
             setValue(text);
@@ -248,9 +180,7 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
         />
 
         <Text style={styles.helperText}>
-          {activeTab === 'phone'
-            ? 'Your phone number will be used to receive a verification code, SMS fees may apply. Learn more.'
-            : 'Your email address will be used to receive a verification code.'}
+          Your email address will be used to receive a verification code.
         </Text>
       </View>
     </>
@@ -304,12 +234,13 @@ const RegisterScreen: React.FC<any> = ({ navigation }) => {
         </View>
       </TouchableWithoutFeedback>
 
-      {/* Country Picker Modal */}
+      {/* [PHONE_DISABLED] Country Picker Modal removed
       <CountryPickerModal
         visible={isCountryPickerVisible}
         onClose={() => setIsCountryPickerVisible(false)}
         onSelect={(selectedCountry) => setCountry(selectedCountry)}
       />
+      */}
     </KeyboardAvoidingView>
   );
 };

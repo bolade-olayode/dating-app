@@ -2,6 +2,7 @@
 
 import React from 'react';
 import {
+
   View,
   Text,
   StyleSheet,
@@ -210,9 +211,8 @@ const AccountActionsScreen: React.FC = () => {
             true,
           )}
         </View>
-
         {/* App Version */}
-        <Text style={styles.versionText}>Opueh v0.2.0</Text>
+        <Text style={styles.versionText}>MeetPie Dating v0.2.0</Text>
       </ScrollView>
     </View>
   );

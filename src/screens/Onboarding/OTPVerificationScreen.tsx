@@ -129,7 +129,7 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
 
     try {
       const verifyContact = (mode === 'signup' && email) ? email : contact;
-      const extra = mode === 'signup' ? { email, phone: phoneNumber } : undefined;
+      const extra = mode === 'signup' ? { email /*, [PHONE_DISABLED] phone: phoneNumber */ } : undefined;
       devLog('Verifying OTP:', otpCode, 'for:', verifyContact, 'mode:', mode, 'extra:', extra);
       const result = await authService.verifyOTP(otpCode, verifyContact, mode, extra);
 
@@ -166,7 +166,12 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
 
                 // If this was a signup attempt but the account is already complete
                 // (has photos = finished onboarding), go straight to HomeTabs.
-                const isComplete = (meResult.profile.photos?.length || 0) > 0;
+                // Distinguish brand-new vs existing account:
+                // A fresh account has no name and no photos yet.
+                // An existing account always has a name (set during onboarding step 1).
+                const profileName = meResult.profile.name || meResult.profile.fullname || meResult.profile.username || '';
+                const hasPhotos = (meResult.profile.photos?.length || 0) > 0;
+                const isComplete = hasPhotos || !!profileName;
                 if (mode === 'signup' && !isComplete) {
                   devLog('New account — proceeding to onboarding');
                   navigation.replace('NameInput');
@@ -176,7 +181,9 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
             } catch (e) {
               devLog('getMe failed after verify:', e);
               if (mode === 'signup') {
-                navigation.replace('NameInput');
+                // Can't confirm profile state — go to HomeTabs rather than risk
+                // re-onboarding an existing user whose getMe call just failed.
+                navigation.reset({ index: 0, routes: [{ name: 'HomeTabs' }] });
                 return;
               }
             }

@@ -65,7 +65,7 @@ const LoginScreen: React.FC<any> = ({ navigation }) => {
           <GoogleButton onPress={() => {}} />
           <View style={{ height: 12 }} />
           <PrimaryButton
-            text="Use Phone or Email"
+            text="Use Email"
             variant={1}
             onPress={() => navigation.navigate('Register', { mode: 'login' })}
           />
