@@ -6,6 +6,7 @@ import {
   StatusBar,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@navigation/AppNavigator';
 import { PrimaryButton } from '@components/ui/Buttons';
 import { FONTS } from '@config/fonts';
+import * as WebBrowser from 'expo-web-browser';
 
 const { height } = Dimensions.get('window');
 
@@ -67,13 +69,13 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.buttonContainer}>
             <PrimaryButton
-              text="Get started"
+              text="Create account"
               variant={1}
               onPress={handleGetStarted}
             />
             <View style={{ height: 16 }} />
             <PrimaryButton
-              text="Already have an account"
+              text="Log in"
               variant={2}
               onPress={handleLogin}
             />
@@ -82,8 +84,13 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.footer}>
             <Text style={styles.footerText}>
               By signing up, you agree to our{' '}
-              <Text style={styles.link}>terms</Text>. See how we use your data in
-              our <Text style={styles.link}>Privacy Policy</Text>
+              <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync('https://www.meetpie.dating/terms', { toolbarColor: '#000000', controlsColor: '#FF007B' })}>
+                <Text style={styles.link}>Terms of Service</Text>
+              </TouchableOpacity>
+              {'. See how we use your data in our '}
+              <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync('https://www.meetpie.dating/privacy', { toolbarColor: '#000000', controlsColor: '#FF007B' })}>
+                <Text style={styles.link}>Privacy Policy</Text>
+              </TouchableOpacity>
             </Text>
           </View>
         </View>

@@ -9,7 +9,10 @@ import {
   ScrollView,
   StatusBar,
   ActivityIndicator,
+  Modal,
+  Alert,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -17,7 +20,7 @@ import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import CoinBalance from '@components/ui/CoinBalance';
 import { useUser } from '@context/UserContext';
-import { walletService, CoinAction } from '@services/api/walletService';
+import { walletService, CoinAction, WalletResponse } from '@services/api/walletService';
 import { devLog } from '@config/environment';
 
 // Premium features with coin costs (from revenue plan)
@@ -74,6 +77,40 @@ const FEATURES = [
   { id: 4, title: 'Verified Badge', description: 'Get verified — 250 coins (one-time)', icon: 'checkmark-circle-outline' },
 ];
 
+// Where each action takes the user after spending
+const ACTION_REDIRECT: Record<string | number, string> = {
+  // by actionKey
+  see_likes:        'LikesYou',
+  super_like:       'Discovery',
+  boost:            'ProfilePerformance',
+  priority_message: 'Chats',
+  visitors:         'ProfilePerformance',
+  spotlight:        'ProfilePerformance',
+  // by fallback id
+  1: 'LikesYou',
+  2: 'Discovery',
+  3: 'ProfilePerformance',
+  4: 'Chats',
+  5: 'ProfilePerformance',
+  6: 'ProfilePerformance',
+};
+
+// Detailed descriptions shown in the modal
+const ACTION_DETAIL: Record<string | number, string> = {
+  see_likes:        'Reveal everyone who has already liked your profile. Match instantly with a tap.',
+  super_like:       'Stand out from the crowd — send a Super Like and they\'ll know you\'re seriously interested.',
+  boost:            'Jump to the top of the discovery feed in your area for 30 minutes. Get up to 10× more profile views.',
+  priority_message: 'Your first message appears at the very top of their inbox — impossible to miss.',
+  visitors:         'See a full list of everyone who has visited your profile in the last 7 days.',
+  spotlight:        'Get featured prominently in the Explore tab for 1 hour, reaching users who are actively browsing.',
+  1: 'Reveal everyone who has already liked your profile. Match instantly with a tap.',
+  2: 'Stand out from the crowd — send a Super Like and they\'ll know you\'re seriously interested.',
+  3: 'Jump to the top of the discovery feed in your area for 30 minutes. Get up to 10× more profile views.',
+  4: 'Your first message appears at the very top of their inbox — impossible to miss.',
+  5: 'See a full list of everyone who has visited your profile in the last 7 days.',
+  6: 'Get featured prominently in the Explore tab for 1 hour, reaching users who are actively browsing.',
+};
+
 // Map backend actionKey → icon name (Ionicons)
 const ACTION_ICON: Record<string, string> = {
   super_like:       'heart-outline',
@@ -92,10 +129,12 @@ const WalletScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { coinBalance, setCoinBalance } = useUser();
+  const { coinBalance, setCoinBalance, addCoins } = useUser();
 
   const [apiActions, setApiActions] = useState<CoinAction[]>([]);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<typeof TOKEN_PACKAGES[0] | null>(null);
+  const [isSpending, setIsSpending] = useState(false);
 
   // Fetch real balance + actions whenever screen is focused
   useEffect(() => {
@@ -113,11 +152,12 @@ const WalletScreen: React.FC = () => {
       // Use Math.max so a locally-credited balance (e.g. from a fallback purchase)
       // is never silently overwritten by a stale backend value.
       if (balanceResult.success && balanceResult.data != null) {
-        const balance = typeof balanceResult.data === 'number'
+        const raw = typeof balanceResult.data === 'number'
           ? balanceResult.data
           : balanceResult.data?.balance ?? balanceResult.data?.coins ?? 0;
+        const balance = Number.isFinite(Number(raw)) ? Number(raw) : 0;
         devLog('💰 Wallet: balance =', balance);
-        setCoinBalance(Math.max(coinBalance, balance));
+        setCoinBalance(Math.max(Number.isFinite(coinBalance) ? coinBalance : 0, balance));
       }
 
       // Replace actions list with real data
@@ -131,6 +171,40 @@ const WalletScreen: React.FC = () => {
 
     fetchWalletData();
   }, [isFocused, setCoinBalance]);
+
+  const handleSpend = async () => {
+    if (!selectedAction || isSpending) return;
+    if (coinBalance < selectedAction.cost) {
+      Alert.alert('Not enough coins', 'You need more coins to use this feature.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Buy Coins', onPress: () => { setSelectedAction(null); navigation.navigate('TopUp'); } },
+      ]);
+      return;
+    }
+
+    setIsSpending(true);
+    const actionKey = (selectedAction as any).actionKey;
+    let spendResult: WalletResponse = { success: false, message: 'No action key' };
+    if (actionKey) {
+      spendResult = await walletService.spend(actionKey);
+    }
+
+    if (spendResult.success) {
+      const newBal = spendResult.data?.balance ?? spendResult.data?.newBalance;
+      setCoinBalance(typeof newBal === 'number' ? newBal : Math.max(0, coinBalance - selectedAction.cost));
+    } else {
+      // Deduct locally if backend action not configured
+      setCoinBalance(Math.max(0, coinBalance - selectedAction.cost));
+    }
+
+    const dest = ACTION_REDIRECT[actionKey] || ACTION_REDIRECT[selectedAction.id];
+    setIsSpending(false);
+    setSelectedAction(null);
+
+    if (dest) {
+      navigation.navigate(dest as any);
+    }
+  };
 
   // Merge API actions with local fallback — API wins if available
   const displayActions = apiActions.length > 0
@@ -183,11 +257,7 @@ const WalletScreen: React.FC = () => {
               key={pkg.id}
               style={styles.packageRow}
               activeOpacity={0.7}
-              onPress={
-                (pkg as any).actionKey === 'see_likes' || pkg.id === 1
-                  ? () => navigation.navigate('LikesYou')
-                  : undefined
-              }
+              onPress={() => setSelectedAction(pkg as any)}
             >
               <View style={styles.packageIconContainer}>
                 <Icon name={pkg.icon} size={20} color="#FF007B" />
@@ -232,7 +302,117 @@ const WalletScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Dev-only: quick coin top-up for testing */}
+        {__DEV__ && (
+          <View style={[styles.section, { marginTop: 32 }]}>
+            <Text style={[styles.sectionTitle, { color: '#FFD700', fontSize: 13 }]}>
+              DEV TOOLS
+            </Text>
+            {[100, 500, 1000].map((amount) => (
+              <TouchableOpacity
+                key={amount}
+                style={[styles.packageRow, { borderBottomColor: 'rgba(255,215,0,0.1)' }]}
+                activeOpacity={0.7}
+                onPress={() => addCoins(amount)}
+              >
+                <View style={[styles.packageIconContainer, { backgroundColor: 'rgba(255,215,0,0.08)' }]}>
+                  <Icon name="flash-outline" size={20} color="#FFD700" />
+                </View>
+                <View style={styles.packageInfo}>
+                  <Text style={[styles.packageName, { color: '#FFD700' }]}>Add {amount} coins</Text>
+                  <Text style={styles.packageDescription}>Dev shortcut — not in production</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
+
+      {/* Token Action Detail Modal */}
+      <Modal
+        visible={!!selectedAction}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedAction(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedAction(null)}
+        >
+          <TouchableOpacity
+            style={styles.modalSheet}
+            activeOpacity={1}
+            onPress={() => {}}
+          >
+            {selectedAction && (
+              <>
+                {/* Icon */}
+                <View style={styles.modalIconRing}>
+                  <Icon name={selectedAction.icon} size={32} color="#FF007B" />
+                </View>
+
+                {/* Name + detail */}
+                <Text style={styles.modalTitle}>{selectedAction.name}</Text>
+                <Text style={styles.modalDetail}>
+                  {ACTION_DETAIL[(selectedAction as any).actionKey] || ACTION_DETAIL[selectedAction.id] || selectedAction.description}
+                </Text>
+
+                {/* Balance vs cost */}
+                <View style={styles.modalCostRow}>
+                  <View style={styles.modalCostItem}>
+                    <Text style={styles.modalCostLabel}>Your balance</Text>
+                    <Text style={styles.modalCostValue}>{coinBalance.toLocaleString()}</Text>
+                  </View>
+                  <Icon name="arrow-forward" size={16} color="#444" />
+                  <View style={styles.modalCostItem}>
+                    <Text style={styles.modalCostLabel}>Cost</Text>
+                    <Text style={[styles.modalCostValue, { color: '#FF007B' }]}>
+                      {selectedAction.cost.toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Spend button */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handleSpend}
+                  disabled={isSpending}
+                  style={styles.modalSpendBtn}
+                >
+                  <LinearGradient
+                    colors={['#FF007B', '#FF4458']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.modalSpendGradient, isSpending && { opacity: 0.6 }]}
+                  >
+                    {isSpending
+                      ? <ActivityIndicator color="#FFF" />
+                      : <Text style={styles.modalSpendText}>
+                          Use {selectedAction.cost} coins
+                        </Text>
+                    }
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {coinBalance < selectedAction.cost && (
+                  <TouchableOpacity
+                    style={styles.modalBuyLink}
+                    onPress={() => { setSelectedAction(null); navigation.navigate('TopUp'); }}
+                  >
+                    <Text style={styles.modalBuyLinkText}>Not enough coins — Buy more</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity onPress={() => setSelectedAction(null)} style={{ marginTop: 12 }}>
+                  <Text style={styles.modalCancel}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -318,6 +498,95 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.SemiBold,
     fontSize: 14,
     color: '#FF007B',
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#111',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 48,
+    alignItems: 'center',
+  },
+  modalIconRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,0,123,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,0,123,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontFamily: FONTS.Bold,
+    fontSize: 22,
+    color: '#FFF',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalDetail: {
+    fontFamily: FONTS.Regular,
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  modalCostRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 28,
+  },
+  modalCostItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  modalCostLabel: {
+    fontFamily: FONTS.Regular,
+    fontSize: 12,
+    color: '#555',
+  },
+  modalCostValue: {
+    fontFamily: FONTS.Bold,
+    fontSize: 22,
+    color: '#FFF',
+  },
+  modalSpendBtn: {
+    width: '100%',
+  },
+  modalSpendGradient: {
+    paddingVertical: 18,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  modalSpendText: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 16,
+    color: '#FFF',
+  },
+  modalBuyLink: {
+    marginTop: 14,
+  },
+  modalBuyLinkText: {
+    fontFamily: FONTS.Regular,
+    fontSize: 13,
+    color: '#FF007B',
+    textDecorationLine: 'underline',
+  },
+  modalCancel: {
+    fontFamily: FONTS.Regular,
+    fontSize: 14,
+    color: '#555',
   },
 });
 

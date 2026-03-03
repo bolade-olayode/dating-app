@@ -156,18 +156,6 @@ const AccountActionsScreen: React.FC = () => {
             'Download a copy of your personal data',
             () => Alert.alert('Data Request', 'Your data download will be ready within 24 hours.'),
           )}
-          {renderActionRow(
-            'mail-outline',
-            'Change email',
-            'Update your email address',
-            () => Alert.alert('Change Email', 'Email change feature coming soon.'),
-          )}
-          {renderActionRow(
-            'call-outline',
-            'Change phone number',
-            'Update your phone number',
-            () => Alert.alert('Change Phone', 'Phone change feature coming soon.'),
-          )}
         </View>
 
         {/* App */}
@@ -205,9 +193,8 @@ const AccountActionsScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Danger Zone */}
+        {/* Session */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: '#FF3B30' }]}>Danger Zone</Text>
           {renderActionRow(
             'log-out-outline',
             'Logout',

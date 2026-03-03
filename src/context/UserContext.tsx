@@ -182,7 +182,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           ]);
 
         if (storedProfile) setProfileState(JSON.parse(storedProfile));
-        if (storedCoins) setCoinBalanceState(parseInt(storedCoins, 10));
+        if (storedCoins) { const n = parseInt(storedCoins, 10); setCoinBalanceState(Number.isFinite(n) ? n : 0); }
         if (storedSwipes) setSwipeCountState(parseInt(storedSwipes, 10));
         if (storedMatches) setMatches(JSON.parse(storedMatches));
         if (authToken) setIsAuthenticated(true);
@@ -255,7 +255,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // ─── Coins ───────────────────────────────────────────────
 
   const setCoinBalance = useCallback((balance: number) => {
-    setCoinBalanceState(Math.max(0, balance));
+    setCoinBalanceState(Number.isFinite(balance) ? Math.max(0, balance) : 0);
   }, []);
 
   const spendCoins = useCallback((amount: number, description?: string): boolean => {

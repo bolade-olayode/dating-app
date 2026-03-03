@@ -64,19 +64,45 @@ const InitializingScreen = () => {
           const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
           if (token) {
             const p = meResult.profile;
+
+            // Use same mapping logic as AppNavigator's mapApiUserToProfile
+            const rawDob = p.dateOfBirth || p.dob || '';
+            const calcAge = (dobStr: string) => {
+              const dob = new Date(dobStr);
+              const today = new Date();
+              let a = today.getFullYear() - dob.getFullYear();
+              const m = today.getMonth() - dob.getMonth();
+              if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) a--;
+              return a;
+            };
+
             const userProfile: UserProfile = {
               id: p.id || p._id,
-              name: p.name || '',
+              name: p.name || p.fullname || p.username || '',
               email: p.email,
               phoneNumber: p.phone,
-              dateOfBirth: p.dateOfBirth,
-              age: p.age,
+              dateOfBirth: rawDob,
+              age: p.age || (rawDob ? calcAge(rawDob) : undefined),
               gender: p.gender || '',
-              lookingFor: p.lookingFor || '',
-              relationshipGoal: p.relationshipGoal || '',
+              lookingFor: ({ male: 'Men', female: 'Women', both: 'Both' } as Record<string, string>)[p.interestedIn]
+                || p.lookingFor || '',
+              relationshipGoal: (() => {
+                const raw = p.goal || p.relationshipGoal || '';
+                return ({
+                  'Get married':           'Get Married',
+                  'Find a relationship':   'Find a Relationship',
+                  'Chat and meet friends': 'Chat & Meet Friends',
+                  'Learn other cultures':  'Learn Other Cultures',
+                  'Travel the world':      'Travel the World',
+                } as Record<string, string>)[raw] || raw;
+              })(),
               interests: (p.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
               photos: p.photos || [],
-              bio: p.bio,
+              bio: p.bio || '',
+              height: p.height ? `${p.height}cm` : '',
+              weight: p.weight ? `${p.weight}kg` : '',
+              education: p.education || '',
+              prompts: p.prompts || [],
               location: typeof p.location === 'string' ? p.location : p.location?.city || p.city || '',
               verified: p.verified || false,
             };
@@ -86,7 +112,9 @@ const InitializingScreen = () => {
       }
 
       if (!cancelled) {
-        (navigation as any).replace('NearbyMatches');
+        // Show privacy consent screen once for new users
+        const consent = await AsyncStorage.getItem('@meetpie_privacy_consent');
+        (navigation as any).replace(consent ? 'NearbyMatches' : 'PrivacyConsent');
       }
     };
 

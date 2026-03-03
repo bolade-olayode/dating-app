@@ -64,6 +64,7 @@ import AccountActionsScreen from '@screens/Home/AccountActionsScreen';
 import ExploreCategoryScreen from '@screens/Home/ExploreCategoryScreen';
 import ProfileVerificationScreen from '@screens/Home/ProfileVerificationScreen';
 import LikesYouScreen from '@screens/Home/LikesYouScreen';
+import PrivacyConsentScreen from '@screens/Home/PrivacyConsentScreen';
 
 // Define the parameters for each screen (undefined means no parameters required)
 export type RootStackParamList = {
@@ -121,6 +122,7 @@ export type RootStackParamList = {
   };
   InitializingScreen: undefined;
   NearbyMatches: undefined;
+  PrivacyConsent: undefined;
   HomeTabs: undefined;
   Wallet: undefined;
   TopUp: undefined;
@@ -393,6 +395,7 @@ const AppNavigator = () => {
           <Stack.Screen name="ExploreCategory" component={ExploreCategoryScreen} />
           <Stack.Screen name="ProfileVerification" component={ProfileVerificationScreen} />
           <Stack.Screen name="LikesYou" component={LikesYouScreen} />
+          <Stack.Screen name="PrivacyConsent" component={PrivacyConsentScreen} />
           <Stack.Screen
             name="Match"
             component={MatchScreen}

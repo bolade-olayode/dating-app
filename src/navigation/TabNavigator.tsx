@@ -11,11 +11,12 @@
  * 5. Me (Profile)
  */
 
-import React, { useEffect } from 'react';
-import { Platform, StyleSheet, View, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Platform, StyleSheet, View, Text, Alert } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import { FONTS } from '@config/fonts';
 import { useUser } from '@context/UserContext';
 import { chatService } from '@services/api/chatService';
@@ -37,8 +38,62 @@ export type TabParamList = {
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
+// Module-level flags — reset each time the app (re)loads
+let _sessionProfilePromptShown = false;
+let _sessionDiscoveryPromptShown = false;
+
 const TabNavigator = () => {
-  const { unreadChatCount, setUnreadChatCount } = useUser();
+  const navigation = useNavigation<any>();
+  const { unreadChatCount, setUnreadChatCount, profile } = useUser();
+
+  // Per-session: prompt to complete profile if < 100%
+  useEffect(() => {
+    if (_sessionProfilePromptShown || !profile) return;
+
+    const checks = [
+      (profile.photos?.length ?? 0) >= 2,
+      !!profile.bio?.trim(),
+      (profile.interests?.length ?? 0) >= 5,
+      (profile.prompts?.length ?? 0) >= 2,
+      !!profile.relationshipGoal,
+      !!profile.height && !!profile.weight,
+      !!profile.education,
+    ];
+    const pct = checks.filter(Boolean).length / checks.length * 100;
+
+    if (pct < 100) {
+      _sessionProfilePromptShown = true;
+      const timer = setTimeout(() => {
+        Alert.alert(
+          'Complete Your Profile',
+          'A complete profile gets up to 3× more matches. Finish setting up your profile now.',
+          [
+            { text: 'Later', style: 'cancel' },
+            { text: 'Complete Profile', onPress: () => navigation.navigate('EditProfile') },
+          ],
+        );
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [profile, navigation]);
+
+  // Per-session: prompt to optimize discovery settings
+  useEffect(() => {
+    if (_sessionDiscoveryPromptShown || !profile) return;
+    _sessionDiscoveryPromptShown = true;
+
+    const timer = setTimeout(() => {
+      Alert.alert(
+        'Optimize Your Discovery',
+        'Set your distance, age range, and preferences to see more relevant matches.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Set Preferences', onPress: () => navigation.navigate('DiscoverySettings') },
+        ],
+      );
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [profile, navigation]);
 
   // Poll unread count every 30 seconds
   useEffect(() => {

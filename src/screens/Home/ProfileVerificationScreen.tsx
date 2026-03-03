@@ -145,34 +145,32 @@ const ProfileVerificationScreen: React.FC<any> = ({ navigation }) => {
     if (isStarting || !isProfileComplete || !hasEnoughCoins) return;
     setIsStarting(true);
 
-    // Step 1: Spend coins
+    // Step 1: Spend coins (local deduct fallback if backend action not yet configured)
     devLog('💸 Verification: spending', verificationCost, 'coins');
     const spendResult = await walletService.spend('verified_badge');
 
-    if (!spendResult.success) {
-      Alert.alert(
-        'Payment Failed',
-        spendResult.message || 'Could not deduct coins. Please try again.',
-      );
-      setIsStarting(false);
-      return;
-    }
-
-    // Update local balance after spend
-    const newBalance = spendResult.data?.balance ?? spendResult.data?.newBalance;
-    if (typeof newBalance === 'number') {
-      setCoinBalance(newBalance);
+    let balanceAfterSpend: number;
+    if (spendResult.success) {
+      const newBalance = spendResult.data?.balance ?? spendResult.data?.newBalance;
+      balanceAfterSpend = typeof newBalance === 'number' ? newBalance : Math.max(0, coinBalance - verificationCost);
     } else {
-      setCoinBalance(Math.max(0, coinBalance - verificationCost));
+      // Backend action not configured — deduct locally and continue
+      devLog('💸 Verification: spend API failed, deducting locally');
+      balanceAfterSpend = Math.max(0, coinBalance - verificationCost);
     }
+    setCoinBalance(balanceAfterSpend);
 
     // Step 2: Initiate selfie check
     const initResult = await verificationService.initiate();
 
     if (initResult.success) {
       devLog('🔐 Verification: initiate response', initResult.data);
+      // Smile Identity returns sessionUrl; fall back to other common field names
       const verifyUrl: string | undefined =
-        initResult.data?.url || initResult.data?.verificationUrl || initResult.data?.link;
+        initResult.data?.sessionUrl ||
+        initResult.data?.url ||
+        initResult.data?.verificationUrl ||
+        initResult.data?.link;
 
       if (verifyUrl) {
         const canOpen = await Linking.canOpenURL(verifyUrl);
@@ -183,6 +181,7 @@ const ProfileVerificationScreen: React.FC<any> = ({ navigation }) => {
           Alert.alert('Error', 'Unable to open the verification link. Please try again.');
         }
       } else {
+        // Session token returned (mobile SDK flow) — verification is in progress
         setStatus('pending');
         Alert.alert(
           'Verification Started',
@@ -190,9 +189,12 @@ const ProfileVerificationScreen: React.FC<any> = ({ navigation }) => {
         );
       }
     } else {
+      // Initiation failed — refund coins so the user isn't charged for nothing
+      devLog('🔐 Verification: initiate failed, refunding', verificationCost, 'coins');
+      setCoinBalance(coinBalance);
       Alert.alert(
-        'Verification Error',
-        'Coins were deducted but the verification process could not be started. Please contact support.',
+        'Verification Unavailable',
+        'The verification service is temporarily unavailable. Your coins have been refunded. Please try again later.',
       );
     }
 

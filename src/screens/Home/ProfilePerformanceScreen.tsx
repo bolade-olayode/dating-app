@@ -1,6 +1,6 @@
 // src/screens/Home/ProfilePerformanceScreen.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Switch,
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -27,7 +26,7 @@ const ProfilePerformanceScreen: React.FC = () => {
   const isFocused = useIsFocused();
   const { coinBalance } = useUser();
 
-  const [smartPhotos, setSmartPhotos] = useState(false);
+
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [stats, setStats] = useState({
     profileViews: 0,
@@ -128,30 +127,6 @@ const ProfilePerformanceScreen: React.FC = () => {
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
           ))}
-        </View>
-
-        {/* Smart Photos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Optimization</Text>
-          <View style={styles.settingRow}>
-            <View style={styles.settingLeft}>
-              <View style={styles.settingIconContainer}>
-                <Icon name="images-outline" size={18} color="#FF007B" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.settingTitle}>Smart Photos</Text>
-                <Text style={styles.settingSubtitle}>
-                  Automatically show your best-performing photo first
-                </Text>
-              </View>
-            </View>
-            <Switch
-              value={smartPhotos}
-              onValueChange={setSmartPhotos}
-              trackColor={{ false: '#333', true: 'rgba(255, 0, 123, 0.4)' }}
-              thumbColor={smartPhotos ? '#FF007B' : '#888'}
-            />
-          </View>
         </View>
 
         {/* Boosts */}
