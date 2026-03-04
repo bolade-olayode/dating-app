@@ -43,15 +43,28 @@ const updateLocation = async (
 // ─── Discover Profiles ───────────────────────────────────────
 // GET /api/matching/discover
 
+export interface DiscoverFilters {
+  ageMin?:      number;
+  ageMax?:      number;
+  gender?:      string;  // 'male' | 'female' — passed through when backend supports it
+  verifiedOnly?: boolean;
+}
+
 const discoverProfiles = async (
-  maxDistance: number = 50000,
-  limit: number = 20,
+  maxDistance?: number,
+  limit: number = 50,
+  filters?: DiscoverFilters,
 ): Promise<MatchingResponse> => {
   try {
-    devLog('🔍 Matching: Fetching discover profiles');
-    const response = await apiClient.get('/api/matching/discover', {
-      params: { maxDistance, limit },
-    });
+    devLog('🔍 Matching: Fetching discover profiles', { maxDistance, limit, filters });
+    const params: Record<string, any> = { limit };
+    if (maxDistance !== undefined) params.maxDistance = maxDistance;
+    if (filters?.ageMin)          params.ageMin       = filters.ageMin;
+    if (filters?.ageMax)          params.ageMax       = filters.ageMax;
+    if (filters?.gender)          params.gender       = filters.gender;
+    if (filters?.verifiedOnly)    params.verifiedOnly = filters.verifiedOnly;
+
+    const response = await apiClient.get('/api/matching/discover', { params });
 
     return {
       success: true,

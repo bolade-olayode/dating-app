@@ -151,12 +151,6 @@ const AccountActionsScreen: React.FC = () => {
             'Temporarily hide your profile',
             handlePauseAccount,
           )}
-          {renderActionRow(
-            'download-outline',
-            'Request my data',
-            'Download a copy of your personal data',
-            () => Alert.alert('Data Request', 'Your data download will be ready within 24 hours.'),
-          )}
         </View>
 
         {/* App */}
@@ -212,6 +206,7 @@ const AccountActionsScreen: React.FC = () => {
           )}
         </View>
         {/* App Version */}
+        
         <Text style={styles.versionText}>MeetPie Dating v0.2.0</Text>
       </ScrollView>
     </View>

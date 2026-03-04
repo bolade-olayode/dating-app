@@ -106,10 +106,12 @@ const sendOTP = async (
 
   if (mode === 'signup') {
     url = '/api/onboarding/init';
-    body = {
-      email: extra?.email || (phoneOrEmail.includes('@') ? phoneOrEmail : ''),
-      phone: extra?.phone || (!phoneOrEmail.includes('@') ? phoneOrEmail : ''),
-    };
+    const emailVal = extra?.email || (phoneOrEmail.includes('@') ? phoneOrEmail : '');
+    const phoneVal = extra?.phone || (!phoneOrEmail.includes('@') ? phoneOrEmail : '');
+    // Only include fields that have actual values — sending phone:'' causes a 500
+    body = {};
+    if (emailVal) body.email = emailVal;
+    if (phoneVal) body.phone = phoneVal;
   } else {
     url = '/api/auth/login/init';
     const isEmail = phoneOrEmail.includes('@');
@@ -139,9 +141,15 @@ const sendOTP = async (
       }
 
       errorLog(`sendOTP failed after ${attempt} attempt(s):`, JSON.stringify(error.response?.data) || error.message);
+      // /api/onboarding/init returns 500 when the email is already registered
+      // (backend bug — should be 409). Give a helpful message so the user knows to log in.
+      const serverMsg: string = error.response?.data?.message || '';
+      const likelyExists = mode === 'signup' && status === 500 && !serverMsg;
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to send OTP. Please try again.',
+        message: likelyExists
+          ? 'This email may already be registered. Please try logging in instead.'
+          : serverMsg || 'Failed to send OTP. Please try again.',
       };
     }
   }

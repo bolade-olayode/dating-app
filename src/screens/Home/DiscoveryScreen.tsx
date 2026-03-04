@@ -348,12 +348,28 @@ const DiscoveryScreen = () => {
       devLog('📍 Location error — skipping location update');
     }
 
-    // Load saved settings and pass maxDistance (km → metres for the API)
+    // Load saved settings
     const discoverySettings = await loadDiscoverySettings();
     const maxDistanceMetres = discoverySettings.globalMode
       ? undefined  // no cap when global mode is on
       : discoverySettings.maxDistance * 1000;
-    const result = await matchingService.discoverProfiles(maxDistanceMetres, 20);
+
+    // Map showMe → API gender param (backend ignores unknown params gracefully)
+    const genderParam =
+      discoverySettings.showMe === 'Men'   ? 'male'   :
+      discoverySettings.showMe === 'Women' ? 'female' : undefined;
+
+    const result = await matchingService.discoverProfiles(
+      maxDistanceMetres,
+      50,
+      {
+        ageMin:       discoverySettings.ageMin,
+        ageMax:       discoverySettings.ageMax,
+        gender:       genderParam,
+        verifiedOnly: discoverySettings.verifiedOnly || undefined,
+      },
+    );
+
     if (result.success && Array.isArray(result.data) && result.data.length > 0) {
       const apiProfiles = result.data.map((p: any, idx: number) => ({
         id: p._id || p.id,
@@ -372,14 +388,33 @@ const DiscoveryScreen = () => {
         bio: p.bio || '',
         height: p.height,
         weight: p.weight,
-        gender: p.gender || '',
+        gender: (p.gender || '').toLowerCase(),
         lookingFor: p.interestedIn || '',
         education: p.education || '',
         interests: (p.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || i.label || '')).filter(Boolean),
         photos: p.photos || [],
       }));
-      devLog('✅ Discovery: Loaded', apiProfiles.length, 'profiles from API');
-      setProfiles(apiProfiles);
+
+      // ── Client-side filter ─────────────────────────────────
+      // Applied immediately so settings work even before the backend
+      // supports the corresponding query params.
+      const filtered = apiProfiles.filter(p => {
+        const age = p.age || 0;
+        if (age < discoverySettings.ageMin || age > discoverySettings.ageMax) return false;
+        if (discoverySettings.verifiedOnly && !p.verified) return false;
+        if (discoverySettings.showMe === 'Men'   && p.gender !== 'male')   return false;
+        if (discoverySettings.showMe === 'Women' && p.gender !== 'female') return false;
+        return true;
+      });
+
+      devLog(
+        '✅ Discovery: Loaded', apiProfiles.length, 'profiles from API →',
+        filtered.length, 'after client-side filter',
+      );
+
+      // Use filtered if non-empty; otherwise fall back to unfiltered API results
+      // (avoids a blank deck when the backend doesn't yet honour filter params)
+      setProfiles(filtered.length > 0 ? filtered : apiProfiles);
       setCurrentIndex(0);
     } else {
       devLog('⚠️ Discovery: API returned no profiles, using mock data');

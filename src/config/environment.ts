@@ -47,9 +47,9 @@ export const ENV = {
 
   // Timeouts and delays (milliseconds)
   TIMEOUTS: {
-    API_REQUEST: 30000,     // 30 seconds
-    OTP_RESEND: 18,         // 18 seconds (as per Figma)
-    MOCK_DELAY: 1000,       // Simulate network delay in mock API
+    API_REQUEST: 30000,   
+    OTP_RESEND: 18,         
+    MOCK_DELAY: 1000,       
   },
 };
 

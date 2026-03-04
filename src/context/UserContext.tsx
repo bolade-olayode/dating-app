@@ -138,6 +138,9 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await Promise.all([
         p ? AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(p)) : Promise.resolve(),
+        // Keep backup in sync so it's always available even if the app crashes
+        // before logout() is called. Backup survives logout (uses a separate key).
+        p ? AsyncStorage.setItem(PROFILE_BACKUP_KEY, JSON.stringify(p)) : Promise.resolve(),
         AsyncStorage.setItem(STORAGE_KEYS.COINS, c.toString()),
         AsyncStorage.setItem(STORAGE_KEYS.SWIPES, s.toString()),
         AsyncStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(m)),
@@ -322,11 +325,16 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const backupStr = await AsyncStorage.getItem(PROFILE_BACKUP_KEY);
       if (backupStr) {
         const backup = JSON.parse(backupStr) as UserProfile;
-        const sameUser = !!(
-          (backup.email && userData.email && backup.email === userData.email) ||
-          (backup.id   && userData.id   && backup.id   === userData.id)
+        // Only skip merge if we can CONFIRM it's a completely different user
+        // (both email AND id are present and both differ). If either is missing
+        // or uncertain, merge — better to carry over extra fields than lose them.
+        const differentUser = !!(
+          backup.email && userData.email &&
+          backup.email !== userData.email &&
+          backup.id && userData.id &&
+          String(backup.id) !== String(userData.id)
         );
-        if (sameUser) {
+        if (!differentUser) {
           const merged = { ...backup, ...userData };
           (Object.keys(merged) as (keyof UserProfile)[]).forEach(key => {
             const freshVal  = (userData as any)[key];

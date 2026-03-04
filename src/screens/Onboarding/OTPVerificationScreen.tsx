@@ -144,23 +144,33 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
               const meResult = await authService.getMe();
               devLog('getMe result:', meResult);
               if (meResult.success && meResult.profile) {
+                const u = meResult.profile;
                 const userProfile: UserProfile = {
-                  id: meResult.profile.id || meResult.profile._id,
-                  name: meResult.profile.name || meResult.profile.fullname || meResult.profile.username || '',
-                  email: meResult.profile.email,
-                  phoneNumber: meResult.profile.phone,
-                  dateOfBirth: meResult.profile.dateOfBirth || meResult.profile.dob || '',
-                  age: meResult.profile.age,
-                  gender: meResult.profile.gender || '',
-                  lookingFor: ({ male: 'Men', female: 'Women', both: 'Both' } as Record<string, string>)[meResult.profile.interestedIn] || meResult.profile.lookingFor || '',
-                  relationshipGoal: meResult.profile.goal || meResult.profile.relationshipGoal || '',
-                  interests: (meResult.profile.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
-                  photos: meResult.profile.photos || [],
-                  bio: meResult.profile.bio || '',
-                  location: typeof meResult.profile.location === 'string'
-                    ? meResult.profile.location
-                    : meResult.profile.location?.city || meResult.profile.city || '',
-                  verified: meResult.profile.verified || false,
+                  id: u.id || u._id,
+                  name: u.name || u.fullname || u.username || '',
+                  email: u.email,
+                  phoneNumber: u.phone,
+                  dateOfBirth: u.dateOfBirth || u.dob || '',
+                  age: u.age,
+                  gender: u.gender || '',
+                  lookingFor: ({ male: 'Men', female: 'Women', both: 'Both' } as Record<string, string>)[u.interestedIn] || u.lookingFor || '',
+                  relationshipGoal: u.goal || u.relationshipGoal || '',
+                  interests: (u.interests || []).map((i: any) => (typeof i === 'string' ? i : i.name || '')).filter(Boolean),
+                  photos: u.photos || [],
+                  bio: u.bio || '',
+                  height: u.height ? `${u.height}cm` : '',
+                  weight: u.weight ? `${u.weight}kg` : '',
+                  education: ({
+                    high_school: 'High school', some_college: 'Some college',
+                    associate_degree: 'Associate degree', bachelor_degree: "Bachelor's degree",
+                    master_degree: "Master's degree", doctorate: 'Doctorate',
+                    trade_school: 'Trade school', prefer_not_to_say: 'Prefer not to say',
+                  } as Record<string, string>)[u.education as string] || u.education || '',
+                  prompts: (u.prompts || []).filter((p: any) => p.question && p.answer),
+                  location: typeof u.location === 'string'
+                    ? u.location
+                    : u.location?.city || u.city || '',
+                  verified: u.verified || false,
                 };
                 await loginUser(result.token, userProfile);
 

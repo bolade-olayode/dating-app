@@ -82,16 +82,18 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              By signing up, you agree to our{' '}
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>By signing up, you agree to our </Text>
               <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync('https://www.meetpie.dating/terms', { toolbarColor: '#000000', controlsColor: '#FF007B' })}>
                 <Text style={styles.link}>Terms of Service</Text>
               </TouchableOpacity>
-              {'. See how we use your data in our '}
+            </View>
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>See how we use your data in our </Text>
               <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync('https://www.meetpie.dating/privacy', { toolbarColor: '#000000', controlsColor: '#FF007B' })}>
                 <Text style={styles.link}>Privacy Policy</Text>
               </TouchableOpacity>
-            </Text>
+            </View>
           </View>
         </View>
       </ImageBackground>
@@ -136,17 +138,27 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
   },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
   footerText: {
     fontFamily: FONTS.Body,
     fontSize: 12,
     color: '#fff',
-    textAlign: 'center',
     opacity: 0.8,
     lineHeight: 18,
   },
   link: {
     fontFamily: FONTS.SemiBold,
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.8,
     textDecorationLine: 'underline',
+    lineHeight: 18,
   },
 });
 

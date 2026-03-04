@@ -130,7 +130,7 @@ const SETTINGS_SECTIONS = [
   {
     id: 'performance',
     title: 'Profile Performance',
-    subtitle: 'Priority likes, smart photo optimizers',
+    subtitle: 'Profile views, match rate, boosts',
     icon: 'trending-up-outline',
     color: '#FF007B',
   },

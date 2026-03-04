@@ -11,10 +11,11 @@
  * 5. Me (Profile)
  */
 
-import React, { useEffect, useRef } from 'react';
-import { Platform, StyleSheet, View, Text, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, StyleSheet, View, Text, TouchableOpacity, Modal } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { FONTS } from '@config/fonts';
@@ -46,6 +47,9 @@ const TabNavigator = () => {
   const navigation = useNavigation<any>();
   const { unreadChatCount, setUnreadChatCount, profile } = useUser();
 
+  const [showProfileCard, setShowProfileCard]     = useState(false);
+  const [showDiscoveryCard, setShowDiscoveryCard] = useState(false);
+
   // Per-session: prompt to complete profile if < 100%
   useEffect(() => {
     if (_sessionProfilePromptShown || !profile) return;
@@ -63,37 +67,20 @@ const TabNavigator = () => {
 
     if (pct < 100) {
       _sessionProfilePromptShown = true;
-      const timer = setTimeout(() => {
-        Alert.alert(
-          'Complete Your Profile',
-          'A complete profile gets up to 3× more matches. Finish setting up your profile now.',
-          [
-            { text: 'Later', style: 'cancel' },
-            { text: 'Complete Profile', onPress: () => navigation.navigate('EditProfile') },
-          ],
-        );
-      }, 1500);
+      const timer = setTimeout(() => setShowProfileCard(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, [profile, navigation]);
+  }, [profile]);
 
   // Per-session: prompt to optimize discovery settings
   useEffect(() => {
     if (_sessionDiscoveryPromptShown || !profile) return;
     _sessionDiscoveryPromptShown = true;
 
-    const timer = setTimeout(() => {
-      Alert.alert(
-        'Optimize Your Discovery',
-        'Set your distance, age range, and preferences to see more relevant matches.',
-        [
-          { text: 'Later', style: 'cancel' },
-          { text: 'Set Preferences', onPress: () => navigation.navigate('DiscoverySettings') },
-        ],
-      );
-    }, 4000);
+    // Only show discovery card after profile card is dismissed (delay longer)
+    const timer = setTimeout(() => setShowDiscoveryCard(true), 4000);
     return () => clearTimeout(timer);
-  }, [profile, navigation]);
+  }, [profile]);
 
   // Poll unread count every 30 seconds
   useEffect(() => {
@@ -110,7 +97,68 @@ const TabNavigator = () => {
   }, [setUnreadChatCount]);
 
   return (
-    <Tab.Navigator
+    <>
+      {/* ── Profile completion card ────────────────────────── */}
+      <Modal visible={showProfileCard} transparent animationType="slide" onRequestClose={() => setShowProfileCard(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowProfileCard(false)}>
+          <TouchableOpacity style={styles.modalCard} activeOpacity={1} onPress={() => {}}>
+            <View style={styles.modalIconRing}>
+              <Icon name="person-circle-outline" size={32} color="#FF007B" />
+            </View>
+            <Text style={styles.modalTitle}>Complete Your Profile</Text>
+            <Text style={styles.modalBody}>
+              A complete profile gets up to 3× more matches. Take a moment to finish setting up yours.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => { setShowProfileCard(false); navigation.navigate('EditProfile'); }}
+            >
+              <LinearGradient
+                colors={['#FF007B', '#FF4458']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.modalPrimaryBtn}
+              >
+                <Text style={styles.modalPrimaryText}>Complete Profile</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowProfileCard(false)} style={styles.modalSecondaryBtn}>
+              <Text style={styles.modalSecondaryText}>Later</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Discovery settings card ───────────────────────── */}
+      <Modal visible={showDiscoveryCard} transparent animationType="slide" onRequestClose={() => setShowDiscoveryCard(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDiscoveryCard(false)}>
+          <TouchableOpacity style={styles.modalCard} activeOpacity={1} onPress={() => {}}>
+            <View style={styles.modalIconRing}>
+              <Icon name="options-outline" size={32} color="#FF007B" />
+            </View>
+            <Text style={styles.modalTitle}>Optimise Your Discovery</Text>
+            <Text style={styles.modalBody}>
+              Set your distance, age range and preferences to see the most relevant people near you.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => { setShowDiscoveryCard(false); navigation.navigate('DiscoverySettings'); }}
+            >
+              <LinearGradient
+                colors={['#FF007B', '#FF4458']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.modalPrimaryBtn}
+              >
+                <Text style={styles.modalPrimaryText}>Set Preferences</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowDiscoveryCard(false)} style={styles.modalSecondaryBtn}>
+              <Text style={styles.modalSecondaryText}>Later</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: '#FF007B', // Pink active color
@@ -244,6 +292,7 @@ const TabNavigator = () => {
         }}
       />
     </Tab.Navigator>
+    </>
   );
 };
 
@@ -267,6 +316,70 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: 'bold',
     fontFamily: FONTS.Medium,
+  },
+  // ── Prompt modals ─────────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: 'rgba(14,14,14,0.97)',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 48,
+    alignItems: 'center',
+  },
+  modalIconRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255,0,123,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,0,123,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontFamily: FONTS.Bold,
+    fontSize: 22,
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  modalBody: {
+    fontFamily: FONTS.Regular,
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  modalPrimaryBtn: {
+    width: '100%',
+    paddingVertical: 17,
+    borderRadius: 30,
+    alignItems: 'center',
+    minWidth: 280,
+  },
+  modalPrimaryText: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 16,
+    color: '#FFF',
+  },
+  modalSecondaryBtn: {
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  modalSecondaryText: {
+    fontFamily: FONTS.Regular,
+    fontSize: 14,
+    color: '#555',
   },
 });
 
