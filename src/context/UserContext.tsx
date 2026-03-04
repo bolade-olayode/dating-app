@@ -107,6 +107,10 @@ const STORAGE_KEYS = {
   AUTH_TOKEN: '@opueh_auth_token',
 };
 
+// Survives logout — used to restore locally-saved fields (prompts, height, weight,
+// education, etc.) that the backend may not return in GET /api/auth/me.
+const PROFILE_BACKUP_KEY = '@opueh_profile_backup';
+
 // ─── Provider ────────────────────────────────────────────────
 
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -309,12 +313,49 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = useCallback(async (token: string, userData: UserProfile) => {
     await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-    setProfileState(userData);
+
+    // Merge with profile backup saved at logout time.
+    // This restores fields like prompts, height, weight, education that the
+    // backend may not include in GET /api/auth/me, so they survive logout→login cycles.
+    let finalProfile = userData;
+    try {
+      const backupStr = await AsyncStorage.getItem(PROFILE_BACKUP_KEY);
+      if (backupStr) {
+        const backup = JSON.parse(backupStr) as UserProfile;
+        const sameUser = !!(
+          (backup.email && userData.email && backup.email === userData.email) ||
+          (backup.id   && userData.id   && backup.id   === userData.id)
+        );
+        if (sameUser) {
+          const merged = { ...backup, ...userData };
+          (Object.keys(merged) as (keyof UserProfile)[]).forEach(key => {
+            const freshVal  = (userData as any)[key];
+            const backupVal = (backup   as any)[key];
+            const isEmpty   = freshVal === undefined || freshVal === null || freshVal === '' ||
+              (Array.isArray(freshVal) && freshVal.length === 0);
+            if (isEmpty && backupVal) (merged as any)[key] = backupVal;
+          });
+          finalProfile = merged;
+        }
+        // Clear backup whether it was used or not
+        await AsyncStorage.removeItem(PROFILE_BACKUP_KEY);
+      }
+    } catch {}
+
+    setProfileState(finalProfile);
     setIsAuthenticated(true);
-    console.log('User logged in:', userData.name);
+    console.log('User logged in:', finalProfile.name);
   }, []);
 
   const logout = useCallback(async () => {
+    // Save a profile backup BEFORE clearing everything, so locally-filled fields
+    // (prompts, height, weight, education) survive the next login if getMe doesn't return them.
+    const currentProfile = dataRef.current.profile;
+    if (currentProfile) {
+      try {
+        await AsyncStorage.setItem(PROFILE_BACKUP_KEY, JSON.stringify(currentProfile));
+      } catch {}
+    }
     await Promise.all(
       Object.values(STORAGE_KEYS).map(key => AsyncStorage.removeItem(key))
     );

@@ -71,22 +71,26 @@ const TOKEN_PACKAGES = [
 
 // Additional purchasable features
 const FEATURES = [
-  { id: 1, title: 'Swipe Pass (24hrs)', description: 'Unlimited swipes for a full day — 120 coins', icon: 'infinite-outline' },
-  { id: 2, title: 'Rewind', description: 'Undo your last swipe — 30 coins', icon: 'arrow-undo-outline' },
-  { id: 3, title: 'Read Receipts', description: 'Know when messages are read — 40 coins', icon: 'checkmark-done-outline' },
-  { id: 4, title: 'Verified Badge', description: 'Get verified — 250 coins (one-time)', icon: 'checkmark-circle-outline' },
+  { id: 1, title: 'Swipe Pass (24hrs)', description: 'Unlimited swipes for a full day', icon: 'infinite-outline',       cost: 120, actionKey: 'swipe_pass'    },
+  { id: 2, title: 'Rewind',             description: 'Undo your last swipe',             icon: 'arrow-undo-outline',    cost: 30,  actionKey: 'rewind'         },
+  { id: 3, title: 'Read Receipts',      description: 'Know when messages are read',       icon: 'checkmark-done-outline',cost: 40,  actionKey: 'read_receipts'  },
+  { id: 4, title: 'Verified Badge',     description: 'Get verified (one-time)',           icon: 'checkmark-circle-outline', cost: 250, actionKey: 'verified_badge' },
 ];
 
 // Where each action takes the user after spending
 const ACTION_REDIRECT: Record<string | number, string> = {
-  // by actionKey
+  // Token Packages — by actionKey
   see_likes:        'LikesYou',
   super_like:       'Discovery',
   boost:            'ProfilePerformance',
   priority_message: 'Chats',
   visitors:         'ProfilePerformance',
   spotlight:        'ProfilePerformance',
-  // by fallback id
+  // Features — by actionKey
+  swipe_pass:       'Discovery',
+  rewind:           'Discovery',
+  read_receipts:    'Chats',
+  // Token Packages — by fallback id
   1: 'LikesYou',
   2: 'Discovery',
   3: 'ProfilePerformance',
@@ -97,12 +101,19 @@ const ACTION_REDIRECT: Record<string | number, string> = {
 
 // Detailed descriptions shown in the modal
 const ACTION_DETAIL: Record<string | number, string> = {
+  // Token Packages
   see_likes:        'Reveal everyone who has already liked your profile. Match instantly with a tap.',
   super_like:       'Stand out from the crowd — send a Super Like and they\'ll know you\'re seriously interested.',
   boost:            'Jump to the top of the discovery feed in your area for 30 minutes. Get up to 10× more profile views.',
   priority_message: 'Your first message appears at the very top of their inbox — impossible to miss.',
   visitors:         'See a full list of everyone who has visited your profile in the last 7 days.',
   spotlight:        'Get featured prominently in the Explore tab for 1 hour, reaching users who are actively browsing.',
+  // Features
+  swipe_pass:       'Swipe freely for 24 hours — no daily limit. Keep discovering new people without interruption.',
+  rewind:           'Accidentally passed on someone great? Rewind your last swipe and give them a second chance.',
+  read_receipts:    'See exactly when your messages have been read so you know when to follow up.',
+  verified_badge:   'Verify your identity with a quick selfie check. Earn a badge that shows you\'re real and trustworthy.',
+  // Token Packages by numeric id (fallback)
   1: 'Reveal everyone who has already liked your profile. Match instantly with a tap.',
   2: 'Stand out from the crowd — send a Super Like and they\'ll know you\'re seriously interested.',
   3: 'Jump to the top of the discovery feed in your area for 30 minutes. Get up to 10× more profile views.',
@@ -287,7 +298,10 @@ const WalletScreen: React.FC = () => {
               key={feature.id}
               style={styles.packageRow}
               activeOpacity={0.7}
-              onPress={feature.id === 4 ? () => navigation.navigate('ProfileVerification') : undefined}
+              onPress={feature.id === 4
+                ? () => navigation.navigate('ProfileVerification')
+                : () => setSelectedAction({ id: feature.id, name: feature.title, description: feature.description, icon: feature.icon, cost: feature.cost, actionKey: feature.actionKey } as any)
+              }
             >
               <View style={styles.packageIconContainer}>
                 <Icon name={feature.icon} size={20} color="#FF007B" />
@@ -296,6 +310,11 @@ const WalletScreen: React.FC = () => {
               <View style={styles.packageInfo}>
                 <Text style={styles.packageName}>{feature.title}</Text>
                 <Text style={styles.packageDescription}>{feature.description}</Text>
+              </View>
+
+              <View style={styles.packageCostContainer}>
+                <Icon name="heart" size={14} color="#FF007B" />
+                <Text style={styles.packageCost}>{feature.cost}</Text>
               </View>
 
               <Icon name="chevron-forward" size={18} color="#666" />
