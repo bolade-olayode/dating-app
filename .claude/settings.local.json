@@ -9,7 +9,8 @@
       "Bash(powershell.exe -NonInteractive -File \"/tmp/test_api2.ps1\")",
       "Bash(powershell.exe -NonInteractive -Command \"Get-Content ''C:\\\\dating-app\\\\OpuehApp\\\\src\\\\services\\\\api\\\\onboardingService.ts'' | Select-String -Pattern ''verify|otp|auth|token'' -CaseSensitive:$false | Select-Object -First 30\")",
       "Bash(powershell.exe -NonInteractive -Command:*)",
-      "Bash(powershell.exe -NonInteractive -Command \"Get-Content ''C:\\\\dating-app\\\\OpuehApp\\\\src\\\\services\\\\api\\\\realAuthService.ts'' | Select-String -Pattern ''otp|verify|login|token|api/'' | Select-Object -First 40\")"
+      "Bash(powershell.exe -NonInteractive -Command \"Get-Content ''C:\\\\dating-app\\\\OpuehApp\\\\src\\\\services\\\\api\\\\realAuthService.ts'' | Select-String -Pattern ''otp|verify|login|token|api/'' | Select-Object -First 40\")",
+      "Bash(curl:*)"
     ]
   }
 }

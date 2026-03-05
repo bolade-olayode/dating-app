@@ -19,6 +19,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Image,
   ImageBackground,
   TouchableOpacity,
   StatusBar,
@@ -326,6 +327,15 @@ const DiscoveryScreen = () => {
     profilesRef.current = profiles;
   }, [profiles]);
 
+  // Prefetch the next profile's image so it's cached when the card transitions
+  useEffect(() => {
+    const nextIdx = currentIndex < profiles.length - 1 ? currentIndex + 1 : 0;
+    const nextPhoto = profiles[nextIdx]?.photo;
+    if (nextPhoto?.uri) {
+      Image.prefetch(nextPhoto.uri);
+    }
+  }, [currentIndex, profiles]);
+
   // Fetch profiles from API — extracted so the empty-state Refresh button can call it too
   const fetchProfiles = useCallback(async () => {
     setIsLoadingProfiles(true);
@@ -481,7 +491,7 @@ const DiscoveryScreen = () => {
 
   // Navigate to profile detail view (uses refs to avoid stale closure in PanResponder)
   const handleViewProfile = () => {
-    const profile = profiles[currentIndexRef.current];
+    const profile = profilesRef.current[currentIndexRef.current];
     const isPaid = swipeCountRef.current >= FREE_SWIPE_LIMIT;
     navigation.navigate('ProfileDetail', {
       profile,
@@ -806,6 +816,7 @@ const DiscoveryScreen = () => {
         {/* Outer shadow wrapper (bottom-right shadow) */}
         <View style={styles.shadowWrapper}>
           <ImageBackground
+            key={String(currentProfile.id)}
             source={currentProfile.photo}
             style={styles.card}
             imageStyle={styles.cardImage}

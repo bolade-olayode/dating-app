@@ -344,9 +344,14 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (isEmpty && backupVal) (merged as any)[key] = backupVal;
           });
           finalProfile = merged;
+          // Don't clear the backup — persistNow() will overwrite it with the
+          // freshly merged profile within 1 second. Keeping it alive means the
+          // next login always has the last known-good state even if a crash
+          // occurs before persistNow fires.
+        } else {
+          // Definitively different user — wipe their backup so it doesn't leak
+          await AsyncStorage.removeItem(PROFILE_BACKUP_KEY);
         }
-        // Clear backup whether it was used or not
-        await AsyncStorage.removeItem(PROFILE_BACKUP_KEY);
       }
     } catch {}
 
@@ -356,6 +361,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const logout = useCallback(async () => {
+    // Cancel any pending debounced persist so it can't overwrite the backup
+    // we're about to write with a stale snapshot.
+    if (persistTimer.current) {
+      clearTimeout(persistTimer.current);
+      persistTimer.current = null;
+    }
     // Save a profile backup BEFORE clearing everything, so locally-filled fields
     // (prompts, height, weight, education) survive the next login if getMe doesn't return them.
     const currentProfile = dataRef.current.profile;

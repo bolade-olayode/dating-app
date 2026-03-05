@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "start": "NODE_OPTIONS=--max-old-space-size=4096 expo start",
+    "android": "NODE_OPTIONS=--max-old-space-size=4096 expo start --android",
+    "ios": "NODE_OPTIONS=--max-old-space-size=4096 expo start --ios",
+    "web": "NODE_OPTIONS=--max-old-space-size=4096 expo start --web"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
