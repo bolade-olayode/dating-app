@@ -66,14 +66,25 @@ const discoverProfiles = async (
 
     const response = await apiClient.get('/api/matching/discover', { params });
 
+    // Response shape: { status, message, data: { users: [...] } }
+    const payload = response.data?.data ?? response.data;
+    const users   = payload?.users ?? (Array.isArray(payload) ? payload : []);
     return {
       success: true,
       message: 'Profiles fetched successfully',
-      data: response.data?.data || response.data,
+      data: users,
     };
   } catch (error: any) {
-    // During development with a single test account, no nearby users is expected — use devLog not errorLog
-    devLog('⚠️ Matching discoverProfiles failed (expected if no nearby users):', error.response?.data?.message || error.message);
+    const status = error.response?.status;
+    const msg    = error.response?.data?.message || error.message;
+
+    // 404 = backend found no profiles to show (empty result, not a crash)
+    if (status === 404) {
+      devLog('🔍 Discovery: No profiles found nearby (404 — empty result from backend)');
+      return { success: true, message: 'No profiles found', data: [] };
+    }
+
+    devLog('⚠️ Matching discoverProfiles failed:', msg);
     return {
       success: false,
       message: error.response?.data?.message || 'Failed to fetch profiles',

@@ -370,10 +370,15 @@ const DiscoveryScreen = () => {
       },
     );
 
-    if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+    if (result.success && Array.isArray(result.data) && result.data.length === 0) {
+      // API worked but no profiles nearby — show empty state (clear mocks)
+      devLog('🔍 Discovery: API returned 0 profiles — showing empty state');
+      setProfiles([]);
+      setCurrentIndex(0);
+    } else if (result.success && Array.isArray(result.data) && result.data.length > 0) {
       const apiProfiles = result.data.map((p: any, idx: number) => ({
         id: p._id || p.id,
-        name: p.fullname || p.name || 'Unknown',
+        name: p.fullname || p.username || p.name || 'Unknown',
         age: p.age || 0,
         location: p.city || (typeof p.location === 'string' ? p.location : p.location?.city) || 'Nearby',
         distance: p.distance ? `${Math.round(p.distance / 1000)} km away` : '',
@@ -416,8 +421,8 @@ const DiscoveryScreen = () => {
       // (avoids a blank deck when the backend doesn't yet honour filter params)
       setProfiles(filtered.length > 0 ? filtered : apiProfiles);
       setCurrentIndex(0);
-    } else {
-      devLog('⚠️ Discovery: API returned no profiles, using mock data');
+    } else if (!result.success) {
+      devLog('⚠️ Discovery: API error — keeping mock profiles as fallback');
     }
 
     setIsLoadingProfiles(false);
