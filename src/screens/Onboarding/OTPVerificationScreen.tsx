@@ -147,7 +147,7 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
                 const u = meResult.profile;
                 const userProfile: UserProfile = {
                   id: u.id || u._id,
-                  name: u.name || u.fullname || u.username || '',
+                  name: u.name || u.username || u.fullname || '',
                   email: u.email,
                   phoneNumber: u.phone,
                   dateOfBirth: u.dateOfBirth || u.dob || '',
@@ -179,7 +179,7 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
                 // Distinguish brand-new vs existing account:
                 // A fresh account has no name and no photos yet.
                 // An existing account always has a name (set during onboarding step 1).
-                const profileName = meResult.profile.name || meResult.profile.fullname || meResult.profile.username || '';
+                const profileName = meResult.profile.name || meResult.profile.username || meResult.profile.fullname || '';
                 const hasPhotos = (meResult.profile.photos?.length || 0) > 0;
                 const isComplete = hasPhotos || !!profileName;
                 if (mode === 'signup' && !isComplete) {

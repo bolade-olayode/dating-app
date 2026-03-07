@@ -169,8 +169,9 @@ export type RootStackParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 
 const mapApiUserToProfile = (user: any): UserProfile => {
-  // Backend may return name as fullname, username, or name depending on the endpoint
-  const rawName = user.name || user.fullname || user.username || '';
+  // Backend updates 'username' via PATCH /api/user/profile; 'fullname' is set at signup and never updated.
+  // Check 'username' first so saved edits aren't overridden by the stale signup name.
+  const rawName = user.name || user.username || user.fullname || '';
   // Backend sends/returns DOB as 'dob' from onboarding, 'dateOfBirth' elsewhere
   const rawDob = user.dateOfBirth || user.dob || '';
   const calcAge = (dobStr: string) => {
@@ -294,21 +295,36 @@ const AppNavigator = () => {
             const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
             if (token) {
               const apiProfile = mapApiUserToProfile(result.profile);
-              // Merge: keep locally-saved values for any field the API returned empty/missing.
-              // This prevents a backend non-200 name (or missing field) from overwriting
-              // edits the user made and saved locally.
-              const merged = { ...(profile || {}), ...apiProfile } as UserProfile;
-              if (profile) {
+              // Read local profile directly from storage to avoid stale closure issues.
+              const storedProfileStr = await AsyncStorage.getItem('@opueh_profile');
+              const storedProfile = storedProfileStr ? (JSON.parse(storedProfileStr) as UserProfile) : null;
+              // Only use stored profile if it belongs to the SAME user — prevents a previous
+              // account's cached data from leaking into the current user's session.
+              const isSameUser = storedProfile && (
+                (storedProfile.email && apiProfile.email && storedProfile.email === apiProfile.email) ||
+                (storedProfile.id && apiProfile.id && String(storedProfile.id) === String(apiProfile.id))
+              );
+              const localProfile: UserProfile | null = isSameUser ? storedProfile : null;
+              console.log('[AppNavigator] session restore: apiProfile.name =', apiProfile.name, '| localProfile.name =', localProfile?.name, '| sameUser =', !!isSameUser);
+              // Merge: local (user-edited) data wins over API data.
+              // API only fills in fields that are empty/missing locally.
+              // Exception: id and verified always come from the backend.
+              const merged = { ...apiProfile, ...(localProfile || {}) } as UserProfile;
+              if (localProfile) {
                 (Object.keys(merged) as (keyof UserProfile)[]).forEach((key) => {
                   const apiVal = (apiProfile as any)[key];
-                  const localVal = (profile as any)[key];
-                  const isEmpty = apiVal === undefined || apiVal === null || apiVal === '' ||
-                    (Array.isArray(apiVal) && apiVal.length === 0);
-                  if (isEmpty && localVal) {
-                    (merged as any)[key] = localVal;
+                  const localVal = (localProfile as any)[key];
+                  const localIsEmpty = localVal === undefined || localVal === null || localVal === '' ||
+                    (Array.isArray(localVal) && localVal.length === 0);
+                  if (localIsEmpty && apiVal) {
+                    (merged as any)[key] = apiVal;
                   }
                 });
               }
+              // Backend is authoritative for these — always override local
+              merged.id = apiProfile.id || localProfile?.id;
+              merged.verified = apiProfile.verified;
+              console.log('[AppNavigator] session restore: merged.name =', merged.name);
               await loginUser(token, merged);
 
               // Onboarding resume: if user quit before completing their profile

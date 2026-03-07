@@ -78,7 +78,7 @@ const InitializingScreen = () => {
 
             const userProfile: UserProfile = {
               id: p.id || p._id,
-              name: p.name || p.fullname || p.username || '',
+              name: p.name || p.username || p.fullname || '',
               email: p.email,
               phoneNumber: p.phone,
               dateOfBirth: rawDob,

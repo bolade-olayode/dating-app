@@ -109,7 +109,13 @@ const STORAGE_KEYS = {
 
 // Survives logout — used to restore locally-saved fields (prompts, height, weight,
 // education, etc.) that the backend may not return in GET /api/auth/me.
-const PROFILE_BACKUP_KEY = '@opueh_profile_backup';
+// Per-user key prevents one account's backup from contaminating another's profile.
+const PROFILE_BACKUP_KEY = '@opueh_profile_backup'; // legacy generic key (kept for migration reads)
+const getUserBackupKey = (email?: string | null, id?: string | number | null): string => {
+  if (email) return `@opueh_profile_backup_${email}`;
+  if (id != null) return `@opueh_profile_backup_id_${id}`;
+  return PROFILE_BACKUP_KEY; // fallback only
+};
 
 // ─── Provider ────────────────────────────────────────────────
 
@@ -239,18 +245,20 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateProfile = useCallback((data: Partial<UserProfile>) => {
     setProfileState(prev => {
-      if (prev) return { ...prev, ...data };
-      // Create a new profile from partial data with sensible defaults
-      return {
-        name: '',
-        gender: '',
-        lookingFor: '',
-        relationshipGoal: '',
-        interests: [],
-        photos: [],
-        verified: false,
-        ...data,
-      } as UserProfile;
+      const next = prev
+        ? { ...prev, ...data }
+        : { name: '', gender: '', lookingFor: '', relationshipGoal: '', interests: [], photos: [], verified: false, ...data } as UserProfile;
+      // Write immediately so data survives hot-reload / fast app restarts
+      console.log('[UserContext] updateProfile: writing name =', next.name);
+      AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(next))
+        .then(() => console.log('[UserContext] updateProfile: PROFILE written ✓'))
+        .catch(e => console.error('[UserContext] updateProfile: PROFILE write failed:', e));
+      // Write per-user backup so it isn't contaminated by a different account's data
+      const backupKey = getUserBackupKey(next.email, next.id);
+      AsyncStorage.setItem(backupKey, JSON.stringify(next))
+        .then(() => console.log('[UserContext] updateProfile: BACKUP written ✓'))
+        .catch(e => console.error('[UserContext] updateProfile: BACKUP write failed:', e));
+      return next;
     });
   }, []);
 
@@ -322,36 +330,41 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // backend may not include in GET /api/auth/me, so they survive logout→login cycles.
     let finalProfile = userData;
     try {
-      const backupStr = await AsyncStorage.getItem(PROFILE_BACKUP_KEY);
+      // Read per-user backup first (keyed by email/id so multi-account can't cross-contaminate).
+      // Fall back to the legacy generic key for older installs that haven't migrated yet.
+      const perUserKey = getUserBackupKey(userData.email, userData.id);
+      let backupStr = await AsyncStorage.getItem(perUserKey);
+      if (!backupStr && perUserKey !== PROFILE_BACKUP_KEY) {
+        // Migration: check old generic key; only use it if it belongs to the same user.
+        const legacyStr = await AsyncStorage.getItem(PROFILE_BACKUP_KEY);
+        if (legacyStr) {
+          const legacyParsed = JSON.parse(legacyStr) as UserProfile;
+          const sameUser = (legacyParsed.email && legacyParsed.email === userData.email) ||
+            (legacyParsed.id && userData.id && String(legacyParsed.id) === String(userData.id));
+          if (sameUser) backupStr = legacyStr;
+          // Always remove the legacy generic key to prevent future cross-user reads
+          AsyncStorage.removeItem(PROFILE_BACKUP_KEY).catch(() => {});
+        }
+      }
       if (backupStr) {
         const backup = JSON.parse(backupStr) as UserProfile;
-        // Only skip merge if we can CONFIRM it's a completely different user
-        // (both email AND id are present and both differ). If either is missing
-        // or uncertain, merge — better to carry over extra fields than lose them.
-        const differentUser = !!(
-          backup.email && userData.email &&
-          backup.email !== userData.email &&
-          backup.id && userData.id &&
-          String(backup.id) !== String(userData.id)
-        );
-        if (!differentUser) {
-          const merged = { ...backup, ...userData };
-          (Object.keys(merged) as (keyof UserProfile)[]).forEach(key => {
-            const freshVal  = (userData as any)[key];
-            const backupVal = (backup   as any)[key];
-            const isEmpty   = freshVal === undefined || freshVal === null || freshVal === '' ||
-              (Array.isArray(freshVal) && freshVal.length === 0);
-            if (isEmpty && backupVal) (merged as any)[key] = backupVal;
-          });
-          finalProfile = merged;
-          // Don't clear the backup — persistNow() will overwrite it with the
-          // freshly merged profile within 1 second. Keeping it alive means the
-          // next login always has the last known-good state even if a crash
-          // occurs before persistNow fires.
-        } else {
-          // Definitively different user — wipe their backup so it doesn't leak
-          await AsyncStorage.removeItem(PROFILE_BACKUP_KEY);
-        }
+        // Backup (user's last saved state) wins over fresh API data.
+        // API only fills fields that are empty/missing in the backup.
+        // Exception: id and verified always come from the API.
+        console.log('[UserContext] login: userData.name =', userData.name, '| backup.name =', backup.name);
+        const merged = { ...userData, ...backup };
+        (Object.keys(merged) as (keyof UserProfile)[]).forEach(key => {
+          const freshVal  = (userData as any)[key];
+          const backupVal = (backup   as any)[key];
+          const backupIsEmpty = backupVal === undefined || backupVal === null || backupVal === '' ||
+            (Array.isArray(backupVal) && backupVal.length === 0);
+          if (backupIsEmpty && freshVal) (merged as any)[key] = freshVal;
+        });
+        // Backend is authoritative for these
+        merged.id = userData.id || backup.id;
+        merged.verified = userData.verified;
+        finalProfile = merged;
+        console.log('[UserContext] login: finalProfile.name =', finalProfile.name);
       }
     } catch {}
 
@@ -369,10 +382,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     // Save a profile backup BEFORE clearing everything, so locally-filled fields
     // (prompts, height, weight, education) survive the next login if getMe doesn't return them.
+    // Use per-user key so multiple accounts don't contaminate each other's backups.
     const currentProfile = dataRef.current.profile;
     if (currentProfile) {
       try {
-        await AsyncStorage.setItem(PROFILE_BACKUP_KEY, JSON.stringify(currentProfile));
+        const backupKey = getUserBackupKey(currentProfile.email, currentProfile.id);
+        await AsyncStorage.setItem(backupKey, JSON.stringify(currentProfile));
       } catch {}
     }
     await Promise.all(

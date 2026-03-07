@@ -24,6 +24,7 @@ import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
 import { userService } from '@services/api/userService';
+import { onboardingService } from '@services/api/onboardingService';
 import { uploadToCloudinary } from '@services/api/cloudinaryService';
 import { devLog } from '@config/environment';
 import {
@@ -252,7 +253,7 @@ const EditProfileScreen: React.FC = () => {
     // Only include non-empty values — sending empty strings causes backend validation errors.
     const lookingForMap: Record<string, string> = { men: 'male', women: 'female', both: 'both' };
     const apiPayload: Record<string, any> = {};
-    if (name) apiPayload.username = name;
+    if (name) { apiPayload.fullname = name; apiPayload.username = name; }
     if (gender) apiPayload.gender = gender.toLowerCase();
     if (lookingFor) {
       apiPayload.interestedIn = lookingForMap[lookingFor.toLowerCase()] || lookingFor.toLowerCase();
@@ -270,12 +271,40 @@ const EditProfileScreen: React.FC = () => {
     if (!isNaN(weightNum)) apiPayload.weight = weightNum;
     if (education) apiPayload.education = EDUCATION_TO_API[education] || education;
     // prompts saved locally only for now — backend validator may have bugs with nested objects
-    // interests are stored on the backend as ObjectIds — sending display strings causes a 500.
-    // Both will be re-wired once backend confirms correct format.
     if (finalPhotoUrls.length) apiPayload.photos = finalPhotoUrls;
 
     devLog('💾 EditProfile: Saving to API', JSON.stringify(apiPayload));
     const result = await userService.updateProfile(apiPayload);
+
+    // Save interests separately via /api/onboarding/interests which accepts ObjectIds.
+    // We fetch the interest catalogue to map display labels → _id values.
+    if (selectedInterests.length > 0) {
+      try {
+        const interestResult = await onboardingService.getInterests();
+        if (interestResult.success && interestResult.data && typeof interestResult.data === 'object') {
+          // Flatten all categories into a single list of { _id, name }
+          const allItems: Array<{ _id: string; name: string }> = [];
+          Object.values(interestResult.data as Record<string, any[]>).forEach(items => {
+            if (Array.isArray(items)) {
+              items.forEach((item: any) => {
+                if (item._id && item.name) allItems.push({ _id: item._id, name: item.name });
+              });
+            }
+          });
+          // Strip emoji prefix so "🍣 Sushi" → "Sushi" for matching
+          const cleanName = (raw: string) => raw.replace(/([\p{Emoji_Presentation}\p{Extended_Pictographic}])/gu, '').trim();
+          const interestIds = selectedInterests
+            .map(label => allItems.find(i => cleanName(i.name).toLowerCase() === label.toLowerCase())?._id)
+            .filter(Boolean) as string[];
+          if (interestIds.length > 0) {
+            devLog('💾 EditProfile: Saving interest IDs', interestIds);
+            await onboardingService.saveInterests(interestIds);
+          }
+        }
+      } catch (err) {
+        devLog('⚠️ EditProfile: interest ID mapping failed, skipping', err);
+      }
+    }
 
     // Always update local context regardless of API result
     updateProfile({

@@ -50,202 +50,6 @@ const CARD_CONTAINER_HEIGHT = CARD_HEIGHT + 20;
 const TOP_SPACING = Math.round(height * 0.065);   // Minimal gap above header row
 const BOTTOM_SPACING = Math.round(height * 0.055); // ~49px on 900px height
 
-// Mock profile data — used as fallback when API returns no profiles.
-// isMock: true prevents real swipe API calls with fake IDs.
-const MOCK_PROFILES = [
-  // Male profiles (img1-img5)
-  {
-    id: 'mock_1',
-    name: 'Chukwueze',
-    age: 28,
-    location: 'Awka, Anambra',
-    distance: '5 miles away',
-    zodiac: 'Leo',
-    interest: 'Long-term relationship',
-    verified: true,
-    isMock: true,
-    photo: require('@assets/images/img1.jpg'),
-    bio: 'Software engineer by day, Afrobeats DJ by night. Big on travel and deep conversations over suya.',
-    height: 178,
-    weight: 75,
-    gender: 'male',
-    lookingFor: 'female',
-    education: 'Bachelor\'s degree',
-    interests: ['Music', 'Travel', 'Coding', 'Fitness', 'Cooking'],
-  },
-  {
-    id: 'mock_2',
-    name: 'David',
-    age: 32,
-    location: 'Maitama, Abuja',
-    distance: '8 miles away',
-    zodiac: 'Scorpio',
-    interest: 'Casual dating',
-    verified: false,
-    isMock: true,
-    photo: require('@assets/images/img2.jpg'),
-    bio: 'Architect. I design spaces and sometimes people\'s moods too. Love good food and hate bad energy.',
-    height: 182,
-    weight: 82,
-    gender: 'male',
-    lookingFor: 'female',
-    education: 'Master\'s degree',
-    interests: ['Architecture', 'Art', 'Food', 'Photography', 'Movies'],
-  },
-  {
-    id: 'mock_3',
-    name: 'James',
-    age: 26,
-    location: 'Ikorodu, Lagos',
-    distance: '3 miles away',
-    zodiac: 'Gemini',
-    interest: 'New friends',
-    verified: true,
-    isMock: true,
-    photo: require('@assets/images/img3.jpg'),
-    bio: 'Anime fanatic, gym rat, and part-time philosopher. Looking for someone who gets my vibe.',
-    height: 175,
-    weight: 70,
-    gender: 'male',
-    lookingFor: 'both',
-    education: 'Some college',
-    interests: ['Anime', 'Gym', 'Gaming', 'Reading', 'Hiking'],
-  },
-  {
-    id: 'mock_4',
-    name: 'Alex',
-    age: 30,
-    location: 'Lagos Island, Lagos',
-    distance: '12 miles away',
-    zodiac: 'Aries',
-    interest: 'Something casual',
-    verified: true,
-    isMock: true,
-    photo: require('@assets/images/img4.jpg'),
-    bio: 'Finance bro who secretly writes poetry. Yes I know, surprising.',
-    height: 180,
-    weight: 78,
-    gender: 'male',
-    lookingFor: 'female',
-    education: 'Bachelor\'s degree',
-    interests: ['Finance', 'Poetry', 'Tennis', 'Jazz', 'Travel'],
-  },
-  {
-    id: 'mock_5',
-    name: 'Ryan',
-    age: 27,
-    location: 'Surulere, Lagos',
-    distance: '6 miles away',
-    zodiac: 'Taurus',
-    interest: 'Long-term relationship',
-    verified: false,
-    isMock: true,
-    photo: require('@assets/images/img5.jpg'),
-    bio: 'Chef, foodie, and lover of everything spicy. My love language is cooking you jollof rice.',
-    height: 172,
-    weight: 68,
-    gender: 'male',
-    lookingFor: 'female',
-    education: 'Trade school',
-    interests: ['Cooking', 'Food', 'Football', 'Music', 'Nature'],
-  },
-  // Female profiles (img6-img10)
-  {
-    id: 'mock_6',
-    name: 'Tokumbo',
-    age: 25,
-    location: 'Ibadan, Oyo',
-    distance: '4 miles away',
-    zodiac: 'Libra',
-    interest: 'Serious relationship',
-    verified: true,
-    isMock: true,
-    photo: require('@assets/images/img6.jpg'),
-    bio: 'Medical student with a soft spot for rom-coms and plantain. Looking for someone serious about life.',
-    height: 163,
-    weight: 58,
-    gender: 'female',
-    lookingFor: 'male',
-    education: 'Some college',
-    interests: ['Medicine', 'Movies', 'Cooking', 'Reading', 'Yoga'],
-  },
-  {
-    id: 'mock_7',
-    name: 'Tems',
-    age: 29,
-    location: 'Ikeja, Lagos',
-    distance: '7 miles away',
-    zodiac: 'Cancer',
-    interest: 'Casual fun',
-    verified: true,
-    isMock: true,
-    photo: require('@assets/images/img7.jpg'),
-    bio: 'Fashion designer. I believe style is a form of self-expression. Lover of art galleries and late nights.',
-    height: 168,
-    weight: 62,
-    gender: 'female',
-    lookingFor: 'male',
-    education: 'Bachelor\'s degree',
-    interests: ['Fashion', 'Art', 'Music', 'Dance', 'Travel'],
-  },
-  {
-    id: 'mock_8',
-    name: 'Adesewa',
-    age: 24,
-    location: 'Ilesha, Osun',
-    distance: '2 miles away',
-    zodiac: 'Pisces',
-    interest: 'New friends',
-    verified: false,
-    isMock: true,
-    photo: require('@assets/images/img8.jpg'),
-    bio: 'Photographer who sees the world in golden hour. Coffee addict and bookworm.',
-    height: 160,
-    weight: 55,
-    gender: 'female',
-    lookingFor: 'male',
-    education: 'Bachelor\'s degree',
-    interests: ['Photography', 'Books', 'Coffee', 'Nature', 'Film'],
-  },
-  {
-    id: 'mock_9',
-    name: 'Fatima',
-    age: 31,
-    location: 'Yola, Adamawa',
-    distance: '10 miles away',
-    zodiac: 'Virgo',
-    interest: 'Long-term relationship',
-    verified: true,
-    isMock: true,
-    photo: require('@assets/images/img9.jpg'),
-    bio: 'Lawyer by profession, adventurer by heart. I speak three languages and make the best basmati rice.',
-    height: 165,
-    weight: 60,
-    gender: 'female',
-    lookingFor: 'male',
-    education: 'Master\'s degree',
-    interests: ['Law', 'Languages', 'Travel', 'Cooking', 'Fitness'],
-  },
-  {
-    id: 'mock_10',
-    name: 'Cindarella',
-    age: 26,
-    location: 'Niamey, Niger',
-    distance: '5 miles away',
-    zodiac: 'Sagittarius',
-    interest: 'Something casual',
-    verified: true,
-    isMock: true,
-    photo: require('@assets/images/img10.jpg'),
-    bio: 'Nurse with a wild sense of humour. I keep people alive for a living, you\'re welcome.',
-    height: 162,
-    weight: 57,
-    gender: 'female',
-    lookingFor: 'both',
-    education: 'Bachelor\'s degree',
-    interests: ['Healthcare', 'Comedy', 'Dancing', 'Hiking', 'Music'],
-  },
-];
 
 import { useNavigation } from '@react-navigation/native';
 
@@ -253,10 +57,7 @@ const DiscoveryScreen = () => {
   const navigation = useNavigation<any>();
   const { coinBalance, spendCoins, swipeCount, incrementSwipeCount, freeSwipesRemaining, addMatch, updateProfile, profile: userProfile } = useUser();
 
-  // Profiles state — defaults to shuffled mock, replaced by API data on mount
-  const [profiles, setProfiles] = useState(() => {
-    return [...MOCK_PROFILES].sort(() => Math.random() - 0.5);
-  });
+  const [profiles, setProfiles] = useState<any[]>([]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'forYou' | 'nearby'>('forYou');
@@ -270,17 +71,13 @@ const DiscoveryScreen = () => {
   const swipeCountRef = useRef(swipeCount);
   const coinBalanceRef = useRef(coinBalance);
   const profilesRef = useRef(profiles);
+  // Cache last successful API profiles so we can loop them when everyone has been seen
+  const cachedProfilesRef = useRef<any[]>([]);
 
-  // Mock user photo (use first profile image as placeholder for current user)
-  const userPhoto = require('@assets/images/img3.jpg');
+  const userPhoto = userProfile?.photos?.[0] ? { uri: userProfile.photos[0] } : undefined;
 
   // Fire real swipe API and handle match result
-  // Skips API call for mock/fallback profiles (they have fake IDs like "mock_1")
   const fireSwipeApi = async (profile: typeof currentProfile, action: 'like' | 'pass') => {
-    if ((profile as any).isMock) {
-      devLog('🎭 Mock profile — skipping swipe API');
-      return;
-    }
     const profileId = String(profile.id);
     const result = await matchingService.swipe(profileId, action);
 
@@ -381,10 +178,16 @@ const DiscoveryScreen = () => {
     );
 
     if (result.success && Array.isArray(result.data) && result.data.length === 0) {
-      // API worked but no profiles nearby — show empty state (clear mocks)
-      devLog('🔍 Discovery: API returned 0 profiles — showing empty state');
-      setProfiles([]);
-      setCurrentIndex(0);
+      // API returned 0 — loop cached profiles if available, otherwise show empty state
+      if (cachedProfilesRef.current.length > 0) {
+        devLog('🔍 Discovery: API returned 0 profiles — looping cached profiles');
+        setProfiles([...cachedProfilesRef.current]);
+        setCurrentIndex(0);
+      } else {
+        devLog('🔍 Discovery: API returned 0 profiles — showing empty state');
+        setProfiles([]);
+        setCurrentIndex(0);
+      }
     } else if (result.success && Array.isArray(result.data) && result.data.length > 0) {
       const apiProfiles = result.data.map((p: any, idx: number) => ({
         id: p._id || p.id,
@@ -395,10 +198,7 @@ const DiscoveryScreen = () => {
         zodiac: p.zodiac || '',
         interest: p.goal || p.relationshipGoal || '',
         verified: p.verified || false,
-        isMock: false,
-        photo: p.photos?.[0]
-          ? { uri: p.photos[0] }
-          : MOCK_PROFILES[idx % MOCK_PROFILES.length].photo,
+        photo: p.photos?.[0] ? { uri: p.photos[0] } : undefined,
         // Extra fields for ProfileDetailScreen
         bio: p.bio || '',
         height: p.height,
@@ -411,8 +211,6 @@ const DiscoveryScreen = () => {
       }));
 
       // ── Client-side filter ─────────────────────────────────
-      // Applied immediately so settings work even before the backend
-      // supports the corresponding query params.
       const filtered = apiProfiles.filter(p => {
         const age = p.age || 0;
         if (age < discoverySettings.ageMin || age > discoverySettings.ageMax) return false;
@@ -422,17 +220,28 @@ const DiscoveryScreen = () => {
         return true;
       });
 
+      const toShow = filtered.length > 0 ? filtered : apiProfiles;
+
       devLog(
         '✅ Discovery: Loaded', apiProfiles.length, 'profiles from API →',
-        filtered.length, 'after client-side filter',
+        toShow.length, 'after client-side filter',
       );
 
-      // Use filtered if non-empty; otherwise fall back to unfiltered API results
-      // (avoids a blank deck when the backend doesn't yet honour filter params)
-      setProfiles(filtered.length > 0 ? filtered : apiProfiles);
+      // Cache so we can loop when everyone has been seen
+      cachedProfilesRef.current = toShow;
+      setProfiles(toShow);
       setCurrentIndex(0);
     } else if (!result.success) {
-      devLog('⚠️ Discovery: API error — keeping mock profiles as fallback');
+      // API error — loop cached profiles if available, otherwise show empty state
+      if (cachedProfilesRef.current.length > 0) {
+        devLog('⚠️ Discovery: API error — looping cached profiles');
+        setProfiles([...cachedProfilesRef.current]);
+        setCurrentIndex(0);
+      } else {
+        devLog('⚠️ Discovery: API error — showing empty state');
+        setProfiles([]);
+        setCurrentIndex(0);
+      }
     }
 
     setIsLoadingProfiles(false);
