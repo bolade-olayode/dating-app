@@ -200,7 +200,6 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (storedMatches) setMatches(JSON.parse(storedMatches));
         if (authToken) setIsAuthenticated(true);
 
-        console.log('UserContext: data loaded from storage');
       } catch (error) {
         console.error('UserContext: error loading data:', error);
       } finally {
@@ -223,7 +222,6 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         if (now >= parseInt(resetTime, 10)) {
-          console.log('UserContext: resetting daily swipe count');
           setSwipeCountState(0);
           await AsyncStorage.setItem(STORAGE_KEYS.SWIPE_RESET_TIME, (now + SWIPE_RESET_INTERVAL).toString());
         }
@@ -249,14 +247,11 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ? { ...prev, ...data }
         : { name: '', gender: '', lookingFor: '', relationshipGoal: '', interests: [], photos: [], verified: false, ...data } as UserProfile;
       // Write immediately so data survives hot-reload / fast app restarts
-      console.log('[UserContext] updateProfile: writing name =', next.name);
       AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(next))
-        .then(() => console.log('[UserContext] updateProfile: PROFILE written ✓'))
         .catch(e => console.error('[UserContext] updateProfile: PROFILE write failed:', e));
       // Write per-user backup so it isn't contaminated by a different account's data
       const backupKey = getUserBackupKey(next.email, next.id);
       AsyncStorage.setItem(backupKey, JSON.stringify(next))
-        .then(() => console.log('[UserContext] updateProfile: BACKUP written ✓'))
         .catch(e => console.error('[UserContext] updateProfile: BACKUP write failed:', e));
       return next;
     });
@@ -273,25 +268,20 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCoinBalanceState(Number.isFinite(balance) ? Math.max(0, balance) : 0);
   }, []);
 
-  const spendCoins = useCallback((amount: number, description?: string): boolean => {
+  const spendCoins = useCallback((amount: number, _description?: string): boolean => {
     let success = false;
     setCoinBalanceState(prev => {
       if (prev >= amount) {
         success = true;
-        console.log(`Spent ${amount} coins${description ? ` on ${description}` : ''}. Balance: ${prev - amount}`);
         return prev - amount;
       }
-      console.log(`Insufficient coins. Need ${amount}, have ${prev}`);
       return prev;
     });
     return success;
   }, []);
 
   const addCoins = useCallback((amount: number) => {
-    setCoinBalanceState(prev => {
-      console.log(`Added ${amount} coins. Balance: ${prev + amount}`);
-      return prev + amount;
-    });
+    setCoinBalanceState(prev => prev + amount);
   }, []);
 
   // ─── Swipes ──────────────────────────────────────────────
@@ -311,7 +301,6 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const addMatch = useCallback((match: Match) => {
     setMatches(prev => {
       if (prev.find(m => m.id === match.id)) return prev;
-      console.log('New match added:', match.profile.name);
       return [match, ...prev];
     });
   }, []);
@@ -351,7 +340,6 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Backup (user's last saved state) wins over fresh API data.
         // API only fills fields that are empty/missing in the backup.
         // Exception: id and verified always come from the API.
-        console.log('[UserContext] login: userData.name =', userData.name, '| backup.name =', backup.name);
         const merged = { ...userData, ...backup };
         (Object.keys(merged) as (keyof UserProfile)[]).forEach(key => {
           const freshVal  = (userData as any)[key];
@@ -364,13 +352,11 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         merged.id = userData.id || backup.id;
         merged.verified = userData.verified;
         finalProfile = merged;
-        console.log('[UserContext] login: finalProfile.name =', finalProfile.name);
       }
     } catch {}
 
     setProfileState(finalProfile);
     setIsAuthenticated(true);
-    console.log('User logged in:', finalProfile.name);
   }, []);
 
   const logout = useCallback(async () => {
@@ -398,7 +384,6 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSwipeCountState(0);
     setMatches([]);
     setIsAuthenticated(false);
-    console.log('User logged out');
   }, []);
 
   // Register the logout callback so the 401 interceptor can clear context

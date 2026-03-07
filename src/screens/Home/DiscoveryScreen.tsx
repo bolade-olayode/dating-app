@@ -26,6 +26,8 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -34,6 +36,7 @@ import Flare from '@components/ui/Flare';
 import CoinBalance from '@components/ui/CoinBalance';
 import { useUser } from '@context/UserContext';
 import { matchingService } from '@services/api/matchingService';
+import { walletService } from '@services/api/walletService';
 import { loadDiscoverySettings } from '@screens/Home/DiscoverySettingsScreen';
 import { devLog } from '@config/environment';
 import { SWIPE_LIMITS } from '@utils/constant';
@@ -64,6 +67,9 @@ const DiscoveryScreen = () => {
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
+  const [superLikeCost, setSuperLikeCost] = useState(50); // default, overridden by API
+  const [nearbyProfiles, setNearbyProfiles] = useState<any[]>([]);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const currentProfile = profiles[currentIndex];
 
   // Use ref to store current index for PanResponder (avoids stale closure)
@@ -124,6 +130,31 @@ const DiscoveryScreen = () => {
     profilesRef.current = profiles;
   }, [profiles]);
 
+  // Fetch nearby profiles (10 km radius) when tab switches to 'nearby'
+  useEffect(() => {
+    if (activeTab !== 'nearby') return;
+    if (nearbyProfiles.length > 0) return; // already loaded
+    const load = async () => {
+      setIsLoadingNearby(true);
+      const result = await matchingService.discoverProfiles(10000, 20);
+      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+        setNearbyProfiles(result.data.map((p: any) => ({
+          id: p._id || p.id,
+          name: p.username || p.fullname || p.name || 'Unknown',
+          age: p.age || 0,
+          distance: p.distance ? `${Math.round(p.distance / 1000)} km` : '<1 km',
+          photo: p.photos?.[0] ? { uri: p.photos[0] } : require('../../assets/images/opuehbckgdimg.jpg'),
+          verified: p.verified || false,
+        })));
+      } else {
+        // Fallback: reuse For You profiles with "nearby" framing
+        setNearbyProfiles(cachedProfilesRef.current.slice(0, 10));
+      }
+      setIsLoadingNearby(false);
+    };
+    load();
+  }, [activeTab]);
+
   // Prefetch the next profile's image so it's cached when the card transitions
   useEffect(() => {
     const nextIdx = currentIndex < profiles.length - 1 ? currentIndex + 1 : 0;
@@ -154,6 +185,14 @@ const DiscoveryScreen = () => {
     } catch {
       devLog('📍 Location error — skipping location update');
     }
+
+    // Fetch super like cost from wallet actions
+    walletService.getActions().then(r => {
+      if (r.success && Array.isArray(r.data)) {
+        const sl = r.data.find((a: any) => a.actionKey === 'super_like');
+        if (sl?.cost) setSuperLikeCost(sl.cost);
+      }
+    }).catch(() => {});
 
     // Load saved settings
     const discoverySettings = await loadDiscoverySettings();
@@ -373,6 +412,26 @@ const DiscoveryScreen = () => {
     });
   };
 
+  const handleSuperLike = async () => {
+    if (coinBalance < superLikeCost) {
+      navigation.navigate('TopUp');
+      return;
+    }
+    devLog('⭐ Super Liked:', currentProfile.name, '— cost:', superLikeCost);
+    spendCoins(superLikeCost, 'super_like');
+    fireSwipeApi(currentProfile, 'like');
+    setIsTransitioning(true);
+    Animated.parallel([
+      Animated.timing(position, { toValue: { x: 0, y: -height }, duration: 300, useNativeDriver: false }),
+      Animated.timing(cardOpacity, { toValue: 0, duration: 200, useNativeDriver: false }),
+    ]).start(() => {
+      position.setValue({ x: 0, y: 0 });
+      nextProfile();
+      Animated.timing(cardOpacity, { toValue: 1, duration: 200, useNativeDriver: false })
+        .start(() => setIsTransitioning(false));
+    });
+  };
+
   const nextProfile = () => {
     const nextIndex = currentIndex < profiles.length - 1 ? currentIndex + 1 : 0;
     devLog('🔄 Next profile:', nextIndex, '-', profiles[nextIndex]?.name);
@@ -513,30 +572,71 @@ const DiscoveryScreen = () => {
     </View>
   );
 
-  // ─── Nearby Coming Soon ─────────────────────────────────────
+  // ─── Nearby Tab ─────────────────────────────────────────────
   if (activeTab === 'nearby') {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
         <Flare />
         {renderHeader()}
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIconRing}>
-            <Icon name="location-outline" size={52} color="#FF007B" />
+        {isLoadingNearby ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#FF007B" />
           </View>
-          <Text style={styles.emptyTitle}>Nearby is coming soon</Text>
-          <Text style={styles.emptyBody}>
-            We're working on hyper-local discovery. For now, use "For You" to find matches nearby.
-          </Text>
-          <TouchableOpacity
-            style={styles.emptyRefreshBtn}
-            onPress={() => setActiveTab('forYou')}
-            activeOpacity={0.85}
-          >
-            <Icon name="heart-outline" size={16} color="#FFF" />
-            <Text style={styles.emptyRefreshText}>Go to For You</Text>
-          </TouchableOpacity>
-        </View>
+        ) : nearbyProfiles.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconRing}>
+              <Icon name="location-outline" size={52} color="#FF007B" />
+            </View>
+            <Text style={styles.emptyTitle}>Nobody nearby yet</Text>
+            <Text style={styles.emptyBody}>
+              Try expanding your distance in settings, or check back later.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyRefreshBtn}
+              onPress={() => {
+                setNearbyProfiles([]);
+                setActiveTab('nearby');
+              }}
+              activeOpacity={0.85}
+            >
+              <Icon name="refresh-outline" size={16} color="#FFF" />
+              <Text style={styles.emptyRefreshText}>Refresh</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={nearbyProfiles}
+            keyExtractor={item => String(item.id)}
+            numColumns={2}
+            contentContainerStyle={styles.nearbyGrid}
+            columnWrapperStyle={{ gap: 12 }}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.nearbyCard}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('ProfileDetail', { profile: item, isPaidView: false })}
+              >
+                <Image source={item.photo} style={styles.nearbyPhoto} />
+                <View style={styles.nearbyInfo}>
+                  <View style={styles.nearbyNameRow}>
+                    <Text style={styles.nearbyName} numberOfLines={1}>
+                      {item.name}, {item.age}
+                    </Text>
+                    {item.verified && (
+                      <Icon name="checkmark-circle" size={14} color="#00B4FF" />
+                    )}
+                  </View>
+                  <View style={styles.nearbyDistanceRow}>
+                    <Icon name="location-outline" size={11} color="#FF007B" />
+                    <Text style={styles.nearbyDistance}>{item.distance}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+        )}
       </View>
     );
   }
@@ -681,6 +781,14 @@ const DiscoveryScreen = () => {
                   onPress={handleMessage}
                 >
                   <Icon name="chatbubble-outline" size={18} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Super Like */}
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.superLikeButton]}
+                  onPress={handleSuperLike}
+                >
+                  <Icon name="star" size={20} color="#FFF" />
                 </TouchableOpacity>
 
                 {/* Like */}
@@ -916,6 +1024,9 @@ const styles = StyleSheet.create({
   messageButton: {
     // Plain white border with glassmorphism
   },
+  superLikeButton: {
+    backgroundColor: 'rgba(0, 122, 255, 0.6)',
+  },
   likeButton: {
     // Plain white border with glassmorphism
   },
@@ -1067,6 +1178,49 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.Medium,
     fontSize: 16,
     color: '#FFF',
+  },
+  // Nearby grid
+  nearbyGrid: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 120,
+  },
+  nearbyCard: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  nearbyPhoto: {
+    width: '100%',
+    aspectRatio: 0.8,
+  },
+  nearbyInfo: {
+    padding: 10,
+  },
+  nearbyNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  nearbyName: {
+    fontFamily: FONTS.SemiBold,
+    fontSize: 13,
+    color: '#FFF',
+    flex: 1,
+  },
+  nearbyDistanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 3,
+  },
+  nearbyDistance: {
+    fontFamily: FONTS.Regular,
+    fontSize: 11,
+    color: '#FF007B',
   },
 });
 

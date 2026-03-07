@@ -2,7 +2,6 @@
 
 import React from 'react';
 import {
-
   View,
   Text,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   ScrollView,
   StatusBar,
   Alert,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +25,7 @@ const LEGAL_URLS = {
   privacy: 'https://www.meetpie.dating/privacy',
   terms: 'https://www.meetpie.dating/terms',
   communityGuidelines: 'https://www.meetpie.dating/community-guidelines',
+  help: 'https://www.meetpie.dating/help',
 } as const;
 
 const openLegalPage = (url: string) => {
@@ -160,13 +161,13 @@ const AccountActionsScreen: React.FC = () => {
             'notifications-outline',
             'Notifications',
             'Manage push notification preferences',
-            () => Alert.alert('Notifications', 'Notification settings coming soon.'),
+            () => Linking.openSettings(),
           )}
           {renderActionRow(
             'help-circle-outline',
             'Help & Support',
             'FAQs and contact support',
-            () => Alert.alert('Help', 'Help center coming soon.'),
+            () => openLegalPage(LEGAL_URLS.help),
           )}
           {renderActionRow(
             'document-text-outline',

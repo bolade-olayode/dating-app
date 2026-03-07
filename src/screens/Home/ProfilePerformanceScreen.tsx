@@ -9,6 +9,7 @@ import {
   ScrollView,
   StatusBar,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,15 +19,16 @@ import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
 import { matchingService } from '@services/api/matchingService';
+import { walletService } from '@services/api/walletService';
 import { devLog } from '@config/environment';
 
 const ProfilePerformanceScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { coinBalance } = useUser();
+  const { coinBalance, spendCoins } = useUser();
 
-
+  const [isBoosting, setIsBoosting] = useState(false);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [stats, setStats] = useState({
     profileViews: 0,
@@ -87,6 +89,42 @@ const ProfilePerformanceScreen: React.FC = () => {
     },
   ];
 
+  const handleBoost = async (boost: typeof BOOST_OPTIONS[0]) => {
+    if (isBoosting) return;
+    if (coinBalance < boost.cost) {
+      Alert.alert(
+        'Not enough tokens',
+        `${boost.title} costs ${boost.cost} tokens. Top up your wallet to activate it.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Top Up', onPress: () => navigation.navigate('TopUp') },
+        ],
+      );
+      return;
+    }
+    Alert.alert(
+      `Activate ${boost.title}?`,
+      `This will cost ${boost.cost} tokens from your balance.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Activate',
+          onPress: async () => {
+            setIsBoosting(true);
+            const result = await walletService.spend(boost.id);
+            setIsBoosting(false);
+            if (result.success) {
+              spendCoins(boost.cost, boost.id);
+              Alert.alert('Activated!', `${boost.title} is now active. Good luck! 🚀`);
+            } else {
+              Alert.alert('Failed', result.message || 'Could not activate boost. Try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -140,13 +178,8 @@ const ProfilePerformanceScreen: React.FC = () => {
               key={boost.id}
               style={styles.boostCard}
               activeOpacity={0.8}
-              onPress={() => {
-                if (coinBalance >= boost.cost) {
-                  navigation.navigate('Wallet');
-                } else {
-                  navigation.navigate('TopUp');
-                }
-              }}
+              disabled={isBoosting}
+              onPress={() => handleBoost(boost)}
             >
               <View style={styles.boostLeft}>
                 <View style={styles.boostIconContainer}>

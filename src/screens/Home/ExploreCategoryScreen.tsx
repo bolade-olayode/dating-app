@@ -77,7 +77,7 @@ const ExploreCategoryScreen: React.FC = () => {
   const route = useRoute<RouteProp<ExploreCategoryParams, 'ExploreCategory'>>();
   const { categoryTitle, memberCount } = route.params;
 
-  const [profiles, setProfiles] = useState<ExploreProfile[]>(MOCK_PROFILES);
+  const [profiles, setProfiles] = useState<ExploreProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -245,6 +245,10 @@ const ExploreCategoryScreen: React.FC = () => {
         {/* Profile Grid (2 columns) */}
         {isLoading ? (
           <ActivityIndicator size="large" color="#FF007B" style={{ marginTop: 40 }} />
+        ) : profiles.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No profiles found in this category yet.</Text>
+          </View>
         ) : (
         <View style={styles.profileGrid}>
           {profiles.map(renderProfileCard)}
@@ -395,6 +399,18 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.Regular,
     fontSize: 11,
     color: '#BBB',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 60,
+  },
+  emptyText: {
+    fontFamily: FONTS.Regular,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

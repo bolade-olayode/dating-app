@@ -15,14 +15,18 @@ import {
   StatusBar,
   ScrollView,
   ActivityIndicator,
+  Alert,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import { chatService } from '@services/api/chatService';
+import { uploadToCloudinary } from '@services/api/cloudinaryService';
 import { useUser } from '@context/UserContext';
 import { devLog } from '@config/environment';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +40,16 @@ interface Message {
   liked: boolean;
   date?: string;
 }
+
+// Common emojis for the picker
+const EMOJI_LIST = [
+  '😊','😂','🥰','😍','😘','💕','❤️','🔥','💯','🎉',
+  '😅','🤣','😭','😩','🫠','😌','🥺','😤','😏','🥴',
+  '👀','💀','🙌','👏','🫶','💪','👋','🤙','✌️','🤝',
+  '🌹','🌸','💐','🍓','🍕','🍜','☕','🍷','🥂','🎂',
+  '🎵','🎶','🏖️','🌅','✈️','🌍','🏋️','📸','🎮','💌',
+  '💋','😴','🤗','🫂','😎','🤩','🤔','😇','🙈','🙉',
+];
 
 // Icebreaker prompts
 const ICEBREAKERS = [
@@ -210,6 +224,70 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
 
   const handleSend = () => sendMessageFn(message);
 
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const handleAttachImage = () => {
+    Alert.alert('Send a photo', undefined, [
+      {
+        text: 'Take photo',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permission needed', 'Allow camera access in your device settings.');
+            return;
+          }
+          const result = await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.8 });
+          if (!result.canceled && result.assets[0]) sendImageMessage(result.assets[0].uri);
+        },
+      },
+      {
+        text: 'Choose from library',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permission needed', 'Allow photo library access in your device settings.');
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
+          if (!result.canceled && result.assets[0]) sendImageMessage(result.assets[0].uri);
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const sendImageMessage = async (localUri: string) => {
+    // Optimistic UI — show local image immediately
+    const tempId = Date.now();
+    const newMsg: Message = {
+      id: tempId,
+      image: { uri: localUri },
+      sent: true,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      liked: false,
+    };
+    setMessages(prev => [...prev, newMsg]);
+    setShowIcebreakers(false);
+    scrollToEnd();
+
+    setIsUploadingImage(true);
+    try {
+      const cloudUrl = await uploadToCloudinary(localUri);
+      // Replace local URI with remote URL in state
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, image: { uri: cloudUrl } } : m));
+      chatService.sendMessage(chatId, cloudUrl, 'image').then(result => {
+        if (!result.success) devLog('⚠️ Chat: image send API failed, kept locally');
+      });
+    } catch {
+      devLog('⚠️ Chat: Cloudinary upload failed');
+      Alert.alert('Upload failed', 'Could not send the image. Please try again.');
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const handleIcebreaker = (prompt: string) => {
     sendMessageFn(prompt);
   };
@@ -363,14 +441,40 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
       />
       )}
 
+      {/* Emoji Picker Panel */}
+      {showEmojiPicker && (
+        <View style={styles.emojiPanel}>
+          <ScrollView contentContainerStyle={styles.emojiGrid} showsVerticalScrollIndicator={false}>
+            {EMOJI_LIST.map((emoji, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.emojiCell}
+                activeOpacity={0.6}
+                onPress={() => setMessage(prev => prev + emoji)}
+              >
+                <Text style={styles.emojiText}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Input Bar */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
         <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
-          <TouchableOpacity style={styles.attachButton} activeOpacity={0.7}>
-            <Icon name="add" size={24} color="#888" />
+          <TouchableOpacity
+            style={styles.attachButton}
+            activeOpacity={0.7}
+            onPress={handleAttachImage}
+            disabled={isUploadingImage}
+          >
+            {isUploadingImage
+              ? <ActivityIndicator size="small" color="#FF007B" />
+              : <Icon name="add" size={24} color="#888" />
+            }
           </TouchableOpacity>
 
           <View style={styles.inputContainer}>
@@ -382,7 +486,18 @@ const ChatConversationScreen: React.FC<ChatConversationProps> = ({ route, naviga
               onChangeText={setMessage}
               multiline
               maxLength={1000}
+              onFocus={() => setShowEmojiPicker(false)}
             />
+            <TouchableOpacity
+              style={styles.emojiToggleBtn}
+              activeOpacity={0.7}
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowEmojiPicker(prev => !prev);
+              }}
+            >
+              <Text style={styles.emojiToggleIcon}>{showEmojiPicker ? '⌨️' : '😊'}</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -658,6 +773,34 @@ const styles = StyleSheet.create({
   },
   sendButtonActive: {
     backgroundColor: '#FF007B',
+  },
+  emojiPanel: {
+    height: 220,
+    backgroundColor: '#111',
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  emojiCell: {
+    width: '16.66%',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  emojiText: {
+    fontSize: 26,
+  },
+  emojiToggleBtn: {
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emojiToggleIcon: {
+    fontSize: 20,
   },
 });
 

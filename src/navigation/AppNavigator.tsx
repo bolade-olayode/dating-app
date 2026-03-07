@@ -305,7 +305,6 @@ const AppNavigator = () => {
                 (storedProfile.id && apiProfile.id && String(storedProfile.id) === String(apiProfile.id))
               );
               const localProfile: UserProfile | null = isSameUser ? storedProfile : null;
-              console.log('[AppNavigator] session restore: apiProfile.name =', apiProfile.name, '| localProfile.name =', localProfile?.name, '| sameUser =', !!isSameUser);
               // Merge: local (user-edited) data wins over API data.
               // API only fills in fields that are empty/missing locally.
               // Exception: id and verified always come from the backend.
@@ -324,7 +323,6 @@ const AppNavigator = () => {
               // Backend is authoritative for these — always override local
               merged.id = apiProfile.id || localProfile?.id;
               merged.verified = apiProfile.verified;
-              console.log('[AppNavigator] session restore: merged.name =', merged.name);
               await loginUser(token, merged);
 
               // Onboarding resume: if user quit before completing their profile

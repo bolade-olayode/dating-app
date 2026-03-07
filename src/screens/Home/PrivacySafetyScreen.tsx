@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { moderationService } from '@services/api/moderationService';
+import * as WebBrowser from 'expo-web-browser';
 import { devLog } from '@config/environment';
 
 const PrivacySafetyScreen: React.FC = () => {
@@ -222,13 +223,13 @@ const PrivacySafetyScreen: React.FC = () => {
             'flag-outline',
             'Report a problem',
             'Report a bug or safety concern',
-            () => Alert.alert('Report', 'Report feature coming soon.'),
+            () => WebBrowser.openBrowserAsync('mailto:support@meetpie.dating?subject=Report%20a%20Problem'),
           )}
           {renderActionRow(
             'shield-checkmark-outline',
             'Community guidelines',
             'Review our safety policies',
-            () => Alert.alert('Guidelines', 'Community guidelines coming soon.'),
+            () => WebBrowser.openBrowserAsync('https://www.meetpie.dating/community-guidelines', { toolbarColor: '#000000', controlsColor: '#FF007B', showTitle: true }),
           )}
         </View>
       </ScrollView>
