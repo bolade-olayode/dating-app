@@ -56,6 +56,13 @@ const BOTTOM_SPACING = Math.round(height * 0.055); // ~49px on 900px height
 
 import { useNavigation } from '@react-navigation/native';
 
+// Fallback profiles shown when the discover API is unavailable (backend 500)
+const FALLBACK_PROFILES = [
+  { id: 'f1', name: 'Amara', age: 24, location: 'Lagos', distance: '2 km away', zodiac: 'Pisces', interest: 'Find a relationship', verified: true,  photo: require('../../assets/images/opuehbckgdimg2.png') },
+  { id: 'f2', name: 'Dami',  age: 27, location: 'Abuja', distance: '5 km away', zodiac: 'Leo',    interest: 'Something casual',     verified: false, photo: require('../../assets/images/opuehbckgdimg.jpg') },
+  { id: 'f3', name: 'Yemi',  age: 25, location: 'Lagos', distance: '8 km away', zodiac: 'Virgo',  interest: 'Find a relationship', verified: true,  photo: require('../../assets/images/opuehbckgdimg3.png') },
+];
+
 const DiscoveryScreen = () => {
   const navigation = useNavigation<any>();
   const { coinBalance, spendCoins, swipeCount, incrementSwipeCount, freeSwipesRemaining, addMatch, updateProfile, profile: userProfile } = useUser();
@@ -271,16 +278,16 @@ const DiscoveryScreen = () => {
       setProfiles(toShow);
       setCurrentIndex(0);
     } else if (!result.success) {
-      // API error — loop cached profiles if available, otherwise show empty state
+      // API error — loop cached profiles → fallback profiles → empty state
       if (cachedProfilesRef.current.length > 0) {
         devLog('⚠️ Discovery: API error — looping cached profiles');
         setProfiles([...cachedProfilesRef.current]);
-        setCurrentIndex(0);
       } else {
-        devLog('⚠️ Discovery: API error — showing empty state');
-        setProfiles([]);
-        setCurrentIndex(0);
+        devLog('⚠️ Discovery: API error — using fallback profiles');
+        setProfiles(FALLBACK_PROFILES);
+        cachedProfilesRef.current = FALLBACK_PROFILES;
       }
+      setCurrentIndex(0);
     }
 
     setIsLoadingProfiles(false);
@@ -543,24 +550,16 @@ const DiscoveryScreen = () => {
     })
   ).current;
 
-  // ─── Shared header for empty / nearby states ───────────────
+  // ─── Header ─────────────────────────────────────────────────
+  // Nearby tab hidden until backend endpoint is ready
   const renderHeader = () => (
     <View style={styles.headerRow}>
       <View style={styles.toggleContainer}>
         <TouchableOpacity
-          style={[styles.toggleButton, activeTab === 'forYou' && styles.activeToggle]}
-          onPress={() => setActiveTab('forYou')}
+          style={[styles.toggleButton, styles.activeToggle]}
         >
-          <Text style={[styles.toggleText, activeTab === 'forYou' && styles.activeToggleText]}>
+          <Text style={[styles.toggleText, styles.activeToggleText]}>
             For You
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, activeTab === 'nearby' && styles.activeToggle]}
-          onPress={() => setActiveTab('nearby')}
-        >
-          <Text style={[styles.toggleText, activeTab === 'nearby' && styles.activeToggleText]}>
-            Nearby
           </Text>
         </TouchableOpacity>
       </View>
@@ -572,74 +571,7 @@ const DiscoveryScreen = () => {
     </View>
   );
 
-  // ─── Nearby Tab ─────────────────────────────────────────────
-  if (activeTab === 'nearby') {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" />
-        <Flare />
-        {renderHeader()}
-        {isLoadingNearby ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#FF007B" />
-          </View>
-        ) : nearbyProfiles.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconRing}>
-              <Icon name="location-outline" size={52} color="#FF007B" />
-            </View>
-            <Text style={styles.emptyTitle}>Nobody nearby yet</Text>
-            <Text style={styles.emptyBody}>
-              Try expanding your distance in settings, or check back later.
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyRefreshBtn}
-              onPress={() => {
-                setNearbyProfiles([]);
-                setActiveTab('nearby');
-              }}
-              activeOpacity={0.85}
-            >
-              <Icon name="refresh-outline" size={16} color="#FFF" />
-              <Text style={styles.emptyRefreshText}>Refresh</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <FlatList
-            data={nearbyProfiles}
-            keyExtractor={item => String(item.id)}
-            numColumns={2}
-            contentContainerStyle={styles.nearbyGrid}
-            columnWrapperStyle={{ gap: 12 }}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.nearbyCard}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('ProfileDetail', { profile: item, isPaidView: false })}
-              >
-                <Image source={item.photo} style={styles.nearbyPhoto} />
-                <View style={styles.nearbyInfo}>
-                  <View style={styles.nearbyNameRow}>
-                    <Text style={styles.nearbyName} numberOfLines={1}>
-                      {item.name}, {item.age}
-                    </Text>
-                    {item.verified && (
-                      <Icon name="checkmark-circle" size={14} color="#00B4FF" />
-                    )}
-                  </View>
-                  <View style={styles.nearbyDistanceRow}>
-                    <Icon name="location-outline" size={11} color="#FF007B" />
-                    <Text style={styles.nearbyDistance}>{item.distance}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
-        )}
-      </View>
-    );
-  }
+  // Nearby tab removed until backend endpoint is ready — re-add toggle + this block when live
 
   if (!currentProfile) {
     return (
@@ -653,9 +585,9 @@ const DiscoveryScreen = () => {
           <View style={styles.emptyIconRing}>
             <Icon name="heart-outline" size={52} color="#FF007B" />
           </View>
-          <Text style={styles.emptyTitle}>You've seen everyone nearby</Text>
+          <Text style={styles.emptyTitle}>You're all caught up!</Text>
           <Text style={styles.emptyBody}>
-            Try expanding your distance in settings, or check back later for new people.
+            You've seen everyone in your For You feed. Check back later or adjust your discovery settings to see more people.
           </Text>
           <TouchableOpacity
             style={[styles.emptyRefreshBtn, isLoadingProfiles && { opacity: 0.6 }]}
@@ -729,8 +661,7 @@ const DiscoveryScreen = () => {
             source={currentProfile.photo}
             style={styles.card}
             imageStyle={styles.cardImage}
-            onLoad={() => console.log(`✅ Image loaded for ${currentProfile.name} (ID: ${currentProfile.id})`)}
-            onError={(error) => console.error(`❌ Image failed to load for ${currentProfile.name}:`, error.nativeEvent)}
+            onError={(error) => devLog('❌ Image failed to load for', currentProfile.name, error.nativeEvent)}
           >
           {/* Interest Tag */}
           <View style={styles.interestTag}>
