@@ -18,16 +18,17 @@ import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { useUser } from '@context/UserContext';
 import { walletService, CoinPackage } from '@services/api/walletService';
+import { convertFromUSD, formatCurrency } from '@services/api/fxService';
 import { devLog } from '@config/environment';
+import * as Localization from 'expo-localization';
 
-// Fallback packages — used when API is unavailable
+// Fallback packages — mirrors backend USD IAP products, used when API is unavailable
 const FALLBACK_PACKAGES: CoinPackage[] = [
-  { _id: '1', id: '1', name: 'Starter',  coins: 150,   bonusCoins: 0,    priceNaira: 2000,   productId: 'starter',  isActive: true },
-  { _id: '2', id: '2', name: 'Silver',   coins: 450,   bonusCoins: 50,   priceNaira: 5000,   productId: 'silver',   isActive: true },
-  { _id: '3', id: '3', name: 'Gold',     coins: 1000,  bonusCoins: 200,  priceNaira: 10000,  productId: 'gold',     isActive: true },
-  { _id: '4', id: '4', name: 'Platinum', coins: 2300,  bonusCoins: 500,  priceNaira: 20000,  productId: 'platinum', isActive: true },
-  { _id: '5', id: '5', name: 'Elite',    coins: 6500,  bonusCoins: 700,  priceNaira: 50000,  productId: 'elite',    isActive: true },
-  { _id: '6', id: '6', name: 'Odogwu',  coins: 10000, bonusCoins: 1000, priceNaira: 100000, productId: 'odogwu',   isActive: true },
+  { _id: 'f1', id: 'f1', name: 'Starter Pack', coins: 100,  bonusCoins: 0, priceUSD: 0.99,  currency: 'USD', productId: 'com.meetpie.coins.100',  isActive: true },
+  { _id: 'f2', id: 'f2', name: 'Popular Pack', coins: 500,  bonusCoins: 0, priceUSD: 3.99,  currency: 'USD', productId: 'com.meetpie.coins.500',  isActive: true },
+  { _id: 'f3', id: 'f3', name: 'Value Pack',   coins: 1200, bonusCoins: 0, priceUSD: 7.99,  currency: 'USD', productId: 'com.meetpie.coins.1200', isActive: true },
+  { _id: 'f4', id: 'f4', name: 'Premium Pack', coins: 2800, bonusCoins: 0, priceUSD: 14.99, currency: 'USD', productId: 'com.meetpie.coins.2800', isActive: true },
+  { _id: 'f5', id: 'f5', name: 'Elite Pack',   coins: 6500, bonusCoins: 0, priceUSD: 29.99, currency: 'USD', productId: 'com.meetpie.coins.6500', isActive: true },
 ];
 
 const TopUpScreen: React.FC<any> = ({ navigation }) => {
@@ -45,11 +46,10 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
       setIsLoading(true);
       const result = await walletService.getPackages();
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-        const active: CoinPackage[] = result.data.filter((p: CoinPackage) => p.isActive);
-        devLog('📦 TopUp: loaded', active.length, 'packages');
-        setPackages(active);
+        devLog('📦 TopUp: loaded', result.data.length, 'NGN packages');
+        setPackages(result.data);
         // Default-select the middle package (typically best value)
-        const mid = active[Math.floor(active.length / 2)];
+        const mid = result.data[Math.floor(result.data.length / 2)];
         if (mid) setSelectedId(mid._id || mid.id);
       }
       setIsLoading(false);

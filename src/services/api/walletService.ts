@@ -14,11 +14,12 @@ export interface WalletResponse {
 export interface CoinPackage {
   _id: string;
   id: string;
-  name: string;        // e.g. "Starter", "Gold"
+  name: string;        // e.g. "Starter Pack", "Elite Pack"
   coins: number;       // base coins granted
   bonusCoins: number;  // bonus coins (may be 0)
-  priceNaira: number;  // price in Naira
-  productId: string;   // store product ID for IAP
+  priceUSD: number;    // base price in USD (App Store/Play Store IAP base)
+  currency: string;    // "USD" (base currency from backend)
+  productId: string;   // store product ID for IAP (platformProductId)
   isActive: boolean;
 }
 
@@ -67,10 +68,30 @@ const getPackages = async (): Promise<WalletResponse> => {
   try {
     devLog('📦 Wallet: Fetching packages');
     const response = await apiClient.get('/api/wallet/packages');
+    // Backend returns { data: { packages: [...] } }
+    const raw: any[] =
+      response.data?.data?.packages ||
+      response.data?.data ||
+      response.data ||
+      [];
+    // Normalize backend shape → CoinPackage shape, keep only USD packages (IAP products)
+    const packages: CoinPackage[] = (Array.isArray(raw) ? raw : [])
+      .filter((p: any) => p.isActive && (p.currency === 'USD' || !p.currency))
+      .map((p: any) => ({
+        _id: p._id,
+        id: p._id,
+        name: p.label || p.name || '',
+        coins: p.coins ?? 0,
+        bonusCoins: p.bonus ?? p.bonusCoins ?? 0,
+        priceUSD: p.price ?? 0,
+        currency: p.currency ?? 'NGN',
+        productId: p.platformProductId || p.productId || p._id,
+        isActive: p.isActive,
+      }));
     return {
       success: true,
       message: 'Packages fetched',
-      data: response.data?.data || response.data,
+      data: packages,
     };
   } catch (error: any) {
     errorLog('Wallet getPackages error:', error.response?.data || error.message);
