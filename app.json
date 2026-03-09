@@ -33,10 +33,19 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "opueh.app", "pathPrefix": "/" },
-            { "scheme": "opueh" }
+            {
+              "scheme": "https",
+              "host": "opueh.app",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "opueh"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
@@ -46,18 +55,28 @@
       ]
     },
     "plugins": [
-      ["expo-image-picker", {
-        "photosPermission": "Opueh needs photo library access to upload profile photos.",
-        "cameraPermission": "Opueh needs camera access for profile verification and photo uploads."
-      }],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Opueh needs photo library access to upload profile photos.",
+          "cameraPermission": "Opueh needs camera access for profile verification and photo uploads."
+        }
+      ],
       "expo-font",
-      ["expo-location", {
-        "locationAlwaysAndWhenInUsePermission": "Opueh uses your location to show you nearby matches."
-      }],
-      ["expo-notifications", {
-        "icon": "./assets/icon.png",
-        "color": "#FF007B"
-      }]
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Opueh uses your location to show you nearby matches."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FF007B"
+        }
+      ],
+      "expo-localization"
     ],
     "extra": {
       "eas": {

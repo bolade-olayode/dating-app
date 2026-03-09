@@ -36,29 +36,51 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
   const { addCoins, setCoinBalance } = useUser();
 
   const [packages, setPackages] = useState<CoinPackage[]>(FALLBACK_PACKAGES);
-  const [selectedId, setSelectedId] = useState<string>('3'); // Default: Gold (popular)
+  const [selectedId, setSelectedId] = useState<string>('f3'); // Default: middle package
   const [isLoading, setIsLoading] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  // FX state: converted prices keyed by package _id
+  const [localPrices, setLocalPrices] = useState<Record<string, string>>({});
+  const [localCurrency, setLocalCurrency] = useState('USD');
 
-  // Fetch real packages on mount
+  // Fetch packages + live FX rates on mount
   useEffect(() => {
-    const fetchPackages = async () => {
+    const init = async () => {
       setIsLoading(true);
+
+      // Detect device currency (e.g. "NGN", "GHS", "KES", "ZAR")
+      const deviceCurrency = Localization.getLocales?.()[0]?.currencyCode ?? 'USD';
+      setLocalCurrency(deviceCurrency);
+
+      // Fetch packages
+      let pkgList = FALLBACK_PACKAGES;
       const result = await walletService.getPackages();
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-        devLog('📦 TopUp: loaded', result.data.length, 'NGN packages');
-        setPackages(result.data);
-        // Default-select the middle package (typically best value)
-        const mid = result.data[Math.floor(result.data.length / 2)];
+        devLog('📦 TopUp: loaded', result.data.length, 'packages');
+        pkgList = result.data;
+        setPackages(pkgList);
+        const mid = pkgList[Math.floor(pkgList.length / 2)];
         if (mid) setSelectedId(mid._id || mid.id);
       }
+
+      // Convert each package's USD price to device currency
+      const prices: Record<string, string> = {};
+      await Promise.all(
+        pkgList.map(async (pkg) => {
+          const { amount, currency } = await convertFromUSD(pkg.priceUSD, deviceCurrency);
+          prices[pkg._id] = formatCurrency(amount, currency);
+        }),
+      );
+      setLocalPrices(prices);
+
       setIsLoading(false);
     };
-    fetchPackages();
+    init();
   }, []);
 
   const formatTokens = (num: number) => num.toLocaleString();
-  const formatPrice  = (naira: number) => `₦${naira.toLocaleString()}`;
+  const getPrice = (pkg: CoinPackage) =>
+    localPrices[pkg._id] ?? formatCurrency(pkg.priceUSD, 'USD');
 
   const selectedPkg = packages.find((p) => (p._id || p.id) === selectedId);
 
@@ -160,7 +182,7 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
                 {pkg.bonusCoins > 0 && (
                   <Text style={styles.bonusText}>+{formatTokens(pkg.bonusCoins)} bonus</Text>
                 )}
-                <Text style={styles.packagePrice}>{formatPrice(pkg.priceNaira)}</Text>
+                <Text style={styles.packagePrice}>{getPrice(pkg)}</Text>
               </TouchableOpacity>
             );
           })}
@@ -204,7 +226,7 @@ const TopUpScreen: React.FC<any> = ({ navigation }) => {
             ) : (
               <Text style={styles.purchaseButtonText}>
                 {selectedPkg
-                  ? `Purchase for ${formatPrice(selectedPkg.priceNaira)}`
+                  ? `Purchase for ${getPrice(selectedPkg)}`
                   : 'Select a package'}
               </Text>
             )}

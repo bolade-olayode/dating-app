@@ -59,6 +59,32 @@ app.use((err, req, res, next) => {
 
 ---
 
+## P0 — Frontend Launch Blockers (Frontend Work)
+
+### F1. Replace FX API Pricing with Native Store Pricing (react-native-iap)
+**Status:** Interim solution in place — FX conversion via `open.er-api.com`
+**File:** `src/screens/Home/TopUpScreen.tsx`, `src/services/api/fxService.ts`
+
+**Problem:** Currently the app fetches live USD→local currency rates from a free FX API and displays an approximate price. This won't match what the App Store / Play Store actually charges, which could mislead users (e.g. app shows ₦6,400 but store charges ₦6,847).
+
+**Proper Fix:** Use `react-native-iap` to query the store directly:
+```ts
+import Iap from 'react-native-iap';
+const products = await Iap.getProducts({ skus: packageProductIds });
+// products[0].localizedPrice → exact store price in user's currency
+// products[0].currency       → e.g. "NGN"
+```
+
+**Prerequisites before this can be done:**
+- [ ] All coin packages configured in Apple App Store Connect (in-app purchases)
+- [ ] All coin packages configured in Google Play Console (in-app products)
+- [ ] App signed with production provisioning profile (cannot test IAP in Expo Go)
+- [ ] Install `react-native-iap` and eject to bare workflow OR use `expo-in-app-purchases`
+
+**Why this matters:** App Store / Play Store review guidelines require displayed prices to match actual charge. Showing an approximation risks rejection or user complaints.
+
+---
+
 ## P1 — Should Fix Before Launch
 
 ### 3. OTP Email/SMS Delivery Reliability
