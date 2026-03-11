@@ -56,8 +56,9 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
   const insets = useSafeAreaInsets();
   const { profile, isPaidView } = route.params;
   const scrollY = useRef(new Animated.Value(0)).current;
-  const { addMatch } = useUser();
+  const { addMatch, addBlockedUser, isBlocked } = useUser();
   const [isLiking, setIsLiking] = useState(false);
+  const alreadyBlocked = isBlocked(String(profile.id));
 
   // Like / "Say Hi" handler — fires real swipe API
   const handleLike = async () => {
@@ -67,21 +68,25 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
     devLog('❤️ ProfileDetail: Liking', profile.name);
     const result = await matchingService.swipe(profileId, 'like');
 
-    if (result.success && result.data?.isMatch) {
-      addMatch({
-        id: result.data.matchId || String(Date.now()),
-        profile: {
-          id: profile.id,
-          name: profile.name,
-          age: profile.age,
-          photo: profile.photo,
-          location: profile.location,
-        },
-        matchedAt: new Date().toISOString(),
-      });
-      Alert.alert('It\'s a Match!', `You and ${profile.name} liked each other!`);
-    } else if (result.success) {
-      Alert.alert('Liked!', `You liked ${profile.name}`);
+    if (result.success) {
+      const d = result.data ?? {};
+      const matched = d.isMatch ?? d.matched ?? d.isMatched ?? d.match ?? false;
+      if (matched) {
+        addMatch({
+          id: d.matchId || d._id || String(Date.now()),
+          profile: {
+            id: profile.id,
+            name: profile.name,
+            age: profile.age,
+            photo: profile.photo,
+            location: profile.location,
+          },
+          matchedAt: new Date().toISOString(),
+        });
+        Alert.alert('It\'s a Match!', `You and ${profile.name} liked each other!`);
+      } else {
+        Alert.alert('Liked!', `You liked ${profile.name}`);
+      }
     } else {
       Alert.alert('Oops', result.message);
     }
@@ -121,12 +126,17 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
 
   // Block user handler
   const handleBlock = () => {
+    if (alreadyBlocked) {
+      Alert.alert('Already Blocked', `${profile.name} is already on your block list.`);
+      return;
+    }
     Alert.alert('Block User', `Are you sure you want to block ${profile.name}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Block', style: 'destructive', onPress: async () => {
           const result = await moderationService.blockUser(String(profile.id));
           if (result.success) {
+            addBlockedUser(String(profile.id));
             Alert.alert('Blocked', `${profile.name} has been blocked.`);
             navigation.goBack();
           } else {
@@ -245,8 +255,10 @@ const ProfileDetailScreen: React.FC<ProfileDetailProps> = ({ route, navigation }
 
         {/* Block user option */}
         <TouchableOpacity style={styles.blockButton} activeOpacity={0.7} onPress={handleBlock}>
-          <Icon name="ban-outline" size={16} color="#FF4444" />
-          <Text style={styles.blockButtonText}>Block this user</Text>
+          <Icon name="ban-outline" size={16} color={alreadyBlocked ? '#888' : '#FF4444'} />
+          <Text style={[styles.blockButtonText, alreadyBlocked && { color: '#888' }]}>
+            {alreadyBlocked ? 'User blocked' : 'Block this user'}
+          </Text>
         </TouchableOpacity>
 
         {/* Bio Section — only shown when non-empty */}

@@ -309,8 +309,6 @@ const EditProfileScreen: React.FC = () => {
     // Always update local context regardless of API result
     updateProfile({
       name,
-      email,
-      phoneNumber: `${countryCode}${phone}`,
       gender,
       lookingFor,
       bio,
@@ -352,35 +350,18 @@ const EditProfileScreen: React.FC = () => {
         />
       </View>
 
-      {/* Email */}
-      <View style={styles.inputRow}>
+      {/* Email — read-only */}
+      <View style={[styles.inputRow, styles.lockedField]}>
         <Icon name="mail-outline" size={18} color="#888" />
-        <TextInput
-          style={styles.textInput}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Email address"
-          placeholderTextColor="#555"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+        <Text style={[styles.textInputReadonly, { flex: 1 }]}>{email || 'Email address'}</Text>
+        <Icon name="lock-closed-outline" size={14} color="#555" />
       </View>
 
-      {/* Phone */}
-      <View style={styles.inputRow}>
+      {/* Phone — read-only */}
+      <View style={[styles.inputRow, styles.lockedField]}>
         <Icon name="call-outline" size={18} color="#888" />
-        <Text style={styles.countryFlag}>🇳🇬</Text>
-        <Text style={styles.countryCode}>{countryCode}</Text>
-        <Icon name="chevron-down" size={14} color="#888" />
-        <View style={styles.phoneDivider} />
-        <TextInput
-          style={[styles.textInput, { flex: 1 }]}
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="Phone number"
-          placeholderTextColor="#555"
-          keyboardType="phone-pad"
-        />
+        <Text style={[styles.textInputReadonly, { flex: 1 }]}>{phone ? `${countryCode}${phone}` : 'Phone number'}</Text>
+        <Icon name="lock-closed-outline" size={14} color="#555" />
       </View>
 
       {/* Gender + Looking For (side by side) */}

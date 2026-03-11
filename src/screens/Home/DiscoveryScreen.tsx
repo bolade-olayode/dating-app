@@ -91,33 +91,42 @@ const DiscoveryScreen = () => {
 
   // Fire real swipe API and handle match result
   const fireSwipeApi = async (profile: typeof currentProfile, action: 'like' | 'pass') => {
+    // Fallback profiles have fake IDs (f1/f2/f3) — skip the API call for them
+    const isFallback = typeof profile.id === 'string' && /^f\d+$/.test(profile.id);
+    if (isFallback) return;
+
     const profileId = String(profile.id);
     const result = await matchingService.swipe(profileId, action);
 
-    if (action === 'like' && result.success && result.data?.isMatch) {
-      // Real match from backend
-      addMatch({
-        id: result.data.matchId || String(Date.now()),
-        profile: {
-          id: profile.id,
-          name: profile.name,
-          age: profile.age,
-          photo: profile.photo,
-          location: profile.location,
-        },
-        matchedAt: new Date().toISOString(),
-      });
+    if (action === 'like' && result.success) {
+      // Backend may use any of these field names for the match flag
+      const d = result.data ?? {};
+      const isMatch = d.isMatch ?? d.matched ?? d.isMatched ?? d.match ?? false;
 
-      setTimeout(() => {
-        navigation.navigate('Match', {
-          matchedProfile: {
+      if (isMatch) {
+        addMatch({
+          id: d.matchId || d._id || String(Date.now()),
+          profile: {
+            id: profile.id,
             name: profile.name,
-            photo: profile.photo,
             age: profile.age,
+            photo: profile.photo,
+            location: profile.location,
           },
-          userPhoto,
+          matchedAt: new Date().toISOString(),
         });
-      }, 400);
+
+        setTimeout(() => {
+          navigation.navigate('Match', {
+            matchedProfile: {
+              name: profile.name,
+              photo: profile.photo,
+              age: profile.age,
+            },
+            userPhoto,
+          });
+        }, 400);
+      }
     }
   };
 
@@ -237,7 +246,7 @@ const DiscoveryScreen = () => {
     } else if (result.success && Array.isArray(result.data) && result.data.length > 0) {
       const apiProfiles = result.data.map((p: any, idx: number) => ({
         id: p._id || p.id,
-        name: p.fullname || p.username || p.name || 'Unknown',
+        name: p.username || p.name || p.fullname || 'Unknown',
         age: p.age || 0,
         location: p.city || (typeof p.location === 'string' ? p.location : p.location?.city) || 'Nearby',
         distance: p.distance ? `${Math.round(p.distance / 1000)} km away` : '',
@@ -684,16 +693,18 @@ const DiscoveryScreen = () => {
 
                 {/* Name and Age */}
                 <View style={styles.nameRow}>
-                  <Text style={styles.name}>{currentProfile.name}, {currentProfile.age}</Text>
+                  <Text style={styles.name}>{currentProfile.name}{currentProfile.age > 0 ? `, ${currentProfile.age}` : ''}</Text>
                   {currentProfile.verified && (
                     <Icon name="checkmark-circle" size={18} color="#00B4FF" />
                   )}
                 </View>
 
-                {/* Details */}
-                <Text style={styles.details}>
-                  {currentProfile.zodiac}  •  {currentProfile.distance}
-                </Text>
+                {/* Details — only shown when at least one field exists */}
+                {(currentProfile.zodiac || currentProfile.distance) ? (
+                  <Text style={styles.details}>
+                    {[currentProfile.zodiac, currentProfile.distance].filter(Boolean).join('  •  ')}
+                  </Text>
+                ) : null}
               </View>
 
               {/* Right side - Action Buttons (Vertical) */}

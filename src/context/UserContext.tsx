@@ -75,6 +75,12 @@ interface UserContextType {
   addMatch: (match: Match) => void;
   getMatchById: (id: string | number) => Match | undefined;
 
+  // Blocked users (local tracking — synced with backend)
+  blockedUserIds: string[];
+  addBlockedUser: (id: string) => void;
+  removeBlockedUser: (id: string) => void;
+  isBlocked: (id: string) => boolean;
+
   // Unread counts
   unreadChatCount: number;
   setUnreadChatCount: (count: number) => void;
@@ -127,6 +133,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
 
   // Debounce timer ref
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -309,6 +316,20 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return matches.find(m => m.id === id);
   }, [matches]);
 
+  // ─── Blocked users ───────────────────────────────────────
+
+  const addBlockedUser = useCallback((id: string) => {
+    setBlockedUserIds(prev => prev.includes(id) ? prev : [...prev, id]);
+  }, []);
+
+  const removeBlockedUser = useCallback((id: string) => {
+    setBlockedUserIds(prev => prev.filter(uid => uid !== id));
+  }, []);
+
+  const isBlocked = useCallback((id: string) => {
+    return blockedUserIds.includes(id);
+  }, [blockedUserIds]);
+
   // ─── Auth ────────────────────────────────────────────────
 
   const login = useCallback(async (token: string, userData: UserProfile) => {
@@ -383,6 +404,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCoinBalanceState(0);
     setSwipeCountState(0);
     setMatches([]);
+    setBlockedUserIds([]);
     setIsAuthenticated(false);
   }, []);
 
@@ -416,6 +438,10 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading,
     unreadChatCount,
     setUnreadChatCount,
+    blockedUserIds,
+    addBlockedUser,
+    removeBlockedUser,
+    isBlocked,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

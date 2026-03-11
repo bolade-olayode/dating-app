@@ -129,10 +129,20 @@ const getBlockedUsers = async (): Promise<ModerationResponse> => {
     devLog('📋 Moderation: Fetching blocked users');
     const response = await apiClient.get('/api/moderation/blocked');
 
+    // Backend may wrap the list as { blockedUsers: [] }, { data: [] }, or return [] directly
+    const raw = response.data?.data ?? response.data;
+    const list: any[] = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw?.blockedUsers)
+        ? raw.blockedUsers
+        : Array.isArray(raw?.blocked)
+          ? raw.blocked
+          : [];
+
     return {
       success: true,
       message: 'Blocked users fetched',
-      data: response.data?.data || response.data,
+      data: list,
     };
   } catch (error: any) {
     errorLog('Moderation getBlockedUsers error:', error.response?.data || error.message);

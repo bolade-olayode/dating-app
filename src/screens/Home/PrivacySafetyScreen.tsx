@@ -18,12 +18,14 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
 import { moderationService } from '@services/api/moderationService';
+import { useUser } from '@context/UserContext';
 import * as WebBrowser from 'expo-web-browser';
 import { devLog } from '@config/environment';
 
 const PrivacySafetyScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { removeBlockedUser } = useUser();
 
   const [hideProfile, setHideProfile] = useState(false);
   const [blurPhotos, setBlurPhotos] = useState(false);
@@ -52,7 +54,11 @@ const PrivacySafetyScreen: React.FC = () => {
         text: 'Unblock', onPress: async () => {
           const result = await moderationService.unblockUser(userId);
           if (result.success) {
-            setBlockedUsers(prev => prev.filter(u => (u._id || u.id) !== userId));
+            setBlockedUsers(prev => prev.filter(u => {
+              const bu = u.blockedUserId && typeof u.blockedUserId === 'object' ? u.blockedUserId : u;
+              return String(bu._id || bu.id) !== userId;
+            }));
+            removeBlockedUser(userId);
             Alert.alert('Unblocked', `${userName} has been unblocked.`);
           } else {
             Alert.alert('Error', result.message);
@@ -201,19 +207,26 @@ const PrivacySafetyScreen: React.FC = () => {
           {loadingBlocked && (
             <ActivityIndicator size="small" color="#FF007B" style={{ marginVertical: 10 }} />
           )}
-          {blockedUsers.length > 0 && !loadingBlocked && blockedUsers.map((user: any) => (
-            <View key={user._id || user.id} style={styles.blockedUserRow}>
-              <Text style={styles.blockedUserName}>
-                {user.fullname || user.name || 'Unknown'}
-              </Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => handleUnblock(user._id || user.id, user.fullname || user.name || 'User')}
-              >
-                <Text style={styles.unblockText}>Unblock</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+          {blockedUsers.length > 0 && !loadingBlocked && blockedUsers.map((user: any) => {
+            // Backend returns block records: { _id: blockId, blockedUserId: { _id, username, ... } }
+            // OR flat: { _id: userId, username, ... }
+            const blockedUser = user.blockedUserId && typeof user.blockedUserId === 'object'
+              ? user.blockedUserId
+              : user;
+            const blockedId = String(blockedUser._id || blockedUser.id || user.blockedUserId || user._id || user.id);
+            const blockedName = blockedUser.username || blockedUser.fullname || blockedUser.name || 'Unknown';
+            return (
+              <View key={blockedId} style={styles.blockedUserRow}>
+                <Text style={styles.blockedUserName}>{blockedName}</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleUnblock(blockedId, blockedName)}
+                >
+                  <Text style={styles.unblockText}>Unblock</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
         </View>
 
         {/* Safety */}

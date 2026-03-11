@@ -39,6 +39,16 @@ export const ENV = {
     DEV_CLEAR_STORAGE: false,         // ⚠️ DEV ONLY: wipe all storage on next launch (set false after reset)
   },
   
+  // Social Auth — OAuth credentials
+  // Google: https://console.cloud.google.com → APIs & Services → Credentials
+  // Facebook: https://developers.facebook.com → Your App → Settings → Basic
+  SOCIAL_AUTH: {
+    GOOGLE_WEB_CLIENT_ID:     'YOUR_GOOGLE_WEB_CLIENT_ID',      // Web client ID (used in Expo Go)
+    GOOGLE_IOS_CLIENT_ID:     'YOUR_GOOGLE_IOS_CLIENT_ID',      // iOS OAuth client ID
+    GOOGLE_ANDROID_CLIENT_ID: 'YOUR_GOOGLE_ANDROID_CLIENT_ID',  // Android OAuth client ID
+    FACEBOOK_APP_ID:          'YOUR_FACEBOOK_APP_ID',           // Facebook App ID
+  },
+
   // Cloudinary (unsigned upload — swap keys for production)
   CLOUDINARY: {
     CLOUD_NAME: 'djfq0kez7',

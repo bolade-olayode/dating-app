@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import {
 } from '@components/ui/Buttons';
 import { FONTS } from '@config/fonts';
 import MarqueeColumn from '@components/common/AnimatedBackground/MarqueeColumn';
+import { useSocialAuth } from '@hooks/useSocialAuth';
 
 const { height } = Dimensions.get('window');
 
@@ -26,6 +28,7 @@ const SLIDE_IMAGES = [
 
 const LoginScreen: React.FC<any> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { handleGoogle, handleFacebook, isLoading } = useSocialAuth(navigation);
 
   return (
     <View style={styles.container}>
@@ -60,10 +63,16 @@ const LoginScreen: React.FC<any> = ({ navigation }) => {
         </Text>
 
         <View style={styles.buttonGroup}>
-          <FacebookButton onPress={() => {}} />
-          <View style={{ height: 12 }} />
-          <GoogleButton onPress={() => {}} />
-          <View style={{ height: 12 }} />
+          {isLoading ? (
+            <ActivityIndicator color="#FF007B" style={{ marginBottom: 24 }} />
+          ) : (
+            <>
+              <FacebookButton onPress={handleFacebook} />
+              <View style={{ height: 12 }} />
+              <GoogleButton onPress={handleGoogle} />
+              <View style={{ height: 12 }} />
+            </>
+          )}
           <PrimaryButton
             text="Use Email"
             variant={1}
