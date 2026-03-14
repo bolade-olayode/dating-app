@@ -179,10 +179,11 @@ const OTPVerificationScreen: React.FC<Props> = ({ navigation, route }) => {
                 // Distinguish brand-new vs existing account:
                 // A fresh account has no name and no photos yet.
                 // An existing account always has a name (set during onboarding step 1).
-                const profileName = meResult.profile.name || meResult.profile.username || meResult.profile.fullname || '';
-                const hasPhotos = (meResult.profile.photos?.length || 0) > 0;
-                const isComplete = hasPhotos || !!profileName;
-                if (mode === 'signup' && !isComplete) {
+                // Use backend's onboarded flag as the source of truth.
+                // A brand-new account always has onboarded: false regardless of
+                // whether username or other fields were auto-set by the backend.
+                const isOnboarded = meResult.profile.onboarded === true;
+                if (mode === 'signup' && !isOnboarded) {
                   devLog('New account — proceeding to onboarding');
                   navigation.replace('NameInput');
                   return;

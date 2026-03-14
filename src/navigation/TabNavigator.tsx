@@ -165,49 +165,45 @@ const TabNavigator = () => {
         tabBarInactiveTintColor: '#888',
         tabBarStyle: {
           position: 'absolute',
-          bottom: 25,        // Floating above bottom
-          left: 20,          // Spacing from left
-          right: 20,         // Spacing from right
-          backgroundColor: '#000000', // Black inner fill
+          bottom: 22,
+          left: 16,
+          right: 16,
+          backgroundColor: 'transparent',
           borderTopColor: 'transparent',
-          height: 80,        // Slightly reduced for floating effect
-          borderRadius: 40,  // Full pill shape
-          paddingLeft: 25,
-          paddingRight: 25,
-          paddingTop: 10,
-          paddingBottom: 15,
-          // Shadow for depth
+          height: 90,
+          borderRadius: 32,
+          paddingLeft: 8,
+          paddingRight: 8,
+          paddingTop: 8,
+          paddingBottom: 12,
           shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: 10,
-          },
-          shadowOpacity: 0.25,
-          shadowRadius: 15,
-          // Android elevation
-          elevation: 10,
+          shadowOffset: { width: 0, height: 12 },
+          shadowOpacity: 0.35,
+          shadowRadius: 20,
+          elevation: 14,
         },
         tabBarBackground: () => (
           <BlurView
-            intensity={80}
+            intensity={95}
             tint="dark"
             style={[
               StyleSheet.absoluteFill,
               {
-                borderRadius: 40,
-                backgroundColor: 'rgba(0,0,0,0.7)', // Semi-transparent for glass effect
+                borderRadius: 32,
+                overflow: 'hidden',
+                backgroundColor: 'rgba(18,18,20,0.82)',
               },
             ]}
           />
         ),
         tabBarLabelStyle: {
-          fontFamily: FONTS.Medium,
-          fontSize: 10,
-          marginTop: -3,
-          fontWeight: '500',
+          fontFamily: FONTS.SemiBold,
+          fontSize: 11,
+          marginTop: -2,
+          fontWeight: '600',
         },
         tabBarItemStyle: {
-          paddingVertical: 5,
+          paddingVertical: 4,
         },
       })}
     >
@@ -216,12 +212,8 @@ const TabNavigator = () => {
         component={DiscoveryScreen}
         options={{
           tabBarLabel: 'Home',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Icon
-              name={focused ? "flame" : "flame-outline"}
-              size={26}
-              color={color}
-            />
+          tabBarIcon: ({ focused, color }) => (
+            <Icon name={focused ? "flame" : "flame-outline"} size={focused ? 30 : 26} color={color} />
           ),
         }}
       />
@@ -230,12 +222,8 @@ const TabNavigator = () => {
         component={ExploreScreen}
         options={{
           tabBarLabel: 'Explore',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Icon
-              name={focused ? "compass" : "compass-outline"}
-              size={26}
-              color={color}
-            />
+          tabBarIcon: ({ focused, color }) => (
+            <Icon name={focused ? "compass" : "compass-outline"} size={focused ? 30 : 26} color={color} />
           ),
         }}
       />
@@ -244,11 +232,11 @@ const TabNavigator = () => {
         component={ChatsScreen}
         options={{
           tabBarLabel: 'Chats',
-          tabBarIcon: ({ focused, color, size }) => (
+          tabBarIcon: ({ focused, color }) => (
             <View>
               <Icon
                 name={focused ? "chatbubbles" : "chatbubbles-outline"}
-                size={26}
+                size={focused ? 30 : 26}
                 color={color}
               />
               {/* Badge for unread messages */}
@@ -269,11 +257,7 @@ const TabNavigator = () => {
         options={{
           tabBarLabel: 'Alerts',
           tabBarIcon: ({ focused, color }) => (
-            <Icon
-              name={focused ? "notifications" : "notifications-outline"}
-              size={26}
-              color={color}
-            />
+            <Icon name={focused ? "notifications" : "notifications-outline"} size={focused ? 30 : 26} color={color} />
           ),
         }}
       />
@@ -282,12 +266,8 @@ const TabNavigator = () => {
         component={MeScreen}
         options={{
           tabBarLabel: 'Me',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Icon
-              name={focused ? "person" : "person-outline"}
-              size={26}
-              color={color}
-            />
+          tabBarIcon: ({ focused, color }) => (
+            <Icon name={focused ? "person" : "person-outline"} size={focused ? 30 : 26} color={color} />
           ),
         }}
       />

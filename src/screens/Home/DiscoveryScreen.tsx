@@ -157,7 +157,7 @@ const DiscoveryScreen = () => {
         setNearbyProfiles(result.data.map((p: any) => ({
           id: p._id || p.id,
           name: p.username || p.fullname || p.name || 'Unknown',
-          age: p.age || 0,
+          age: p.age || (() => { const d = p.dateOfBirth || p.dob || p.date_of_birth; return d ? Math.floor((Date.now() - new Date(d).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0; })(),
           distance: p.distance ? `${Math.round(p.distance / 1000)} km` : '<1 km',
           photo: p.photos?.[0] ? { uri: p.photos[0] } : require('../../assets/images/opuehbckgdimg.jpg'),
           verified: p.verified || false,
@@ -247,7 +247,7 @@ const DiscoveryScreen = () => {
       const apiProfiles = result.data.map((p: any, idx: number) => ({
         id: p._id || p.id,
         name: p.username || p.name || p.fullname || 'Unknown',
-        age: p.age || 0,
+        age: p.age || (() => { const d = p.dateOfBirth || p.dob || p.date_of_birth; return d ? Math.floor((Date.now() - new Date(d).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0; })(),
         location: p.city || (typeof p.location === 'string' ? p.location : p.location?.city) || 'Nearby',
         distance: p.distance ? `${Math.round(p.distance / 1000)} km away` : '',
         zodiac: p.zodiac || '',

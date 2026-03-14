@@ -236,19 +236,47 @@ const registerPushToken = async () => {
       devLog('📱 Push notifications: permission denied');
       return;
     }
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-    const token = tokenData.data;
-    await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_TOKEN, token);
-    devLog('📱 Push token stored:', token);
 
-    // Send token to backend — fails silently if endpoint not yet available
+    // Get native FCM token (required for Firebase-based push notifications)
+    let fcmToken: string | undefined;
+    try {
+      const nativeTokenData = await Notifications.getDevicePushTokenAsync();
+      fcmToken = nativeTokenData.data;
+      devLog('📱 Native FCM token:', fcmToken);
+    } catch (e) {
+      devLog('📱 Could not get native FCM token:', e);
+    }
+
+    // Also get Expo push token as fallback
+    let expoToken: string | undefined;
+    try {
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+      expoToken = tokenData.data;
+      devLog('📱 Expo push token:', expoToken);
+    } catch (e) {
+      devLog('📱 Could not get Expo push token:', e);
+    }
+
+    const tokenToStore = fcmToken || expoToken;
+    if (tokenToStore) {
+      await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_TOKEN, tokenToStore);
+    }
+
     try {
       const { apiClient } = require('@services/api/realAuthService');
-      await apiClient.post('/api/notifications/device-token', { token, platform: 'expo' });
-      devLog('📱 Push token sent to backend');
+      // Send native FCM token to profile endpoint (used by Firebase on backend)
+      if (fcmToken) {
+        await apiClient.patch('/api/user/profile', { fcmToken });
+        devLog('📱 FCM token sent to /api/user/profile');
+      }
+      // Also register with notifications endpoint
+      if (expoToken) {
+        await apiClient.post('/api/notifications/device-token', { token: expoToken, platform: 'expo' });
+        devLog('📱 Expo token sent to /api/notifications/device-token');
+      }
     } catch {
-      devLog('📱 Push token: backend endpoint not available yet (non-blocking)');
+      devLog('📱 Push token: backend registration failed (non-blocking)');
     }
   } catch (e) {
     devLog('📱 Push token registration skipped (emulator or no project ID)');

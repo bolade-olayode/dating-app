@@ -335,6 +335,21 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = useCallback(async (token: string, userData: UserProfile) => {
     await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
 
+    // Clear any previously cached profile so a different account's stale data
+    // can never leak into this session before the fresh profile is written.
+    try {
+      const existingStr = await AsyncStorage.getItem(STORAGE_KEYS.PROFILE);
+      if (existingStr) {
+        const existing = JSON.parse(existingStr) as UserProfile;
+        const isSameUser =
+          (existing.email && userData.email && existing.email === userData.email) ||
+          (existing.id && userData.id && String(existing.id) === String(userData.id));
+        if (!isSameUser) {
+          await AsyncStorage.removeItem(STORAGE_KEYS.PROFILE);
+        }
+      }
+    } catch {}
+
     // Merge with profile backup saved at logout time.
     // This restores fields like prompts, height, weight, education that the
     // backend may not include in GET /api/auth/me, so they survive logout→login cycles.

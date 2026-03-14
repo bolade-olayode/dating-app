@@ -129,6 +129,27 @@ const deleteNotification = async (
   }
 };
 
+// ─── Register Push Token ─────────────────────────────────────
+// POST /api/notifications/push-token
+
+const registerPushToken = async (token: string, platform: 'ios' | 'android'): Promise<NotificationResponse> => {
+  try {
+    devLog('📲 Notifications: Registering push token', platform);
+    const response = await apiClient.post('/api/notifications/device-token', { token, platform });
+    return {
+      success: true,
+      message: 'Push token registered',
+      data: response.data,
+    };
+  } catch (error: any) {
+    errorLog('Notifications registerPushToken error:', error.response?.data || error.message);
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to register push token',
+    };
+  }
+};
+
 // ─── Export ──────────────────────────────────────────────────
 
 export const notificationService = {
@@ -137,6 +158,7 @@ export const notificationService = {
   markAllRead,
   markRead,
   deleteNotification,
+  registerPushToken,
 };
 
 export default notificationService;

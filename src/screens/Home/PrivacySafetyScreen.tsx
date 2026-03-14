@@ -1,6 +1,6 @@
 // src/screens/Home/PrivacySafetyScreen.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { FONTS } from '@config/fonts';
 import Flare from '@components/ui/Flare';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { moderationService } from '@services/api/moderationService';
 import { useUser } from '@context/UserContext';
 import * as WebBrowser from 'expo-web-browser';
 import { devLog } from '@config/environment';
+
+const PRIVACY_STORAGE_KEY = '@opueh_privacy_settings';
 
 const PrivacySafetyScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -28,13 +31,35 @@ const PrivacySafetyScreen: React.FC = () => {
   const { removeBlockedUser } = useUser();
 
   const [hideProfile, setHideProfile] = useState(false);
-  const [blurPhotos, setBlurPhotos] = useState(false);
   const [readReceipts, setReadReceipts] = useState(true);
   const [showOnlineStatus, setShowOnlineStatus] = useState(true);
   const [showDistance, setShowDistance] = useState(true);
   const [blockContacts, setBlockContacts] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(false);
+
+  // Load persisted privacy settings on mount
+  useEffect(() => {
+    AsyncStorage.getItem(PRIVACY_STORAGE_KEY).then(saved => {
+      if (!saved) return;
+      try {
+        const s = JSON.parse(saved);
+        if (s.hideProfile    !== undefined) setHideProfile(s.hideProfile);
+        if (s.readReceipts   !== undefined) setReadReceipts(s.readReceipts);
+        if (s.showOnlineStatus !== undefined) setShowOnlineStatus(s.showOnlineStatus);
+        if (s.showDistance   !== undefined) setShowDistance(s.showDistance);
+        if (s.blockContacts  !== undefined) setBlockContacts(s.blockContacts);
+      } catch {}
+    });
+  }, []);
+
+  // Persist whenever a toggle changes
+  const saveSettings = useCallback((patch: Record<string, boolean>) => {
+    AsyncStorage.getItem(PRIVACY_STORAGE_KEY).then(saved => {
+      const current = saved ? JSON.parse(saved) : {};
+      AsyncStorage.setItem(PRIVACY_STORAGE_KEY, JSON.stringify({ ...current, ...patch }));
+    }).catch(() => {});
+  }, []);
 
   // Fetch blocked users from API
   const fetchBlockedUsers = async () => {
@@ -150,28 +175,21 @@ const PrivacySafetyScreen: React.FC = () => {
             'Hide my profile',
             'Your profile won\'t appear in discovery',
             hideProfile,
-            setHideProfile,
-          )}
-          {renderToggleRow(
-            'image-outline',
-            'Blur my photos',
-            'Photos are blurred until you match',
-            blurPhotos,
-            setBlurPhotos,
+            (v: boolean) => { setHideProfile(v); saveSettings({ hideProfile: v }); },
           )}
           {renderToggleRow(
             'radio-outline',
             'Show online status',
             'Let others see when you\'re online',
             showOnlineStatus,
-            setShowOnlineStatus,
+            (v: boolean) => { setShowOnlineStatus(v); saveSettings({ showOnlineStatus: v }); },
           )}
           {renderToggleRow(
             'navigate-outline',
             'Show distance',
             'Display your distance from others',
             showDistance,
-            setShowDistance,
+            (v: boolean) => { setShowDistance(v); saveSettings({ showDistance: v }); },
           )}
         </View>
 
@@ -183,7 +201,7 @@ const PrivacySafetyScreen: React.FC = () => {
             'Read receipts',
             'Let matches know when you\'ve read messages',
             readReceipts,
-            setReadReceipts,
+            (v: boolean) => { setReadReceipts(v); saveSettings({ readReceipts: v }); },
           )}
         </View>
 
@@ -195,7 +213,7 @@ const PrivacySafetyScreen: React.FC = () => {
             'Block my contacts',
             'People in your phonebook won\'t see you',
             blockContacts,
-            setBlockContacts,
+            (v: boolean) => { setBlockContacts(v); saveSettings({ blockContacts: v }); },
           )}
           {renderActionRow(
             'ban-outline',
